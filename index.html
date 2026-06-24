@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>車両運行ボード</title>
+<style>
+  :root{
+    --bg:#12151a;
+    --panel:#1a1f26;
+    --panel-2:#20262e;
+    --line:#2b3239;
+    --text:#e9e7e1;
+    --text-dim:#9aa3ad;
+    --amber:#e8a23d;
+    --amber-dim:#7a5a2a;
+    --red:#b85c5c;
+    --red-bg:rgba(184,92,92,0.22);
+    --yellow-bg:rgba(212,176,15,0.28);
+    --yellow-line:#d4b00f;
+    --green:#5a9a7a;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app{max-width:720px;margin:0 auto;padding:0 0 60px;}
+
+  /* Gate (passcode) */
+  .gate{
+    position:fixed; inset:0; background:var(--bg); z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;
+  }
+  .gate h1{font-size:18px; color:var(--amber); letter-spacing:.08em; margin:0 0 6px;}
+  .gate p{font-size:13px; color:var(--text-dim); margin:0 0 22px; text-align:center; line-height:1.7;}
+  .gate input{
+    width:100%; max-width:260px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:10px; color:var(--text); padding:13px 14px; font-family:var(--mono);
+    font-size:18px; text-align:center; letter-spacing:.2em;
+  }
+  .gate input:focus{outline:none; border-color:var(--amber);}
+  .gate button{
+    margin-top:14px; width:100%; max-width:260px; background:var(--amber); color:#1b1404;
+    border:none; border-radius:10px; padding:13px; font-size:15px; font-weight:700; cursor:pointer;
+  }
+  .gate .err{color:var(--red); font-size:12px; margin-top:10px; min-height:16px;}
+
+  /* Header */
+  .board-header{
+    background:linear-gradient(180deg, #1b2026 0%, #15191e 100%);
+    border-bottom:1px solid var(--line);
+    padding:14px 16px 10px;
+    position:sticky; top:0; z-index:20;
+  }
+  .board-title-row{display:flex; align-items:baseline; justify-content:space-between;}
+  .board-title{
+    font-size:15px; letter-spacing:.12em; color:var(--amber);
+    font-weight:600;
+  }
+  .board-clock{
+    font-family:var(--mono); font-size:13px; color:var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .sync-line{
+    margin-top:4px; font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px;
+  }
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:#666; flex:none;}
+  .sync-dot.on{background:var(--green);}
+  .sync-dot.err{background:var(--red);}
+
+  /* Day tabs */
+  .day-tabs{display:flex; gap:6px; margin-top:12px; overflow-x:auto; padding-bottom:2px;}
+  .day-tab{
+    font-family:var(--mono); font-size:12px; padding:6px 10px; border-radius:6px;
+    background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line);
+    white-space:nowrap; flex:none; cursor:pointer;
+  }
+  .day-tab.active{background:var(--amber); color:#1b1404; border-color:var(--amber); font-weight:700;}
+
+  /* Toolbar */
+  .toolbar{display:flex; gap:8px; padding:12px 16px 4px; flex-wrap:wrap;}
+  .btn{
+    font-family:var(--sans); font-size:13px; font-weight:600; padding:9px 14px;
+    border-radius:8px; border:1px solid var(--line); background:var(--panel-2);
+    color:var(--text); cursor:pointer; display:flex; align-items:center; gap:6px;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn.primary{background:var(--amber); color:#1b1404; border-color:var(--amber);}
+  .btn.ghost{background:transparent;}
+  .btn.danger{color:var(--red); border-color:var(--red);}
+  .btn.icon-only{padding:8px; width:36px; justify-content:center;}
+  .spacer{flex:1;}
+
+  /* Table */
+  .roster-wrap{padding:8px 16px 0;}
+  .roster-empty{text-align:center; color:var(--text-dim); padding:40px 20px; font-size:13px; line-height:1.8;}
+  table.roster{width:100%; border-collapse:collapse; font-size:14px;}
+  table.roster th{
+    text-align:left; font-size:11px; letter-spacing:.06em; color:var(--text-dim);
+    font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line); cursor:pointer;
+    user-select:none; white-space:nowrap;
+  }
+  table.roster th .arrow{color:var(--amber); margin-left:2px;}
+  table.roster td{padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  table.roster tr.row{transition:background 0.25s;}
+  table.roster tr.row.returned{background:var(--red-bg);}
+  table.roster tr.row.soon{background:var(--yellow-bg);}
+  .bus-no{font-family:var(--mono); font-size:16px; font-weight:700; letter-spacing:.02em;}
+  .time-cell{font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums;}
+  .time-cell input{
+    width:64px; background:transparent; border:none; color:var(--text);
+    font-family:var(--mono); font-size:14px; border-bottom:1px dashed var(--line); padding:2px 0;
+  }
+  .time-cell input:focus{outline:none; border-bottom-color:var(--amber);}
+  .status-toggle{
+    font-size:11px; padding:5px 8px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text-dim); cursor:pointer; font-weight:600; white-space:nowrap;
+  }
+  .status-toggle.on{background:var(--red); color:#fff; border-color:var(--red);}
+  .row-del{color:var(--text-dim); background:none; border:none; font-size:16px; cursor:pointer; padding:4px;}
+  .row-del:active{color:var(--red);}
+  .read-only-note{text-align:center; font-size:12px; color:var(--text-dim); padding:10px 0 2px;}
+
+  .legend{display:flex; gap:14px; padding:10px 16px 0; font-size:11px; color:var(--text-dim); flex-wrap:wrap;}
+  .legend span{display:flex; align-items:center; gap:5px;}
+  .legend .sw{width:10px;height:10px;border-radius:2px;}
+  .sw.red-sw{background:var(--red-bg); border:1px solid var(--red);}
+  .sw.yellow-sw{background:var(--yellow-bg); border:1px solid var(--yellow-line);}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none;
+    align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:var(--panel); width:100%; max-width:720px; border-radius:16px 16px 0 0;
+    padding:18px 18px 28px; max-height:88vh; overflow-y:auto; border-top:1px solid var(--line);
+  }
+  .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .modal-header h3{margin:0; font-size:15px; color:var(--amber); letter-spacing:.04em;}
+  .modal-close{background:none; border:none; color:var(--text-dim); font-size:20px; cursor:pointer;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .field input[type=text], .field input[type=number]{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); padding:10px 12px; font-family:var(--mono); font-size:15px;
+  }
+  .field input:focus{outline:none; border-color:var(--amber);}
+  .hint{font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.6;}
+
+  .ocr-preview{width:100%; border-radius:10px; margin-bottom:12px; display:block; max-height:240px; object-fit:contain; background:#000;}
+  .ocr-status{font-size:13px; color:var(--amber); display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+  .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--amber-dim);border-top-color:var(--amber); animation:sp 0.8s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .chip-row{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;}
+  .chip{font-family:var(--mono); font-size:13px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; color:var(--text);}
+  .chip-label{font-size:10px; color:var(--text-dim); width:100%; margin:6px 0 2px;}
+
+  .modal-actions{display:flex; gap:8px; margin-top:16px;}
+  .modal-actions .btn{flex:1; justify-content:center;}
+
+  .toast{
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    background:var(--panel-2); color:var(--text); border:1px solid var(--line);
+    padding:10px 16px; border-radius:8px; font-size:13px; z-index:60; display:none;
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+  }
+  .toast.show{display:block;}
+  input[type=file]{display:none;}
+  @media (min-width:560px){ table.roster td, table.roster th{padding:10px 12px;} }
+</style>
+</head>
+<body>
+
+<!-- Passcode gate -->
+<div class="gate" id="gate">
+  <h1>車両運行ボード</h1>
+  <p>チーム用の合言葉を入力してください</p>
+  <input type="password" id="gateInput" inputmode="numeric" placeholder="••••" autocomplete="off">
+  <button id="gateBtn">開く</button>
+  <div class="err" id="gateErr"></div>
+</div>
+
+<div class="app" id="appRoot" style="display:none;">
+
+  <div class="board-header">
+    <div class="board-title-row">
+      <div class="board-title">車両運行ボード</div>
+      <div class="board-clock" id="clock">--:--:--</div>
+    </div>
+    <div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncText">接続中…</span></div>
+    <div class="day-tabs" id="dayTabs"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn primary" id="btnPhoto">📷 写真から読み取り</button>
+    <button class="btn ghost" id="btnManual">＋ 手動で追加</button>
+    <div class="spacer"></div>
+    <button class="btn icon-only ghost" id="btnSettings" title="設定">⚙️</button>
+  </div>
+
+  <div class="legend">
+    <span><span class="sw red-sw"></span>帰庫済み</span>
+    <span><span class="sw yellow-sw"></span>帰庫予定が近い</span>
+  </div>
+
+  <div class="roster-wrap"><div id="rosterContainer"></div></div>
+
+  <div style="padding:14px 16px;">
+    <button class="btn danger" id="btnReset" style="width:100%; justify-content:center;">🗑 本日のデータをリセットして新しい日を開始</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" capture="environment">
+
+<!-- OCR / Manual Modal -->
+<div class="modal-overlay" id="ocrOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="ocrTitle">写真から読み取り</h3><button class="modal-close" data-close="ocrOverlay">✕</button></div>
+    <img id="ocrPreview" class="ocr-preview" style="display:none;">
+    <div class="ocr-status" id="ocrStatus" style="display:none;"><span class="spin"></span><span id="ocrStatusText">解析中…</span></div>
+    <div id="ocrCandidates" style="display:none;">
+      <div class="chip-label">検出された数字列（タップして下に反映）</div>
+      <div class="chip-row" id="chipRow"></div>
+    </div>
+    <div class="field"><label>号車（4桁）</label><input type="text" id="fNo" inputmode="numeric" placeholder="例: 6601"></div>
+    <div class="field"><label>帰庫予定時間</label><input type="text" id="fReturn" inputmode="numeric" placeholder="例: 19:38"></div>
+    <div class="field"><label>翌日出庫時間</label><input type="text" id="fDepart" inputmode="numeric" placeholder="例: 7:07"></div>
+    <div class="hint">OCRは数字とローマ字のみを認識し、写真はこの端末内だけで処理されます（外部サーバーへは送信されません）。読み取り結果は誤りがあれば自由に修正してください。</div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-close="ocrOverlay">キャンセル</button>
+      <button class="btn primary" id="btnAddFromOcr">この内容で追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3>設定</h3><button class="modal-close" data-close="settingsOverlay">✕</button></div>
+    <div class="field"><label>帰庫予定の何分前から黄色く表示するか</label><input type="number" id="fThreshold" min="1" max="180" value="15"></div>
+    <div class="field">
+      <label>ブラウザ通知</label>
+      <button class="btn ghost" id="btnNotifPermission" style="width:100%; justify-content:center;">通知を許可する</button>
+      <div class="hint" id="notifStatusText">未設定</div>
+    </div>
+    <div class="hint">このボードは合言葉を知っているチーム全員が同じデータを共有します。設定（通知・分数）はこの端末だけに保存されます。</div>
+    <div class="modal-actions"><button class="btn primary" id="btnSaveSettings" style="width:100%; justify-content:center;">保存</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, setDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ===== Firebase config ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCC2XRPXx7iCnL5wqnXMZZ1HYvFSxzxJUk",
+  authDomain: "bus-roster.firebaseapp.com",
+  projectId: "bus-roster",
+  storageBucket: "bus-roster.firebasestorage.app",
+  messagingSenderId: "636226354728",
+  appId: "1:636226354728:web:25f72f5bc93bc9664c7f1d"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+/* ===== Team passcode (change here if you like) ===== */
+const TEAM_PASSCODE = "2026";
+
+(function(){
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const pad2 = (n) => String(n).padStart(2,'0');
+
+  function todayStr(d=new Date()){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+  function fmtDateLabel(dateStr, todayKey){
+    if(dateStr === todayKey) return '本日';
+    const d = new Date(dateStr+'T00:00:00');
+    return (d.getMonth()+1)+'/'+d.getDate();
+  }
+  function parseTimeToMinutes(t){
+    if(!t) return null;
+    const m = String(t).trim().match(/^(\d{1,2})[:：](\d{2})$/);
+    if(!m) return null;
+    return parseInt(m[1],10)*60 + parseInt(m[2],10);
+  }
+  function nowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+  function uid(){ return 'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function showToast(msg, ms=2200){
+    const t=$('toast'); t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), ms);
+  }
+  function openModal(id){ $(id).classList.add('show'); }
+  function closeModal(id){ $(id).classList.remove('show'); }
+  document.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', ()=>closeModal(b.dataset.close)));
+
+  const state = {
+    todayKey: todayStr(),
+    dates: [],
+    activeDate: null,
+    buses: [],
+    sortKey: 'busNo',
+    sortDir: 1,
+    settings: { thresholdMin: 15 },
+    notified: new Set(),
+    ocr: { ready:false, failed:false },
+    unsub: null,
+    writing: false
+  };
+
+  /* ===== Firestore helpers =====
+     One document per day: collection "days", docId = date string.
+     Document shape: { buses: [ ... ], updatedAt: <ms> }
+     Also a meta doc "meta/index" holds { dates: [...] } */
+  function dayDocRef(date){ return doc(db, 'days', date); }
+  function metaDocRef(){ return doc(db, 'meta', 'index'); }
+
+  async function pushDay(){
+    state.writing = true;
+    try{
+      await setDoc(dayDocRef(state.activeDate), { buses: state.buses, updatedAt: Date.now() });
+    }catch(e){ showToast('保存に失敗しました（通信を確認）', 3000); }
+    setTimeout(()=>{ state.writing=false; }, 400);
+  }
+  async function pushMeta(){
+    try{ await setDoc(metaDocRef(), { dates: state.dates, updatedAt: Date.now() }); }catch(e){}
+  }
+
+  /* ===== Rendering ===== */
+  function renderClock(){
+    const d=new Date();
+    $('clock').textContent = pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds());
+  }
+  function renderDayTabs(){
+    const wrap=$('dayTabs'); wrap.innerHTML='';
+    state.dates.forEach(date=>{
+      const tab=document.createElement('div');
+      tab.className='day-tab'+(date===state.activeDate?' active':'');
+      tab.textContent=fmtDateLabel(date, state.todayKey);
+      tab.addEventListener('click', ()=>switchDate(date));
+      wrap.appendChild(tab);
+    });
+  }
+  function sortedBuses(){
+    const arr=[...state.buses]; const key=state.sortKey;
+    arr.sort((a,b)=>{
+      let av,bv;
+      if(key==='busNo'){ av=a.busNo; bv=b.busNo; }
+      else { av=parseTimeToMinutes(a[key]); bv=parseTimeToMinutes(b[key]); if(av===null)av=99999; if(bv===null)bv=99999; }
+      if(av<bv) return -1*state.sortDir; if(av>bv) return 1*state.sortDir; return 0;
+    });
+    return arr;
+  }
+  function rowStatusClass(bus){
+    if(bus.returned) return 'returned';
+    const ret=parseTimeToMinutes(bus.returnTime); if(ret===null) return '';
+    const diff=ret-nowMinutes();
+    if(diff>=0 && diff<=state.settings.thresholdMin) return 'soon';
+    return '';
+  }
+  function renderRoster(){
+    const isReadOnly = state.activeDate !== state.todayKey;
+    const container=$('rosterContainer');
+    if(state.buses.length===0){
+      container.innerHTML='<div class="roster-empty">まだ登録がありません。<br>「📷 写真から読み取り」または「＋ 手動で追加」で登録してください。</div>';
+      return;
+    }
+    const arrowFor=(k)=> state.sortKey===k ? `<span class="arrow">${state.sortDir>0?'▲':'▼'}</span>` : '';
+    let html='<table class="roster"><thead><tr>'+
+      `<th data-sort="busNo">号車${arrowFor('busNo')}</th>`+
+      `<th data-sort="returnTime">帰庫予定${arrowFor('returnTime')}</th>`+
+      `<th data-sort="departTime">翌日出庫${arrowFor('departTime')}</th>`+
+      `<th>状態</th><th></th></tr></thead><tbody>`;
+    sortedBuses().forEach(bus=>{
+      const cls=rowStatusClass(bus);
+      html+=`<tr class="row ${cls}" data-id="${bus.id}">`+
+        `<td class="bus-no">${bus.busNo}</td>`+
+        `<td class="time-cell"><input type="text" data-field="returnTime" value="${bus.returnTime||''}" inputmode="numeric" ${isReadOnly?'disabled':''}></td>`+
+        `<td class="time-cell"><input type="text" data-field="departTime" value="${bus.departTime||''}" inputmode="numeric" ${isReadOnly?'disabled':''}></td>`+
+        `<td><button class="status-toggle ${bus.returned?'on':''}" data-action="toggle" ${isReadOnly?'disabled':''}>${bus.returned?'帰庫済み':'未帰庫'}</button></td>`+
+        `<td>${isReadOnly?'':'<button class="row-del" data-action="del">✕</button>'}</td></tr>`;
+    });
+    html+='</tbody></table>';
+    if(isReadOnly) html+='<div class="read-only-note">過去の記録は参照専用です（編集不可）</div>';
+    container.innerHTML=html;
+
+    container.querySelectorAll('th[data-sort]').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const k=th.dataset.sort;
+        if(state.sortKey===k) state.sortDir*=-1; else { state.sortKey=k; state.sortDir=1; }
+        renderRoster();
+      });
+    });
+    if(!isReadOnly){
+      container.querySelectorAll('input[data-field]').forEach(inp=>{
+        inp.addEventListener('change', async (e)=>{
+          const id=e.target.closest('tr').dataset.id;
+          const bus=state.buses.find(b=>b.id===id);
+          if(bus){ bus[e.target.dataset.field]=e.target.value.trim(); await pushDay(); renderRoster(); }
+        });
+      });
+      container.querySelectorAll('[data-action="toggle"]').forEach(btn=>{
+        btn.addEventListener('click', async (e)=>{
+          const id=e.target.closest('tr').dataset.id;
+          const bus=state.buses.find(b=>b.id===id);
+          if(bus){ bus.returned=!bus.returned; await pushDay(); renderRoster(); }
+        });
+      });
+      container.querySelectorAll('[data-action="del"]').forEach(btn=>{
+        btn.addEventListener('click', async (e)=>{
+          const id=e.target.closest('tr').dataset.id;
+          state.buses=state.buses.filter(b=>b.id!==id);
+          await pushDay(); renderRoster();
+        });
+      });
+    }
+  }
+
+  /* ===== Day switching & live sync ===== */
+  function subscribeDay(date){
+    if(state.unsub){ state.unsub(); state.unsub=null; }
+    state.unsub = onSnapshot(dayDocRef(date), (snap)=>{
+      $('syncDot').className='sync-dot on';
+      $('syncText').textContent='同期済み '+pad2(new Date().getHours())+':'+pad2(new Date().getMinutes());
+      if(state.writing) return; // avoid clobbering our own just-sent change
+      const data = snap.exists() ? snap.data() : null;
+      state.buses = (data && Array.isArray(data.buses)) ? data.buses : [];
+      renderRoster();
+    }, (err)=>{
+      $('syncDot').className='sync-dot err';
+      $('syncText').textContent='同期エラー（権限/通信を確認）';
+    });
+  }
+  async function switchDate(date){
+    state.activeDate=date;
+    renderDayTabs();
+    subscribeDay(date);
+  }
+
+  async function ensureTodayInIndex(){
+    if(!state.dates.includes(state.todayKey)) state.dates.push(state.todayKey);
+    state.dates.sort();
+    while(state.dates.length>3) state.dates.shift();
+    await pushMeta();
+  }
+
+  function subscribeMeta(){
+    onSnapshot(metaDocRef(), async (snap)=>{
+      const data = snap.exists() ? snap.data() : null;
+      let dates = (data && Array.isArray(data.dates)) ? data.dates.slice() : [];
+      if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3) dates.shift(); }
+      state.dates = dates;
+      if(!state.activeDate){ state.activeDate = state.todayKey; subscribeDay(state.activeDate); }
+      renderDayTabs();
+    }, ()=>{});
+  }
+
+  /* ===== Reset day ===== */
+  $('btnReset').addEventListener('click', async ()=>{
+    if(state.activeDate!==state.todayKey){ showToast('本日のタブで実行してください'); return; }
+    if(!confirm('本日のデータをリセットし、新しい日として記録を開始します。よろしいですか？')) return;
+    state.buses=[];
+    await pushDay();
+    renderRoster();
+    showToast('本日のデータをリセットしました');
+  });
+
+  /* ===== Manual add ===== */
+  $('btnManual').addEventListener('click', ()=>{
+    $('ocrTitle').textContent='手動で追加';
+    $('fNo').value=''; $('fReturn').value=''; $('fDepart').value='';
+    $('ocrPreview').style.display='none'; $('ocrStatus').style.display='none'; $('ocrCandidates').style.display='none';
+    openModal('ocrOverlay');
+  });
+  $('btnAddFromOcr').addEventListener('click', async ()=>{
+    if(state.activeDate!==state.todayKey){ showToast('過去の日付には追加できません'); return; }
+    const busNo=$('fNo').value.trim();
+    const returnTime=$('fReturn').value.trim();
+    const departTime=$('fDepart').value.trim();
+    if(!/^\d{4}$/.test(busNo)){ showToast('号車は4桁の数字で入力してください'); return; }
+    if(returnTime && !parseTimeToMinutes(returnTime)){ showToast('帰庫予定時間の形式が正しくありません（例: 19:38）'); return; }
+    if(departTime && !parseTimeToMinutes(departTime)){ showToast('翌日出庫時間の形式が正しくありません（例: 7:07）'); return; }
+    const existing=state.buses.find(b=>b.busNo===busNo);
+    if(existing){ existing.returnTime=returnTime; existing.departTime=departTime; }
+    else state.buses.push({ id:uid(), busNo, returnTime, departTime, returned:false });
+    await pushDay();
+    renderRoster();
+    closeModal('ocrOverlay');
+    showToast('登録しました');
+  });
+
+  /* ===== OCR ===== */
+  $('btnPhoto').addEventListener('click', ()=>{
+    if(state.activeDate!==state.todayKey){ showToast('過去の日付には追加できません'); return; }
+    $('ocrTitle').textContent='写真から読み取り';
+    $('fNo').value=''; $('fReturn').value=''; $('fDepart').value='';
+    $('ocrPreview').style.display='none'; $('ocrCandidates').style.display='none';
+    $('fileInput').click();
+  });
+  $('fileInput').addEventListener('change', async (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    $('ocrPreview').src=URL.createObjectURL(file); $('ocrPreview').style.display='block';
+    openModal('ocrOverlay');
+    await runOcr(file);
+    e.target.value='';
+  });
+  function setOcrStatus(text, show){ $('ocrStatus').style.display=show?'flex':'none'; $('ocrStatusText').textContent=text; }
+  async function ensureTesseract(){
+    if(state.ocr.ready) return true;
+    if(state.ocr.failed) return false;
+    if(window.Tesseract){ state.ocr.ready=true; return true; }
+    try{
+      await new Promise((resolve,reject)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.5/tesseract.min.js';
+        s.onload=resolve; s.onerror=reject; document.head.appendChild(s);
+        setTimeout(()=>reject(new Error('timeout')), 12000);
+      });
+      if(!window.Tesseract) throw new Error('no tesseract');
+      state.ocr.ready=true; return true;
+    }catch(e){ state.ocr.failed=true; return false; }
+  }
+  async function runOcr(file){
+    setOcrStatus('OCR機能を読み込んでいます…', true);
+    const ok=await ensureTesseract();
+    if(!ok){ setOcrStatus('',false); showToast('OCRを読み込めませんでした。手動で入力してください。',3500); return; }
+    setOcrStatus('画像を解析しています…（端末内で処理中）', true);
+    try{
+      const result=await window.Tesseract.recognize(file,'eng',{
+        tessedit_char_whitelist:'0123456789:.ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+        logger:()=>{}
+      });
+      handleOcrText((result&&result.data&&result.data.text)||'');
+    }catch(err){ showToast('解析に失敗しました。手動で入力してください。',3500); }
+    finally{ setOcrStatus('',false); }
+  }
+  function handleOcrText(text){
+    const nums4=Array.from(new Set((text.match(/\b\d{4}\b/g)||[])));
+    const times=Array.from(new Set((text.match(/\b\d{1,2}[:.．]\d{2}\b/g)||[]).map(t=>t.replace(/[.．]/,':'))));
+    const candidates=[...nums4.map(v=>({type:'号車候補',value:v})), ...times.map(v=>({type:'時刻候補',value:v}))];
+    const chipRow=$('chipRow'); chipRow.innerHTML='';
+    if(candidates.length===0){ $('ocrCandidates').style.display='none'; showToast('数字を検出できませんでした。手動で入力してください。',3000); return; }
+    $('ocrCandidates').style.display='block';
+    candidates.forEach(c=>{
+      const chip=document.createElement('div'); chip.className='chip';
+      chip.textContent=c.value+'（'+c.type+'）';
+      chip.addEventListener('click', ()=>{
+        if(c.type==='号車候補') $('fNo').value=c.value;
+        else { if(!$('fReturn').value) $('fReturn').value=c.value; else $('fDepart').value=c.value; }
+      });
+      chipRow.appendChild(chip);
+    });
+  }
+
+  /* ===== Settings ===== */
+  $('btnSettings').addEventListener('click', ()=>{ $('fThreshold').value=state.settings.thresholdMin; updateNotifStatusText(); openModal('settingsOverlay'); });
+  function updateNotifStatusText(){
+    const p=('Notification' in window)?Notification.permission:'unsupported';
+    const map={granted:'通知は許可されています',denied:'通知が拒否されています（ブラウザ設定から変更）',default:'まだ許可されていません',unsupported:'この環境では通知に対応していません'};
+    $('notifStatusText').textContent=map[p]||'未設定';
+  }
+  $('btnNotifPermission').addEventListener('click', async ()=>{
+    if(!('Notification' in window)){ showToast('この環境では通知に対応していません'); return; }
+    try{ await Notification.requestPermission(); }catch(e){}
+    updateNotifStatusText();
+  });
+  $('btnSaveSettings').addEventListener('click', ()=>{
+    const v=parseInt($('fThreshold').value,10);
+    state.settings.thresholdMin=(isFinite(v)&&v>0)?v:15;
+    localStorage.setItem('roster-threshold', String(state.settings.thresholdMin));
+    closeModal('settingsOverlay'); renderRoster(); showToast('設定を保存しました');
+  });
+
+  /* ===== Notification loop ===== */
+  function checkNotifications(){
+    if(!('Notification' in window)||Notification.permission!=='granted') return;
+    if(state.activeDate!==state.todayKey) return;
+    const now=nowMinutes();
+    state.buses.forEach(bus=>{
+      if(bus.returned){ state.notified.delete(bus.id); return; }
+      const ret=parseTimeToMinutes(bus.returnTime); if(ret===null) return;
+      const diff=ret-now;
+      if(diff>=0 && diff<=state.settings.thresholdMin && !state.notified.has(bus.id)){
+        try{ new Notification('帰庫予定が近づいています',{body:`号車 ${bus.busNo}　帰庫予定 ${bus.returnTime}`}); }catch(e){}
+        state.notified.add(bus.id);
+      }
+      if(diff<0) state.notified.delete(bus.id);
+    });
+  }
+
+  /* ===== Gate ===== */
+  function unlock(){
+    const v=$('gateInput').value.trim();
+    if(v===TEAM_PASSCODE){
+      sessionStorage.setItem('roster-unlocked','1');
+      $('gate').style.display='none';
+      $('appRoot').style.display='block';
+      startApp();
+    }else{
+      $('gateErr').textContent='合言葉が違います';
+    }
+  }
+  $('gateBtn').addEventListener('click', unlock);
+  $('gateInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
+
+  /* ===== Start ===== */
+  function startApp(){
+    const saved=parseInt(localStorage.getItem('roster-threshold'),10);
+    if(isFinite(saved)&&saved>0) state.settings.thresholdMin=saved;
+    renderClock();
+    subscribeMeta();
+    ensureTodayInIndex();
+    setInterval(renderClock,1000);
+    setInterval(()=>{ renderRoster(); checkNotifications(); },20000);
+  }
+
+  // auto-unlock within same session
+  if(sessionStorage.getItem('roster-unlocked')==='1'){
+    $('gate').style.display='none';
+    $('appRoot').style.display='block';
+    startApp();
+  }else{
+    setTimeout(()=>$('gateInput').focus(), 100);
+  }
+})();
+</script>
+</body>
+</html>
