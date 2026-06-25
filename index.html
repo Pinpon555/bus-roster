@@ -82,8 +82,8 @@
 
   .list-wrap{padding:6px 14px 0;}
   .list-empty{text-align:center; color:var(--text-dim); padding:48px 20px; font-size:13px; line-height:1.9;}
-  .col-head{display:grid; grid-template-columns:auto 1fr 1fr auto; gap:10px; padding:4px 12px; font-size:10px; letter-spacing:.06em; color:var(--text-dim);}
-  .card{display:grid; grid-template-columns:auto 1fr 1fr auto; gap:10px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px 12px; margin-bottom:8px; transition:background .25s,border-color .25s;}
+  .col-head{display:grid; grid-template-columns:74px 1fr 1fr 64px; gap:8px; padding:4px 12px; font-size:10px; letter-spacing:.06em; color:var(--text-dim);}
+  .card{display:grid; grid-template-columns:74px 1fr 1fr 64px; gap:8px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:9px 10px; margin-bottom:6px; transition:background .25s,border-color .25s;}
   .card.returned{background:var(--red-bg); border-color:var(--red-soft);}
   .card.soon{background:var(--yellow-bg); border-color:var(--yellow-line);}
   .card.nextup{border-color:var(--next); box-shadow:0 0 0 1px var(--next);}
@@ -96,9 +96,9 @@
   .card.returned .cat-tag{ color:var(--wine); opacity:.8; }
   .cell{display:flex; flex-direction:column; gap:3px; min-width:0;}
   .cell .clabel{font-size:9px; color:var(--text-dim); letter-spacing:.04em;}
-  .bus-no{font-family:var(--mono); font-size:30px; font-weight:800; letter-spacing:.03em; line-height:1; color:var(--text);}
-  .cat-tag{font-size:8px; color:var(--text-dim); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:88px;}
-  .time-btn{font-family:var(--mono); font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; background:transparent; border:none; border-bottom:2px dashed var(--line); color:var(--text); padding:1px 0; text-align:left; width:100%;}
+  .bus-no{font-family:var(--mono); font-size:26px; font-weight:800; letter-spacing:.01em; line-height:1; color:var(--text);}
+  .cat-tag{font-size:8px; color:var(--text-dim); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:72px;}
+  .time-btn{font-family:var(--mono); font-size:23px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; background:transparent; border:none; border-bottom:2px dashed var(--line); color:var(--text); padding:1px 0; text-align:left; width:100%; white-space:nowrap; overflow:hidden;}
   .time-btn.empty{color:var(--text-dim); border-bottom-color:var(--amber-dim);}
   .nextbadge{display:inline-block; font-size:9px; font-weight:800; color:#0c2a1c; background:var(--green); border-radius:4px; padding:1px 5px; margin-bottom:3px; width:max-content;}
   .card-actions{display:flex; flex-direction:column; gap:5px; align-items:stretch;}
