@@ -2,257 +2,391 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>車両運行ボード</title>
 <style>
   :root{
-    --bg:#12151a;
-    --panel:#1a1f26;
-    --panel-2:#20262e;
-    --line:#2b3239;
-    --text:#e9e7e1;
-    --text-dim:#9aa3ad;
-    --amber:#e8a23d;
-    --amber-dim:#7a5a2a;
-    --red:#b85c5c;
-    --red-bg:rgba(184,92,92,0.22);
-    --yellow-bg:rgba(212,176,15,0.28);
-    --yellow-line:#d4b00f;
-    --green:#5a9a7a;
-    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --bg:#11141a; --panel:#1a1f27; --panel-2:#222933; --line:#2c343d;
+    --text:#eceae3; --text-dim:#98a2ad; --amber:#eba83f; --amber-dim:#7a5a2a;
+    --red:#d6202a; --red-soft:#c25b5b; --red-bg:rgba(194,91,91,0.26);
+    --yellow-bg:rgba(225,189,30,0.30); --yellow-line:#e1bd1e;
+    --green:#5ba07d; --next:#3a7d5c; --next-bg:rgba(58,125,92,0.22);
+    --navy:#1b2a6b; --wine:#7b1f2b; --now-orange:#e8730f;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:var(--sans);
-    min-height:100vh;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .app{max-width:720px;margin:0 auto;padding:0 0 60px;}
+  body{background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh;}
+  .app{max-width:820px; margin:0 auto; padding:0 0 90px;}
 
-  /* Gate (passcode) */
-  .gate{
-    position:fixed; inset:0; background:var(--bg); z-index:100;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;
-  }
-  .gate h1{font-size:18px; color:var(--amber); letter-spacing:.08em; margin:0 0 6px;}
+  /* Gate */
+  .gate{position:fixed; inset:0; background:var(--bg); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;}
+  .gate h1{font-size:20px; color:var(--amber); letter-spacing:.06em; margin:0 0 6px;}
   .gate p{font-size:13px; color:var(--text-dim); margin:0 0 22px; text-align:center; line-height:1.7;}
-  .gate input{
-    width:100%; max-width:260px; background:var(--panel-2); border:1px solid var(--line);
-    border-radius:10px; color:var(--text); padding:13px 14px; font-family:var(--mono);
-    font-size:18px; text-align:center; letter-spacing:.2em;
-  }
+  .gate input{width:100%; max-width:240px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:14px; font-family:var(--mono); font-size:22px; text-align:center; letter-spacing:.3em;}
   .gate input:focus{outline:none; border-color:var(--amber);}
-  .gate button{
-    margin-top:14px; width:100%; max-width:260px; background:var(--amber); color:#1b1404;
-    border:none; border-radius:10px; padding:13px; font-size:15px; font-weight:700; cursor:pointer;
-  }
-  .gate .err{color:var(--red); font-size:12px; margin-top:10px; min-height:16px;}
+  .gate button{margin-top:16px; width:100%; max-width:240px; background:var(--amber); color:#1b1404; border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:700;}
+  .gate .err{color:var(--red-soft); font-size:12px; margin-top:10px; min-height:16px;}
+
+  /* Mode select */
+  .modesel{position:fixed; inset:0; background:var(--bg); z-index:90; display:none; flex-direction:column; padding:24px 20px; overflow-y:auto;}
+  .modesel.show{display:flex;}
+  .modesel h2{font-size:17px; color:var(--amber); text-align:center; margin:10px 0 4px;}
+  .modesel .sub{font-size:12px; color:var(--text-dim); text-align:center; margin-bottom:22px;}
+  .mode-card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:14px; display:flex; gap:14px; align-items:flex-start;}
+  .mode-card:active{border-color:var(--amber);}
+  .mode-card .ico{font-size:30px; flex:none; width:42px; text-align:center;}
+  .mode-card .mc-body h3{margin:0 0 4px; font-size:16px; color:var(--text);}
+  .mode-card .mc-body p{margin:0; font-size:12px; color:var(--text-dim); line-height:1.6;}
+  .modesel .skip{margin-top:8px; text-align:center;}
+  .modesel .skip button{background:none; border:none; color:var(--text-dim); font-size:13px; text-decoration:underline;}
 
   /* Header */
-  .board-header{
-    background:linear-gradient(180deg, #1b2026 0%, #15191e 100%);
-    border-bottom:1px solid var(--line);
-    padding:14px 16px 10px;
-    position:sticky; top:0; z-index:20;
-  }
-  .board-title-row{display:flex; align-items:baseline; justify-content:space-between;}
-  .board-title{
-    font-size:15px; letter-spacing:.12em; color:var(--amber);
-    font-weight:600;
-  }
-  .board-clock{
-    font-family:var(--mono); font-size:13px; color:var(--text-dim);
-    font-variant-numeric: tabular-nums;
-  }
-  .sync-line{
-    margin-top:4px; font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px;
-  }
-  .sync-dot{width:6px;height:6px;border-radius:50%;background:#666; flex:none;}
-  .sync-dot.on{background:var(--green);}
-  .sync-dot.err{background:var(--red);}
-
-  /* Day tabs */
-  .day-tabs{display:flex; gap:6px; margin-top:12px; overflow-x:auto; padding-bottom:2px;}
-  .day-tab{
-    font-family:var(--mono); font-size:12px; padding:6px 10px; border-radius:6px;
-    background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line);
-    white-space:nowrap; flex:none; cursor:pointer;
-  }
+  .board-header{background:linear-gradient(180deg,#1b2129,#14181e); border-bottom:1px solid var(--line); padding:12px 14px 8px; position:sticky; top:0; z-index:20;}
+  .htop{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .htitle{font-size:15px; letter-spacing:.06em; color:var(--amber); font-weight:700; display:flex; align-items:center; gap:8px;}
+  .hclock{font-family:var(--mono); font-size:15px; color:var(--text); font-variant-numeric:tabular-nums; font-weight:700;}
+  .sync-line{margin-top:5px; font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px;}
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:#666; flex:none;}
+  .sync-dot.on{background:var(--green);} .sync-dot.err{background:var(--red-soft);}
+  .mascot{position:relative; width:56px; height:26px; flex:none;}
+  .dotbus{image-rendering:pixelated; position:absolute; left:0; bottom:0;}
+  .day-tabs{display:flex; gap:6px; margin-top:10px; overflow-x:auto; padding-bottom:2px;}
+  .day-tab{font-family:var(--mono); font-size:12px; padding:6px 11px; border-radius:7px; background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line); white-space:nowrap; flex:none;}
   .day-tab.active{background:var(--amber); color:#1b1404; border-color:var(--amber); font-weight:700;}
 
-  /* Toolbar */
-  .toolbar{display:flex; gap:8px; padding:12px 16px 4px; flex-wrap:wrap;}
-  .btn{
-    font-family:var(--sans); font-size:13px; font-weight:600; padding:9px 14px;
-    border-radius:8px; border:1px solid var(--line); background:var(--panel-2);
-    color:var(--text); cursor:pointer; display:flex; align-items:center; gap:6px;
-  }
+  .modebar{display:flex; gap:0; padding:10px 14px 2px;}
+  .modebar .seg{display:flex; width:100%; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .modebar .seg button{flex:1; background:var(--panel-2); border:none; color:var(--text-dim); padding:11px 4px; font-size:13px; font-weight:700;}
+  .modebar .seg button.on{background:var(--amber); color:#1b1404;}
+
+  .toolbar{display:flex; gap:8px; padding:10px 14px 4px; flex-wrap:wrap;}
+  .btn{font-family:var(--sans); font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); display:flex; align-items:center; gap:6px;}
   .btn:active{transform:scale(0.97);}
   .btn.primary{background:var(--amber); color:#1b1404; border-color:var(--amber);}
   .btn.ghost{background:transparent;}
-  .btn.danger{color:var(--red); border-color:var(--red);}
-  .btn.icon-only{padding:8px; width:36px; justify-content:center;}
+  .btn.danger{color:var(--red-soft); border-color:var(--red-soft);}
+  .btn.icon-only{padding:9px; width:40px; justify-content:center;}
   .spacer{flex:1;}
 
-  /* Table */
-  .roster-wrap{padding:8px 16px 0;}
-  .roster-empty{text-align:center; color:var(--text-dim); padding:40px 20px; font-size:13px; line-height:1.8;}
-  table.roster{width:100%; border-collapse:collapse; font-size:14px;}
-  table.roster th{
-    text-align:left; font-size:11px; letter-spacing:.06em; color:var(--text-dim);
-    font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line); cursor:pointer;
-    user-select:none; white-space:nowrap;
-  }
-  table.roster th .arrow{color:var(--amber); margin-left:2px;}
-  table.roster td{padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:middle;}
-  table.roster tr.row{transition:background 0.25s;}
-  table.roster tr.row.returned{background:var(--red-bg);}
-  table.roster tr.row.soon{background:var(--yellow-bg);}
-  .bus-no{font-family:var(--mono); font-size:16px; font-weight:700; letter-spacing:.02em;}
-  .time-cell{font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums;}
-  .time-cell input{
-    width:64px; background:transparent; border:none; color:var(--text);
-    font-family:var(--mono); font-size:14px; border-bottom:1px dashed var(--line); padding:2px 0;
-  }
-  .time-cell input:focus{outline:none; border-bottom-color:var(--amber);}
-  .status-toggle{
-    font-size:11px; padding:5px 8px; border-radius:6px; border:1px solid var(--line);
-    background:var(--panel-2); color:var(--text-dim); cursor:pointer; font-weight:600; white-space:nowrap;
-  }
-  .status-toggle.on{background:var(--red); color:#fff; border-color:var(--red);}
-  .row-del{color:var(--text-dim); background:none; border:none; font-size:16px; cursor:pointer; padding:4px;}
-  .row-del:active{color:var(--red);}
-  .read-only-note{text-align:center; font-size:12px; color:var(--text-dim); padding:10px 0 2px;}
-
-  .legend{display:flex; gap:14px; padding:10px 16px 0; font-size:11px; color:var(--text-dim); flex-wrap:wrap;}
+  .legend{display:flex; gap:14px; padding:8px 14px 2px; font-size:11px; color:var(--text-dim); flex-wrap:wrap; align-items:center;}
   .legend span{display:flex; align-items:center; gap:5px;}
-  .legend .sw{width:10px;height:10px;border-radius:2px;}
-  .sw.red-sw{background:var(--red-bg); border:1px solid var(--red);}
+  .legend .sw{width:11px; height:11px; border-radius:3px;}
+  .sw.red-sw{background:var(--red-bg); border:1px solid var(--red-soft);}
   .sw.yellow-sw{background:var(--yellow-bg); border:1px solid var(--yellow-line);}
+  .sw.next-sw{background:var(--next-bg); border:1px solid var(--next);}
+
+  .now-divider{display:flex; align-items:center; gap:8px; margin:8px 2px; color:var(--now-orange); font-size:11px; font-weight:800;}
+  .now-divider::before,.now-divider::after{content:""; height:2px; background:var(--now-orange); flex:1; opacity:.85;}
+
+  .list-wrap{padding:6px 14px 0;}
+  .list-empty{text-align:center; color:var(--text-dim); padding:48px 20px; font-size:13px; line-height:1.9;}
+  .col-head{display:grid; grid-template-columns:auto 1fr 1fr auto; gap:10px; padding:4px 12px; font-size:10px; letter-spacing:.06em; color:var(--text-dim);}
+  .card{display:grid; grid-template-columns:auto 1fr 1fr auto; gap:10px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px 12px; margin-bottom:8px; transition:background .25s,border-color .25s;}
+  .card.returned{background:var(--red-bg); border-color:var(--red-soft);}
+  .card.soon{background:var(--yellow-bg); border-color:var(--yellow-line);}
+  .card.nextup{border-color:var(--next); box-shadow:0 0 0 1px var(--next);}
+  /* soon: navy text + 6-blink */
+  .card.soon .bus-no, .card.soon .time-btn{ color:var(--navy); }
+  .card.soon.blink{ animation:soonblink 0.5s steps(1) 6; }
+  @keyframes soonblink{ 0%{background:var(--yellow-bg);} 50%{background:rgba(225,189,30,0.62);} 100%{background:var(--yellow-bg);} }
+  /* returned: wine text */
+  .card.returned .bus-no, .card.returned .time-btn{ color:var(--wine); }
+  .card.returned .cat-tag{ color:var(--wine); opacity:.8; }
+  .cell{display:flex; flex-direction:column; gap:3px; min-width:0;}
+  .cell .clabel{font-size:9px; color:var(--text-dim); letter-spacing:.04em;}
+  .bus-no{font-family:var(--mono); font-size:30px; font-weight:800; letter-spacing:.03em; line-height:1; color:var(--text);}
+  .cat-tag{font-size:8px; color:var(--text-dim); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:88px;}
+  .time-btn{font-family:var(--mono); font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; background:transparent; border:none; border-bottom:2px dashed var(--line); color:var(--text); padding:1px 0; text-align:left; width:100%;}
+  .time-btn.empty{color:var(--text-dim); border-bottom-color:var(--amber-dim);}
+  .nextbadge{display:inline-block; font-size:9px; font-weight:800; color:#0c2a1c; background:var(--green); border-radius:4px; padding:1px 5px; margin-bottom:3px; width:max-content;}
+  .card-actions{display:flex; flex-direction:column; gap:5px; align-items:stretch;}
+  .status-toggle{font-size:11px; padding:8px 8px; border-radius:7px; border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim); font-weight:700; white-space:nowrap; min-width:60px;}
+  .status-toggle.on{background:var(--red-soft); color:#fff; border-color:var(--red-soft);}
+  .read-only-note{text-align:center; font-size:12px; color:var(--text-dim); padding:12px 0 2px;}
+  .cat-header{font-size:11px; color:var(--amber); font-weight:700; padding:10px 4px 4px; letter-spacing:.04em;}
+
+  .nowbtn{position:fixed; right:16px; bottom:84px; z-index:40; background:var(--green); color:#fff; border:none; border-radius:24px; padding:12px 16px; font-size:13px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.4); display:none; align-items:center; gap:6px;}
+  .nowbtn:active{transform:scale(0.96);}
 
   /* Modal */
-  .modal-overlay{
-    position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none;
-    align-items:flex-end; justify-content:center; z-index:50;
-  }
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.62); display:none; align-items:flex-end; justify-content:center; z-index:50;}
   .modal-overlay.show{display:flex;}
-  .modal{
-    background:var(--panel); width:100%; max-width:720px; border-radius:16px 16px 0 0;
-    padding:18px 18px 28px; max-height:88vh; overflow-y:auto; border-top:1px solid var(--line);
-  }
+  .modal{background:var(--panel); width:100%; max-width:820px; border-radius:18px 18px 0 0; padding:18px 18px 30px; max-height:92vh; overflow-y:auto; border-top:1px solid var(--line);}
   .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
-  .modal-header h3{margin:0; font-size:15px; color:var(--amber); letter-spacing:.04em;}
-  .modal-close{background:none; border:none; color:var(--text-dim); font-size:20px; cursor:pointer;}
+  .modal-header h3{margin:0; font-size:16px; color:var(--amber);}
+  .modal-close{background:none; border:none; color:var(--text-dim); font-size:22px;}
   .field{margin-bottom:14px;}
   .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
-  .field input[type=text], .field input[type=number]{
-    width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
-    color:var(--text); padding:10px 12px; font-family:var(--mono); font-size:15px;
-  }
-  .field input:focus{outline:none; border-color:var(--amber);}
+  .field input,.field textarea{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; color:var(--text); padding:11px 12px; font-family:var(--mono); font-size:15px;}
+  .field textarea{min-height:160px; resize:vertical; line-height:1.5;}
+  .field input:focus,.field textarea:focus{outline:none; border-color:var(--amber);}
   .hint{font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.6;}
 
-  .ocr-preview{width:100%; border-radius:10px; margin-bottom:12px; display:block; max-height:240px; object-fit:contain; background:#000;}
-  .ocr-status{font-size:13px; color:var(--amber); display:flex; align-items:center; gap:8px; margin-bottom:12px;}
-  .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--amber-dim);border-top-color:var(--amber); animation:sp 0.8s linear infinite;}
+  /* keypad */
+  .timepad-display{font-family:var(--mono); font-size:38px; font-weight:800; text-align:center; letter-spacing:.05em; padding:10px 0 6px; color:var(--text);}
+  .timepad-display .ph{color:var(--text-dim);}
+  .timepad-display .colon{color:var(--amber); margin:0 4px;}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px;}
+  .key{background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:17px 0; font-family:var(--mono); font-size:22px; font-weight:700; color:var(--text); text-align:center;}
+  .key:active{background:var(--amber); color:#1b1404;}
+  .key.fn{font-size:13px; color:var(--text-dim);}
+
+  /* sequential entry */
+  .seq-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .seq-prog{font-size:12px; color:var(--text-dim);}
+  .seq-target{text-align:center; padding:8px 0 4px;}
+  .seq-target .sno{font-family:var(--mono); font-size:34px; font-weight:800; color:var(--amber);}
+  .seq-target .scat{font-size:11px; color:var(--text-dim); margin-top:2px;}
+  .seq-target .swhich{font-size:14px; color:var(--text); margin-top:8px; font-weight:700;}
+  .seq-disp{font-family:var(--mono); font-size:40px; font-weight:800; text-align:center; letter-spacing:.06em; padding:6px 0; color:var(--text);}
+  .seq-disp .colon{color:var(--amber);}
+  .seq-disp .ph{color:var(--text-dim);}
+  .seq-mini{display:flex; justify-content:center; gap:18px; font-family:var(--mono); font-size:13px; color:var(--text-dim); margin-bottom:4px;}
+  .seq-mini b{color:var(--text);}
+
+  .modal-actions{display:flex; gap:8px; margin-top:14px;}
+  .modal-actions .btn{flex:1; justify-content:center;}
+  .seg2{display:flex; gap:0; border:1px solid var(--line); border-radius:9px; overflow:hidden; margin-top:4px; flex-wrap:wrap;}
+  .seg2 button{flex:1; min-width:33%; background:var(--panel-2); border:none; color:var(--text-dim); padding:9px 4px; font-size:12px; font-weight:600;}
+  .seg2 button.on{background:var(--amber); color:#1b1404;}
+
+  .ocr-preview{width:100%; border-radius:12px; margin-bottom:12px; display:block; max-height:240px; object-fit:contain; background:#000;}
+  .ocr-status{font-size:13px; color:var(--amber); display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .ocr-bar{height:5px; background:var(--panel-2); border-radius:3px; overflow:hidden; margin-bottom:12px;}
+  .ocr-bar .fill{height:100%; width:0%; background:var(--amber); transition:width .3s;}
+  .spin{width:14px; height:14px; border-radius:50%; border:2px solid var(--amber-dim); border-top-color:var(--amber); animation:sp .8s linear infinite; flex:none;}
   @keyframes sp{to{transform:rotate(360deg);}}
-  .chip-row{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;}
-  .chip{font-family:var(--mono); font-size:13px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; color:var(--text);}
+  .chip-row{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
+  .chip{font-family:var(--mono); font-size:14px; background:var(--panel-2); border:1px solid var(--line); border-radius:7px; padding:8px 11px; color:var(--text);}
+  .chip:active{background:var(--amber); color:#1b1404;}
+  .chip.matched{opacity:.4;}
   .chip-label{font-size:10px; color:var(--text-dim); width:100%; margin:6px 0 2px;}
 
-  .modal-actions{display:flex; gap:8px; margin-top:16px;}
-  .modal-actions .btn{flex:1; justify-content:center;}
+  .quadbar{display:flex; gap:6px; margin-bottom:10px;}
+  .quadbar button{flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text-dim); border-radius:8px; padding:8px 2px; font-size:12px; font-weight:700;}
+  .quadbar button.done{background:var(--next-bg); border-color:var(--next); color:var(--green);}
+  .quadbar button.on{border-color:var(--amber); color:var(--amber);}
 
-  .toast{
-    position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
-    background:var(--panel-2); color:var(--text); border:1px solid var(--line);
-    padding:10px 16px; border-radius:8px; font-size:13px; z-index:60; display:none;
-    box-shadow:0 6px 20px rgba(0,0,0,0.4);
-  }
+  .tpl-cat{margin-bottom:14px;}
+  .tpl-cat h4{font-size:12px; color:var(--amber); margin:0 0 6px;}
+  .tpl-nos{display:flex; flex-wrap:wrap; gap:6px;}
+  .tpl-no{display:flex; align-items:center; gap:4px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-family:var(--mono); font-size:13px;}
+  .tpl-no button{background:none; border:none; color:var(--red-soft); font-size:13px; padding:0 0 0 2px;}
+  .tpl-add{display:flex; gap:6px; margin-top:8px;}
+  .tpl-add input{flex:1;}
+
+  .preview-table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:13px; margin-top:8px;}
+  .preview-table th{color:var(--text-dim); font-size:10px; text-align:left; padding:4px 6px; border-bottom:1px solid var(--line);}
+  .preview-table td{padding:4px 6px; border-bottom:1px solid var(--line);}
+  .preview-table tr.bad td{color:var(--red-soft);}
+  .preview-table tr.unknown td{color:var(--amber);}
+
+  .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel-2); color:var(--text); border:1px solid var(--line); padding:11px 16px; border-radius:9px; font-size:13px; z-index:80; display:none; box-shadow:0 6px 22px rgba(0,0,0,.45); max-width:90%; text-align:center;}
   .toast.show{display:block;}
   input[type=file]{display:none;}
-  @media (min-width:560px){ table.roster td, table.roster th{padding:10px 12px;} }
 </style>
 </head>
 <body>
 
-<!-- Passcode gate -->
 <div class="gate" id="gate">
-  <h1>車両運行ボード</h1>
+  <h1>🚌 車両運行ボード</h1>
   <p>チーム用の合言葉を入力してください</p>
-  <input type="password" id="gateInput" inputmode="numeric" placeholder="••••" autocomplete="off">
+  <input type="password" id="gateInput" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
   <button id="gateBtn">開く</button>
   <div class="err" id="gateErr"></div>
 </div>
 
-<div class="app" id="appRoot" style="display:none;">
+<div class="modesel" id="modesel">
+  <h2>入力モードを選択</h2>
+  <div class="sub">本日のデータをどの方法で入力しますか？</div>
+  <div class="mode-card" id="modePhoto">
+    <div class="ico">📷</div>
+    <div class="mc-body"><h3>写真撮影モード</h3><p>運行表を4分割で撮影し、号車・出庫・帰庫を読み取ります。手書きは精度が落ちるため、結果を確認・修正してください。</p></div>
+  </div>
+  <div class="mode-card" id="modeManual">
+    <div class="ico">⌨️</div>
+    <div class="mc-body"><h3>手打ち入力モード</h3><p>号車順に「出庫→帰庫」を数字だけで連続入力。確定せずに打ち続け、最後にまとめて反映します。一番速くて確実です。</p></div>
+  </div>
+  <div class="mode-card" id="modeAI">
+    <div class="ico">🤖</div>
+    <div class="mc-body"><h3>AI入力モード</h3><p>AIが解析した「号車,出庫,帰庫」形式のデータを貼り付けて一括反映します。</p></div>
+  </div>
+  <div class="skip"><button id="modeSkip">入力せずに今のデータで業務を始める →</button></div>
+</div>
 
+<div class="app" id="appRoot" style="display:none;">
   <div class="board-header">
-    <div class="board-title-row">
-      <div class="board-title">車両運行ボード</div>
-      <div class="board-clock" id="clock">--:--:--</div>
+    <div class="htop">
+      <div class="htitle">
+        <span class="mascot"><canvas class="dotbus" id="dotbus" width="56" height="26"></canvas></span>
+        車両運行ボード
+      </div>
+      <div class="hclock" id="clock">--:--:--</div>
     </div>
     <div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncText">接続中…</span></div>
     <div class="day-tabs" id="dayTabs"></div>
   </div>
 
+  <div class="modebar">
+    <div class="seg" id="viewSeg">
+      <button data-view="return" class="on">帰庫順</button>
+      <button data-view="depart">出庫順</button>
+      <button data-view="busNo">号車順</button>
+    </div>
+  </div>
+
   <div class="toolbar">
-    <button class="btn primary" id="btnPhoto">📷 写真から読み取り</button>
-    <button class="btn ghost" id="btnManual">＋ 手動で追加</button>
+    <button class="btn primary" id="btnInput">＋ 入力モード</button>
+    <button class="btn ghost" id="btnEdit">✎ 修正</button>
     <div class="spacer"></div>
-    <button class="btn icon-only ghost" id="btnSettings" title="設定">⚙️</button>
+    <button class="btn icon-only ghost" id="btnTemplate" title="号車テンプレート">📋</button>
+    <button class="btn icon-only ghost" id="btnSettings">⚙️</button>
   </div>
 
   <div class="legend">
-    <span><span class="sw red-sw"></span>帰庫済み</span>
-    <span><span class="sw yellow-sw"></span>帰庫予定が近い</span>
+    <span><span class="sw next-sw"></span>次に帰庫</span>
+    <span><span class="sw yellow-sw"></span>帰庫間近</span>
+    <span><span class="sw red-sw"></span>帰庫済</span>
+    <span id="windowNote" style="color:var(--text-dim);"></span>
   </div>
 
-  <div class="roster-wrap"><div id="rosterContainer"></div></div>
+  <div class="list-wrap">
+    <div class="col-head" id="colHead"><div>号車</div><div id="chCol1">帰庫予定</div><div id="chCol2">翌日出庫</div><div></div></div>
+    <div id="listContainer"></div>
+  </div>
 
-  <div style="padding:14px 16px;">
-    <button class="btn danger" id="btnReset" style="width:100%; justify-content:center;">🗑 本日のデータをリセットして新しい日を開始</button>
+  <div style="padding:16px 14px;">
+    <button class="btn danger" id="btnReset" style="width:100%; justify-content:center;">🗑 本日の時刻を全てクリアして新しい日を開始</button>
   </div>
 </div>
 
+<button class="nowbtn" id="nowBtn">⌖ 現在時刻へ</button>
 <input type="file" id="fileInput" accept="image/*" capture="environment">
 
-<!-- OCR / Manual Modal -->
-<div class="modal-overlay" id="ocrOverlay">
+<!-- Sequential manual entry -->
+<div class="modal-overlay" id="seqOverlay">
   <div class="modal">
-    <div class="modal-header"><h3 id="ocrTitle">写真から読み取り</h3><button class="modal-close" data-close="ocrOverlay">✕</button></div>
-    <img id="ocrPreview" class="ocr-preview" style="display:none;">
-    <div class="ocr-status" id="ocrStatus" style="display:none;"><span class="spin"></span><span id="ocrStatusText">解析中…</span></div>
-    <div id="ocrCandidates" style="display:none;">
-      <div class="chip-label">検出された数字列（タップして下に反映）</div>
-      <div class="chip-row" id="chipRow"></div>
+    <div class="seq-head">
+      <h3 style="margin:0;color:var(--amber);font-size:15px;">手打ち入力</h3>
+      <button class="modal-close" data-close="seqOverlay">✕</button>
     </div>
-    <div class="field"><label>号車（4桁）</label><input type="text" id="fNo" inputmode="numeric" placeholder="例: 6601"></div>
-    <div class="field"><label>帰庫予定時間</label><input type="text" id="fReturn" inputmode="numeric" placeholder="例: 19:38"></div>
-    <div class="field"><label>翌日出庫時間</label><input type="text" id="fDepart" inputmode="numeric" placeholder="例: 7:07"></div>
-    <div class="hint">OCRは数字とローマ字のみを認識し、写真はこの端末内だけで処理されます（外部サーバーへは送信されません）。読み取り結果は誤りがあれば自由に修正してください。</div>
+    <div class="seq-prog" id="seqProg"></div>
+    <div class="seq-target">
+      <div class="sno" id="seqNo">----</div>
+      <div class="scat" id="seqCat"></div>
+      <div class="swhich" id="seqWhich">出庫時間</div>
+    </div>
+    <div class="seq-mini"><span>出庫 <b id="seqMiniD">--:--</b></span><span>帰庫 <b id="seqMiniR">--:--</b></span></div>
+    <div class="seq-disp" id="seqDisp"></div>
+    <div class="keypad" id="seqKeypad"></div>
+    <div class="hint">数字4桁を打つと自動で次（出庫→帰庫→次の号車）へ進みます。確定不要。非数字や空欄は「スキップ」、間違えたら「戻る」。最後に「完了」で一括保存します。</div>
     <div class="modal-actions">
-      <button class="btn ghost" data-close="ocrOverlay">キャンセル</button>
-      <button class="btn primary" id="btnAddFromOcr">この内容で追加</button>
+      <button class="btn ghost" id="seqBack">← 戻る</button>
+      <button class="btn ghost" id="seqSkip">スキップ</button>
+      <button class="btn primary" id="seqDone">完了して保存</button>
     </div>
   </div>
 </div>
 
-<!-- Settings Modal -->
+<!-- Single time pad (for 修正) -->
+<div class="modal-overlay" id="padOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="padTitle">時刻を入力</h3><button class="modal-close" data-close="padOverlay">✕</button></div>
+    <div class="timepad-display" id="padDisplay"></div>
+    <div class="keypad" id="keypad"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="padClear">クリア</button>
+      <button class="btn ghost" id="padBlank">空にする</button>
+      <button class="btn primary" id="padOk">決定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit (free text: number/JP/romaji) -->
+<div class="modal-overlay" id="editOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="editTitle">修正</h3><button class="modal-close" data-close="editOverlay">✕</button></div>
+    <div class="field"><label>号車</label><input type="text" id="editNo"></div>
+    <div class="field"><label>翌日出庫（例 7:07 / 数字 / 文字も可）</label><input type="text" id="editD"></div>
+    <div class="field"><label>帰庫予定（例 19:38 / 数字 / 文字も可）</label><input type="text" id="editR"></div>
+    <div class="hint">時刻は HH:MM 形式だと帰庫順の並び替え・通知に使われます。「C検」など文字も入力できますが、その場合は並び替え対象外になります。</div>
+    <div class="modal-actions">
+      <button class="btn danger" id="editDelete">この号車を削除</button>
+      <button class="btn primary" id="editSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo OCR -->
+<div class="modal-overlay" id="ocrOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3>写真撮影モード（4分割）</h3><button class="modal-close" data-close="ocrOverlay">✕</button></div>
+    <div class="quadbar" id="quadbar">
+      <button data-q="0" class="on">①基幹</button>
+      <button data-q="1">②一般</button>
+      <button data-q="2">③中型/他</button>
+      <button data-q="3">④高針/貸切</button>
+    </div>
+    <button class="btn primary" id="btnShoot" style="width:100%;justify-content:center;margin-bottom:10px;">📷 このブロックを撮影</button>
+    <img id="ocrPreview" class="ocr-preview" style="display:none;">
+    <div class="ocr-status" id="ocrStatus" style="display:none;"><span class="spin"></span><span id="ocrStatusText">解析中…</span></div>
+    <div class="ocr-bar" id="ocrBar" style="display:none;"><div class="fill" id="ocrFill"></div></div>
+    <div id="ocrResult" style="display:none;">
+      <div class="chip-label">読み取れた号車（テンプレ一致）。タップで時刻入力。</div>
+      <div class="chip-row" id="ocrChips"></div>
+    </div>
+    <div class="hint">手書き時刻の自動読み取りは精度が低いため、号車照合のみ行います。時刻は号車タップで手入力してください。確実重視なら「手打ち入力モード」を推奨します。</div>
+    <div class="modal-actions"><button class="btn ghost" data-close="ocrOverlay">閉じる</button></div>
+  </div>
+</div>
+
+<!-- AI paste -->
+<div class="modal-overlay" id="aiOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3>AI入力モード</h3><button class="modal-close" data-close="aiOverlay">✕</button></div>
+    <div class="hint" style="margin-bottom:8px;">AIが解析した結果を下に貼り付けてください。1行1台、<b>号車,出庫,帰庫</b> の形式です（カンマ・スペース・タブ区切りに対応）。例：<br><span style="font-family:var(--mono);">6601,7:07,19:38</span></div>
+    <div class="field"><textarea id="aiText" placeholder="6601,7:07,19:38&#10;8618,6:30,20:43&#10;..."></textarea></div>
+    <div class="modal-actions"><button class="btn ghost" id="aiPreviewBtn">内容を確認</button><button class="btn primary" id="aiApplyBtn">一括反映</button></div>
+    <div id="aiPreview" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- Template editor -->
+<div class="modal-overlay" id="tplOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3>号車テンプレート編集</h3><button class="modal-close" data-close="tplOverlay">✕</button></div>
+    <div class="hint" style="margin-bottom:10px;">号車の追加・削除ができます。移籍・廃車・新車のときだけ編集してください。変更はチーム全員に反映されます。</div>
+    <div id="tplEditor"></div>
+    <div class="modal-actions"><button class="btn primary" id="btnSaveTpl" style="width:100%; justify-content:center;">保存して反映</button></div>
+  </div>
+</div>
+
+<!-- Settings -->
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal">
     <div class="modal-header"><h3>設定</h3><button class="modal-close" data-close="settingsOverlay">✕</button></div>
-    <div class="field"><label>帰庫予定の何分前から黄色く表示するか</label><input type="number" id="fThreshold" min="1" max="180" value="15"></div>
-    <div class="field">
-      <label>ブラウザ通知</label>
+    <div class="field"><label>帰庫予定の何分前から黄色く表示するか（分）</label><input type="number" id="fThreshold" min="1" max="180" value="5"></div>
+    <div class="field"><label>帰庫順モードで表示する台数（現在時刻の上下）</label>
+      <div class="seg2" id="winSeg">
+        <button data-above="3" data-below="7">上3/下7</button>
+        <button data-above="4" data-below="10" class="on">上4/下10</button>
+        <button data-above="6" data-below="14">上6/下14</button>
+        <button data-above="0" data-below="999">全件</button>
+      </div>
+    </div>
+    <div class="field"><label>OCR読み取りモード</label>
+      <div class="seg2" id="ocrModeSeg">
+        <button data-mode="auto" class="on">自動</button>
+        <button data-mode="print">印刷重視</button>
+        <button data-mode="hand">手書き重視</button>
+      </div>
+    </div>
+    <div class="field"><label>ブラウザ通知</label>
       <button class="btn ghost" id="btnNotifPermission" style="width:100%; justify-content:center;">通知を許可する</button>
       <div class="hint" id="notifStatusText">未設定</div>
     </div>
-    <div class="hint">このボードは合言葉を知っているチーム全員が同じデータを共有します。設定（通知・分数）はこの端末だけに保存されます。</div>
     <div class="modal-actions"><button class="btn primary" id="btnSaveSettings" style="width:100%; justify-content:center;">保存</button></div>
   </div>
 </div>
@@ -260,382 +394,412 @@
 <div class="toast" id="toast"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-/* ===== Firebase config ===== */
-const firebaseConfig = {
-  apiKey: "AIzaSyCC2XRPXx7iCnL5wqnXMZZ1HYvFSxzxJUk",
-  authDomain: "bus-roster.firebaseapp.com",
-  projectId: "bus-roster",
-  storageBucket: "bus-roster.firebasestorage.app",
-  messagingSenderId: "636226354728",
-  appId: "1:636226354728:web:25f72f5bc93bc9664c7f1d"
-};
-const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
-
-/* ===== Team passcode (change here if you like) ===== */
-const TEAM_PASSCODE = "2026";
-
-(function(){
+let FB=null, FB_OK=false;
+try{
+  const a=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+  const f=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+  FB={initializeApp:a.initializeApp,getFirestore:f.getFirestore,doc:f.doc,setDoc:f.setDoc,onSnapshot:f.onSnapshot};
+  FB_OK=true;
+}catch(e){ FB_OK=false; }
+window.__start(FB_OK?FB:null);
+</script>
+<script>
+window.__start = function(FB){
   "use strict";
-  const $ = (id) => document.getElementById(id);
-  const pad2 = (n) => String(n).padStart(2,'0');
+  const FB_OK=!!FB; let db=null;
+  if(FB_OK){ try{ const cfg={apiKey:"AIzaSyCC2XRPXx7iCnL5wqnXMZZ1HYvFSxzxJUk",authDomain:"bus-roster.firebaseapp.com",projectId:"bus-roster",storageBucket:"bus-roster.firebasestorage.app",messagingSenderId:"636226354728",appId:"1:636226354728:web:25f72f5bc93bc9664c7f1d"}; const app=FB.initializeApp(cfg); db=FB.getFirestore(app); }catch(e){} }
+  const TEAM_PASSCODE="2026";
 
-  function todayStr(d=new Date()){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
-  function fmtDateLabel(dateStr, todayKey){
-    if(dateStr === todayKey) return '本日';
-    const d = new Date(dateStr+'T00:00:00');
-    return (d.getMonth()+1)+'/'+d.getDate();
+  const DEFAULT_TEMPLATE=[
+    {cat:"基幹ノンステAT(車椅子2席)", nos:["1119","1120","1121","1122","1123","1256","1257"]},
+    {cat:"基幹ノンステAT", nos:["1270","1271","1272","1273","1274","1352","1353","1354","1355","1356","1359","1376","1382","1505","1506","4519","4521","4522","4602","4604","4605","4616","4702","4810","4811","4814","4837","4838","4901","4201","4202"]},
+    {cat:"基幹新顔ノンステAT", nos:["4209","4210","4306","4307","4312","4317","4319","4324","4325","4326","4327","4328","4329","4409","4410","4413","6601","6602","6605"]},
+    {cat:"一般ノンステAT(車椅子2席)", nos:["1018","1020","1026"]},
+    {cat:"一般ノンステAT", nos:["1378"]},
+    {cat:"一般新顔ノンステAT", nos:["1515","1516","4008","4501","4502","4711","4712","4807","4808","4809","4815","4822","4830","4836","4905","4909"]},
+    {cat:"中型MT", nos:["8452","8501","8614","8617","8618","8714","8715","8716","9352"]},
+    {cat:"中型AMT", nos:["8009","8804","8902","8905","8907","8916","8923"]},
+    {cat:"中型AT", nos:["8401","8402","8403"]},
+    {cat:"ポンチョ", nos:["0255"]},
+    {cat:"日進くるりんばす", nos:["8901","0851","8010","0002","0101","0754","0753"]},
+    {cat:"長久手Nバス", nos:["0453","0253","0102","7304","0121","7303"]},
+    {cat:"高針・空港", nos:["2201","2202","2203","2205","2213","2504","3515","3810","3908","5101","5401","5402","5501"]},
+    {cat:"貸切", nos:["2217","2218"]},
+    {cat:"一般ワンステ(38席車)", nos:["1816"]},
+    {cat:"一般ワンステ(ETC付)", nos:["1825"]},
+  ];
+
+  const $=(id)=>document.getElementById(id);
+  const pad2=(n)=>String(n).padStart(2,'0');
+  const todayStr=(d=new Date())=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  function fmtDateLabel(s,t){ if(s===t)return '本日'; const d=new Date(s+'T00:00:00'); return (d.getMonth()+1)+'/'+d.getDate(); }
+  function parseT(t){ if(!t)return null; const m=String(t).match(/^(\d{1,2}):(\d{2})$/); if(!m)return null; const h=+m[1],mi=+m[2]; if(h>23||mi>59)return null; return h*60+mi; }
+  function normTime(s){ // accept "1938"/"19:38"/"7:7" -> "HH:MM" or '' 
+    if(s==null) return '';
+    s=String(s).trim();
+    if(s==='') return '';
+    let m=s.match(/^(\d{1,2}):(\d{1,2})$/);
+    if(m){ const h=+m[1],mi=+m[2]; if(h<=23&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
+    if(/^\d{4}$/.test(s)){ const h=+s.slice(0,2),mi=+s.slice(2); if(h<=23&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
+    if(/^\d{3}$/.test(s)){ const h=+s.slice(0,1),mi=+s.slice(1); if(h<=23&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
+    return s; // leave as-is (文字など)
   }
-  function parseTimeToMinutes(t){
-    if(!t) return null;
-    const m = String(t).trim().match(/^(\d{1,2})[:：](\d{2})$/);
-    if(!m) return null;
-    return parseInt(m[1],10)*60 + parseInt(m[2],10);
-  }
-  function nowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
-  function uid(){ return 'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-  function showToast(msg, ms=2200){
-    const t=$('toast'); t.textContent=msg; t.classList.add('show');
-    clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), ms);
-  }
+  function nowMin(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+  function showToast(m,ms=2400){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),ms); }
   function openModal(id){ $(id).classList.add('show'); }
   function closeModal(id){ $(id).classList.remove('show'); }
-  document.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', ()=>closeModal(b.dataset.close)));
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));
 
-  const state = {
-    todayKey: todayStr(),
-    dates: [],
-    activeDate: null,
-    buses: [],
-    sortKey: 'busNo',
-    sortDir: 1,
-    settings: { thresholdMin: 15 },
-    notified: new Set(),
-    ocr: { ready:false, failed:false },
-    unsub: null,
-    writing: false
+  const state={
+    todayKey:todayStr(), dates:[], activeDate:null,
+    template:[], times:{},
+    view:'return',
+    settings:{ thresholdMin:5, ocrMode:'auto', winAbove:4, winBelow:10 },
+    notified:new Set(),
+    blinked:new Set(),
+    ocr:{ ready:false, failed:false, worker:null },
+    unsubDay:null, unsubMeta:null, unsubTpl:null, writing:false,
+    pad:{ digits:'', onOk:null },
+    seq:{ list:[], i:0, field:'d', digits:'', draft:{} },
+    edit:{ no:null },
+    metaSeen:false
   };
 
-  /* ===== Firestore helpers =====
-     One document per day: collection "days", docId = date string.
-     Document shape: { buses: [ ... ], updatedAt: <ms> }
-     Also a meta doc "meta/index" holds { dates: [...] } */
-  function dayDocRef(date){ return doc(db, 'days', date); }
-  function metaDocRef(){ return doc(db, 'meta', 'index'); }
+  const dayRef=(d)=>FB.doc(db,'days',d);
+  const metaRef=()=>FB.doc(db,'meta','index');
+  const tplRef=()=>FB.doc(db,'meta','template');
+  const lsDay=(d)=>'rb-day-'+d;
 
-  async function pushDay(){
-    state.writing = true;
-    try{
-      await setDoc(dayDocRef(state.activeDate), { buses: state.buses, updatedAt: Date.now() });
-    }catch(e){ showToast('保存に失敗しました（通信を確認）', 3000); }
-    setTimeout(()=>{ state.writing=false; }, 400);
-  }
-  async function pushMeta(){
-    try{ await setDoc(metaDocRef(), { dates: state.dates, updatedAt: Date.now() }); }catch(e){}
+  async function pushDay(){ state.writing=true; const payload=state.times[state.activeDate]||{}; if(FB_OK&&db){ try{ await FB.setDoc(dayRef(state.activeDate),{times:payload,updatedAt:Date.now()}); }catch(e){ showToast('保存に失敗（通信を確認）',3000);} } try{ localStorage.setItem(lsDay(state.activeDate),JSON.stringify(payload)); }catch(e){} setTimeout(()=>state.writing=false,500); }
+  async function pushMeta(){ if(FB_OK&&db){ try{ await FB.setDoc(metaRef(),{dates:state.dates,updatedAt:Date.now()}); }catch(e){} } try{ localStorage.setItem('rb-meta',JSON.stringify(state.dates)); }catch(e){} }
+  async function pushTpl(){ if(FB_OK&&db){ try{ await FB.setDoc(tplRef(),{template:state.template,updatedAt:Date.now()}); }catch(e){} } try{ localStorage.setItem('rb-tpl',JSON.stringify(state.template)); }catch(e){} }
+
+  /* ===== mascot: Meitetsu red/white, rotating tires + body bob ===== */
+  let busFrame=0;
+  function drawBus(){
+    const c=$('dotbus'); if(!c)return; const x=c.getContext('2d'); const P=2;
+    x.clearRect(0,0,56,26);
+    const red='#d6202a',white='#f4f4f4',dark='#8a1a1f',win='#bfe3ff',glass='#7fb5e6',tire='#1a1a1a',hub='#cfcfcf',roof='#dcdcdc',head='#ffe27a';
+    const px=(cx,cy,col)=>{ x.fillStyle=col; x.fillRect(cx*P,cy*P,P,P); };
+    const oy=busFrame%2; // body bob
+    for(let cx=1;cx<=24;cx++)for(let cy=1;cy<=8;cy++){ let col=white; if(cy>=7)col=red; if(cy===1)col=roof; px(cx,cy+oy,col); }
+    for(let cx=1;cx<=24;cx++)px(cx,6+oy,red);
+    for(let cx=3;cx<=9;cx++){px(cx,3+oy,win);px(cx,4+oy,glass);}
+    for(let cx=12;cx<=20;cx++){px(cx,3+oy,win);px(cx,4+oy,glass);}
+    px(10,3+oy,dark);px(10,4+oy,dark);px(11,3+oy,dark);px(11,4+oy,dark);
+    for(let cy=3;cy<=6;cy++)px(24,cy+oy,dark);
+    px(24,2+oy,red);px(24,5+oy,head);
+    for(let cx=1;cx<=24;cx++)px(cx,8+oy,dark);
+    // tires fixed (y 9-10), rotating hub
+    function tyre(cx){ px(cx,9,tire);px(cx+1,9,tire);px(cx,10,tire);px(cx+1,10,tire); x.fillStyle=hub; const f=busFrame%4; if(f===0)x.fillRect(cx*P+1,9*P+1,P,P*2-2); else if(f===1)x.fillRect(cx*P+1,9*P+P-1,P*2-2,P); else if(f===2)x.fillRect((cx+1)*P-2-1,9*P+1,P,P*2-2); else x.fillRect(cx*P+1,9*P+1,P*2-2,P); }
+    tyre(5); tyre(18);
   }
 
-  /* ===== Rendering ===== */
-  function renderClock(){
-    const d=new Date();
-    $('clock').textContent = pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds());
+  /* ===== data helpers ===== */
+  function dayTimes(){ if(!state.times[state.activeDate]) state.times[state.activeDate]={}; return state.times[state.activeDate]; }
+  function rec(no){ const t=dayTimes(); if(!t[no]) t[no]={r:'',d:'',returned:false}; return t[no]; }
+  function allBusesFlat(){ const out=[]; state.template.forEach(g=>g.nos.forEach(no=>out.push({busNo:no,cat:g.cat}))); return out; }
+
+  /* ===== render ===== */
+  function renderClock(){ const d=new Date(); $('clock').textContent=pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
+  function renderDayTabs(){ const w=$('dayTabs'); w.innerHTML=''; state.dates.forEach(dt=>{ const t=document.createElement('div'); t.className='day-tab'+(dt===state.activeDate?' active':''); t.textContent=fmtDateLabel(dt,state.todayKey); t.addEventListener('click',()=>switchDate(dt)); w.appendChild(t); }); }
+  function renderViewUI(){
+    document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.view===state.view));
+    if(state.view==='busNo'){ $('chCol1').textContent='帰庫予定'; $('chCol2').textContent='翌日出庫'; $('windowNote').textContent=''; }
+    else if(state.view==='depart'){ $('chCol1').textContent='翌日出庫 ▲'; $('chCol2').textContent='帰庫予定'; $('windowNote').textContent='出庫が早い順'; }
+    else { $('chCol1').textContent='帰庫予定 ▲'; $('chCol2').textContent='翌日出庫'; $('windowNote').textContent=state.settings.winBelow>900?'全件':('現在 上'+state.settings.winAbove+'/下'+state.settings.winBelow); }
   }
-  function renderDayTabs(){
-    const wrap=$('dayTabs'); wrap.innerHTML='';
-    state.dates.forEach(date=>{
-      const tab=document.createElement('div');
-      tab.className='day-tab'+(date===state.activeDate?' active':'');
-      tab.textContent=fmtDateLabel(date, state.todayKey);
-      tab.addEventListener('click', ()=>switchDate(date));
-      wrap.appendChild(tab);
+
+  function buildReturnWindow(){
+    const flat=allBusesFlat().map(b=>{ const r=rec(b.busNo); return {busNo:b.busNo,cat:b.cat,r:r.r,d:r.d,returned:r.returned}; });
+    const withT=flat.filter(b=>parseT(b.r)!==null).sort((a,b)=>parseT(a.r)-parseT(b.r));
+    const now=nowMin();
+    let idx=withT.findIndex(b=>parseT(b.r)>=now); if(idx===-1)idx=withT.length;
+    if(state.settings.winBelow>900) return {items:withT,nextIdx:idx,sliceStart:0};
+    let start=idx-state.settings.winAbove, end=idx+state.settings.winBelow;
+    if(start<0){ end+=(0-start); start=0; }
+    if(end>withT.length){ start-=(end-withT.length); end=withT.length; if(start<0)start=0; }
+    return {items:withT.slice(start,end), nextIdx:idx, sliceStart:start};
+  }
+
+  function renderList(){
+    const ro=state.activeDate!==state.todayKey;
+    const c=$('listContainer'); renderViewUI();
+    if(state.template.length===0){ c.innerHTML='<div class="list-empty">テンプレートが空です。📋から号車を登録してください。</div>'; return; }
+    let html='';
+    if(state.view==='busNo'){
+      state.template.forEach(g=>{ if(!g.nos.length)return; html+=`<div class="cat-header">${g.cat}</div>`; [...g.nos].sort((a,b)=>a.localeCompare(b)).forEach(no=>html+=cardHtml(no,g.cat,false)); });
+    } else if(state.view==='depart'){
+      const flat=allBusesFlat().map(b=>{ const r=rec(b.busNo); return {busNo:b.busNo,cat:b.cat,r:r.r,d:r.d}; });
+      const withT=flat.filter(b=>parseT(b.d)!==null).sort((a,b)=>parseT(a.d)-parseT(b.d));
+      const without=flat.filter(b=>parseT(b.d)===null);
+      if(!withT.length) html+='<div class="list-empty">翌日出庫時間が未入力です。</div>';
+      withT.forEach(b=>html+=cardHtml(b.busNo,b.cat,false));
+      if(without.length){ html+='<div class="now-divider">出庫 未入力</div>'; without.forEach(b=>html+=cardHtml(b.busNo,b.cat,false)); }
+    } else {
+      const {items,nextIdx,sliceStart}=buildReturnWindow();
+      if(!items.length) html+='<div class="list-empty">帰庫予定時間が未入力です。<br>入力モードから時刻を登録してください。</div>';
+      const now=nowMin(); let placed=false;
+      items.forEach((b,i)=>{ const gi=(sliceStart||0)+i; const passed=parseT(b.r)<now; if(!placed&&!passed){ html+=`<div class="now-divider">現在 ${pad2(new Date().getHours())}:${pad2(new Date().getMinutes())}　↓ これから帰庫</div>`; placed=true; } html+=cardHtml(b.busNo,b.cat, gi===nextIdx); });
+      if(!placed&&items.length) html+=`<div class="now-divider">全便 帰庫予定を過ぎています</div>`;
+    }
+    if(ro) html+='<div class="read-only-note">過去の記録は参照専用です（編集不可）</div>';
+    c.innerHTML=html;
+    if(ro) return;
+    bindCards();
+    applyBlink();
+  }
+  function applyBlink(){
+    // blink cards newly entering "soon" once (6 times)
+    $('listContainer').querySelectorAll('.card.soon').forEach(card=>{
+      const no=card.dataset.no;
+      if(!state.blinked.has(no)){
+        state.blinked.add(no);
+        card.classList.add('blink');
+        setTimeout(()=>{ card.classList.remove('blink'); }, 3200);
+      }
     });
   }
-  function sortedBuses(){
-    const arr=[...state.buses]; const key=state.sortKey;
-    arr.sort((a,b)=>{
-      let av,bv;
-      if(key==='busNo'){ av=a.busNo; bv=b.busNo; }
-      else { av=parseTimeToMinutes(a[key]); bv=parseTimeToMinutes(b[key]); if(av===null)av=99999; if(bv===null)bv=99999; }
-      if(av<bv) return -1*state.sortDir; if(av>bv) return 1*state.sortDir; return 0;
-    });
-    return arr;
+  let lastNowAnchor=null;
+  function keepDividerAnchored(){
+    // 14-台ウィンドウ方式により、区切り線は常にウィンドウ内の固定位置
+    // (上から winAbove 番目) に来るため、時間経過で線自体は動かず
+    // 号車カードがウィンドウ内をスライドしていく。追加の自動スクロールは行わない。
   }
-  function rowStatusClass(bus){
-    if(bus.returned) return 'returned';
-    const ret=parseTimeToMinutes(bus.returnTime); if(ret===null) return '';
-    const diff=ret-nowMinutes();
-    if(diff>=0 && diff<=state.settings.thresholdMin) return 'soon';
-    return '';
+  function cardHtml(no,cat,isNext){
+    const r=rec(no); const cls=rowClass(no);
+    return `<div class="card ${cls} ${isNext?'nextup':''}" data-no="${no}">`+
+      `<div class="cell"><span class="clabel">号車</span><span class="bus-no">${no}</span><span class="cat-tag">${cat}</span></div>`+
+      colCell(no,'c1',isNext)+colCell(no,'c2',false)+
+      `<div class="card-actions"><button class="status-toggle ${r.returned?'on':''}" data-action="toggle">${r.returned?'帰庫済':'未帰庫'}</button></div>`+
+    `</div>`;
   }
-  function renderRoster(){
-    const isReadOnly = state.activeDate !== state.todayKey;
-    const container=$('rosterContainer');
-    if(state.buses.length===0){
-      container.innerHTML='<div class="roster-empty">まだ登録がありません。<br>「📷 写真から読み取り」または「＋ 手動で追加」で登録してください。</div>';
+  function colCell(no,slot,isNext){
+    const r=rec(no);
+    let f,lab;
+    if(state.view==='depart'){ f=(slot==='c1')?'d':'r'; } else { f=(slot==='c1')?'r':'d'; }
+    lab=(f==='r')?'帰庫予定':'翌日出庫';
+    const val=r[f]||'';
+    let badge='';
+    if(isNext){ if(state.view==='depart'&&f==='d') badge='<span class="nextbadge">次に出庫</span>'; else if(state.view!=='depart'&&f==='r') badge='<span class="nextbadge">次に帰庫</span>'; }
+    return `<div class="cell">${badge}<span class="clabel">${lab}</span><button class="time-btn ${val?'':'empty'}" data-edit="${f}">${val||'--:--'}</button></div>`;
+  }
+  function rowClass(no){ const r=rec(no); if(r.returned)return 'returned'; const rt=parseT(r.r); if(rt===null)return ''; const diff=rt-nowMin(); if(diff>=0&&diff<=state.settings.thresholdMin)return 'soon'; return ''; }
+  function bindCards(){
+    const c=$('listContainer');
+    c.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{ const no=e.target.closest('.card').dataset.no; const f=e.target.dataset.edit; const r=rec(no); openTimePad((f==='r'?'帰庫予定':'翌日出庫')+'　号車 '+no, r[f]||'', (val)=>{ r[f]=val; pushDay(); renderList(); }); }));
+    c.querySelectorAll('[data-action="toggle"]').forEach(btn=>btn.addEventListener('click',e=>{ const no=e.target.closest('.card').dataset.no; const r=rec(no); r.returned=!r.returned; pushDay(); renderList(); }));
+  }
+  document.querySelectorAll('#viewSeg button').forEach(b=>b.addEventListener('click',()=>{ state.view=b.dataset.view; renderList(); }));
+
+  /* ===== single time pad ===== */
+  function buildKeypad(elId,handler){ const kp=$(elId); kp.innerHTML=''; ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].forEach(l=>{ const k=document.createElement('button'); k.className='key'+(l==='⌫'||l==='OK'?' fn':''); k.textContent=l; k.addEventListener('click',()=>handler(l)); kp.appendChild(k); }); }
+  function openTimePad(title,initial,onOk){ state.pad.onOk=onOk; state.pad.digits=(initial&&parseT(initial))?initial.replace(':',''):''; $('padTitle').textContent=title; renderPad(); openModal('padOverlay'); }
+  function renderPad(){ const d=state.pad.digits; const h=(d[0]||'_')+(d[1]||'_'); const m=(d[2]||'_')+(d[3]||'_'); $('padDisplay').innerHTML=`<span class="${d.length>=1?'':'ph'}">${h}</span><span class="colon">:</span><span class="${d.length>=3?'':'ph'}">${m}</span>`; }
+  function padKey(l){ if(l==='⌫'){ state.pad.digits=state.pad.digits.slice(0,-1); renderPad(); return; } if(l==='OK'){ padCommit(); return; } if(state.pad.digits.length>=4)return; const pos=state.pad.digits.length; if(pos===0&&+l>2)return; if(pos===1&&state.pad.digits[0]==='2'&&+l>3)return; if(pos===2&&+l>5)return; state.pad.digits+=l; renderPad(); }
+  function padCommit(){ const d=state.pad.digits; if(d.length!==4){ showToast('4桁を入力してください'); return; } const val=d.slice(0,2)+':'+d.slice(2); if(parseT(val)===null){ showToast('時刻が正しくありません'); return; } state.pad.onOk&&state.pad.onOk(val); closeModal('padOverlay'); }
+  $('padClear').addEventListener('click',()=>{ state.pad.digits=''; renderPad(); });
+  $('padBlank').addEventListener('click',()=>{ state.pad.onOk&&state.pad.onOk(''); closeModal('padOverlay'); });
+  $('padOk').addEventListener('click',padCommit);
+
+  /* ===== sequential manual entry ===== */
+  function startSeq(){
+    state.seq.list=allBusesFlat();
+    state.seq.i=0; state.seq.field='d'; state.seq.digits='';
+    state.seq.draft={};
+    // preload existing values into draft
+    state.seq.list.forEach(b=>{ const r=rec(b.busNo); state.seq.draft[b.busNo]={d:r.d||'',r:r.r||'',returned:r.returned||false}; });
+    renderSeq(); openModal('seqOverlay');
+  }
+  function renderSeq(){
+    const L=state.seq.list; const i=state.seq.i;
+    if(i>=L.length){ // finished
+      $('seqProg').textContent='全'+L.length+'台 入力完了';
+      $('seqNo').textContent='✓'; $('seqCat').textContent=''; $('seqWhich').textContent='「完了して保存」を押してください';
+      $('seqDisp').innerHTML=''; $('seqMiniD').textContent='--:--'; $('seqMiniR').textContent='--:--';
       return;
     }
-    const arrowFor=(k)=> state.sortKey===k ? `<span class="arrow">${state.sortDir>0?'▲':'▼'}</span>` : '';
-    let html='<table class="roster"><thead><tr>'+
-      `<th data-sort="busNo">号車${arrowFor('busNo')}</th>`+
-      `<th data-sort="returnTime">帰庫予定${arrowFor('returnTime')}</th>`+
-      `<th data-sort="departTime">翌日出庫${arrowFor('departTime')}</th>`+
-      `<th>状態</th><th></th></tr></thead><tbody>`;
-    sortedBuses().forEach(bus=>{
-      const cls=rowStatusClass(bus);
-      html+=`<tr class="row ${cls}" data-id="${bus.id}">`+
-        `<td class="bus-no">${bus.busNo}</td>`+
-        `<td class="time-cell"><input type="text" data-field="returnTime" value="${bus.returnTime||''}" inputmode="numeric" ${isReadOnly?'disabled':''}></td>`+
-        `<td class="time-cell"><input type="text" data-field="departTime" value="${bus.departTime||''}" inputmode="numeric" ${isReadOnly?'disabled':''}></td>`+
-        `<td><button class="status-toggle ${bus.returned?'on':''}" data-action="toggle" ${isReadOnly?'disabled':''}>${bus.returned?'帰庫済み':'未帰庫'}</button></td>`+
-        `<td>${isReadOnly?'':'<button class="row-del" data-action="del">✕</button>'}</td></tr>`;
-    });
-    html+='</tbody></table>';
-    if(isReadOnly) html+='<div class="read-only-note">過去の記録は参照専用です（編集不可）</div>';
-    container.innerHTML=html;
-
-    container.querySelectorAll('th[data-sort]').forEach(th=>{
-      th.addEventListener('click', ()=>{
-        const k=th.dataset.sort;
-        if(state.sortKey===k) state.sortDir*=-1; else { state.sortKey=k; state.sortDir=1; }
-        renderRoster();
-      });
-    });
-    if(!isReadOnly){
-      container.querySelectorAll('input[data-field]').forEach(inp=>{
-        inp.addEventListener('change', async (e)=>{
-          const id=e.target.closest('tr').dataset.id;
-          const bus=state.buses.find(b=>b.id===id);
-          if(bus){ bus[e.target.dataset.field]=e.target.value.trim(); await pushDay(); renderRoster(); }
-        });
-      });
-      container.querySelectorAll('[data-action="toggle"]').forEach(btn=>{
-        btn.addEventListener('click', async (e)=>{
-          const id=e.target.closest('tr').dataset.id;
-          const bus=state.buses.find(b=>b.id===id);
-          if(bus){ bus.returned=!bus.returned; await pushDay(); renderRoster(); }
-        });
-      });
-      container.querySelectorAll('[data-action="del"]').forEach(btn=>{
-        btn.addEventListener('click', async (e)=>{
-          const id=e.target.closest('tr').dataset.id;
-          state.buses=state.buses.filter(b=>b.id!==id);
-          await pushDay(); renderRoster();
-        });
-      });
+    const b=L[i]; const dr=state.seq.draft[b.busNo]||{d:'',r:''};
+    $('seqProg').textContent=(i+1)+' / '+L.length+' 台目';
+    $('seqNo').textContent=b.busNo; $('seqCat').textContent=b.cat;
+    $('seqWhich').textContent=(state.seq.field==='d')?'① 翌日出庫 時間':'② 帰庫予定 時間';
+    $('seqMiniD').textContent=dr.d||'--:--'; $('seqMiniR').textContent=dr.r||'--:--';
+    const d=state.seq.digits; const h=(d[0]||'_')+(d[1]||'_'); const m=(d[2]||'_')+(d[3]||'_');
+    $('seqDisp').innerHTML=`<span class="${d.length>=1?'':'ph'}">${h}</span><span class="colon">:</span><span class="${d.length>=3?'':'ph'}">${m}</span>`;
+  }
+  function seqAdvance(){
+    // move from field d->r->next bus d...
+    if(state.seq.field==='d'){ state.seq.field='r'; }
+    else { state.seq.field='d'; state.seq.i++; }
+    state.seq.digits='';
+    renderSeq();
+  }
+  function seqCommitCurrent(valOrEmpty){
+    const b=state.seq.list[state.seq.i]; if(!b)return;
+    if(!state.seq.draft[b.busNo]) state.seq.draft[b.busNo]={d:'',r:'',returned:false};
+    state.seq.draft[b.busNo][state.seq.field]=valOrEmpty;
+  }
+  function seqKey(l){
+    if(state.seq.i>=state.seq.list.length) return;
+    if(l==='⌫'){ state.seq.digits=state.seq.digits.slice(0,-1); renderSeq(); return; }
+    if(l==='OK'){ // commit current 4 digits if valid, else treat as skip
+      const d=state.seq.digits;
+      if(d.length===4){ const val=d.slice(0,2)+':'+d.slice(2); if(parseT(val)!==null){ seqCommitCurrent(val); seqAdvance(); return; } showToast('時刻が不正です。スキップする場合は「スキップ」'); return; }
+      showToast('4桁未満です。スキップは「スキップ」ボタン'); return;
+    }
+    if(state.seq.digits.length>=4)return;
+    const pos=state.seq.digits.length;
+    if(pos===0&&+l>2)return; if(pos===1&&state.seq.digits[0]==='2'&&+l>3)return; if(pos===2&&+l>5)return;
+    state.seq.digits+=l; renderSeq();
+    if(state.seq.digits.length===4){ // auto-advance
+      const val=state.seq.digits.slice(0,2)+':'+state.seq.digits.slice(2);
+      if(parseT(val)!==null){ seqCommitCurrent(val); setTimeout(seqAdvance,120); }
     }
   }
+  $('seqBack').addEventListener('click',()=>{ if(state.seq.digits.length){ state.seq.digits=''; renderSeq(); return; } // go back one field
+    if(state.seq.field==='r'){ state.seq.field='d'; } else { if(state.seq.i>0){ state.seq.i--; state.seq.field='r'; } } state.seq.digits=''; renderSeq(); });
+  $('seqSkip').addEventListener('click',()=>{ seqCommitCurrent(''); seqAdvance(); });
+  $('seqDone').addEventListener('click',()=>{
+    // write draft into times
+    const t=dayTimes();
+    Object.keys(state.seq.draft).forEach(no=>{ const dr=state.seq.draft[no]; if(!t[no])t[no]={r:'',d:'',returned:false}; t[no].d=dr.d; t[no].r=dr.r; if('returned'in dr)t[no].returned=dr.returned; });
+    pushDay(); renderList(); closeModal('seqOverlay'); showToast('手打ち入力を保存しました'); finishModeSelect();
+  });
 
-  /* ===== Day switching & live sync ===== */
-  function subscribeDay(date){
-    if(state.unsub){ state.unsub(); state.unsub=null; }
-    state.unsub = onSnapshot(dayDocRef(date), (snap)=>{
-      $('syncDot').className='sync-dot on';
-      $('syncText').textContent='同期済み '+pad2(new Date().getHours())+':'+pad2(new Date().getMinutes());
-      if(state.writing) return; // avoid clobbering our own just-sent change
-      const data = snap.exists() ? snap.data() : null;
-      state.buses = (data && Array.isArray(data.buses)) ? data.buses : [];
-      renderRoster();
-    }, (err)=>{
-      $('syncDot').className='sync-dot err';
-      $('syncText').textContent='同期エラー（権限/通信を確認）';
+  /* ===== reset ===== */
+  $('btnReset').addEventListener('click',()=>{ if(state.activeDate!==state.todayKey){ showToast('本日のタブで実行してください'); return; } if(!confirm('本日の入力時刻を全てクリアし、新しい日として開始します。号車テンプレートは消えません。よろしいですか？'))return; state.times[state.activeDate]={}; pushDay(); renderList(); showToast('本日の時刻をクリアしました'); });
+
+  /* ===== now button ===== */
+  $('nowBtn').addEventListener('click',()=>{ if(state.view!=='return'){ state.view='return'; renderList(); } const dv=document.querySelector('.now-divider'); if(dv)dv.scrollIntoView({behavior:'smooth',block:'center'}); });
+  window.addEventListener('scroll',()=>{ $('nowBtn').style.display=(state.view==='return'&&window.scrollY>200)?'flex':'none'; });
+
+  /* ===== input mode entry points ===== */
+  $('btnInput').addEventListener('click',()=>{ $('modesel').classList.add('show'); });
+  $('modePhoto').addEventListener('click',()=>{ $('modesel').classList.remove('show'); openOcr(); });
+  $('modeManual').addEventListener('click',()=>{ $('modesel').classList.remove('show'); startSeq(); });
+  $('modeAI').addEventListener('click',()=>{ $('modesel').classList.remove('show'); $('aiText').value=''; $('aiPreview').style.display='none'; openModal('aiOverlay'); });
+  $('modeSkip').addEventListener('click',()=>{ finishModeSelect(); });
+  function finishModeSelect(){ $('modesel').classList.remove('show'); $('gate').style.display='none'; $('appRoot').style.display='block'; }
+
+  /* ===== AI paste ===== */
+  function parseAI(text){
+    const rows=[]; const tplSet=new Set(); state.template.forEach(g=>g.nos.forEach(n=>tplSet.add(n)));
+    text.split(/\r?\n/).forEach(line=>{
+      const raw=line.trim(); if(!raw)return;
+      const parts=raw.split(/[,\t]+|\s{2,}|\s+/).filter(Boolean);
+      if(parts.length<1)return;
+      const no=parts[0].replace(/[^0-9]/g,'');
+      if(!/^\d{4}$/.test(no)){ rows.push({no:parts[0],d:'',r:'',status:'bad'}); return; }
+      const d=normTime(parts[1]||''); const r=normTime(parts[2]||'');
+      rows.push({no,d,r,status: tplSet.has(no)?'ok':'unknown'});
+    });
+    return rows;
+  }
+  $('aiPreviewBtn').addEventListener('click',()=>{
+    const rows=parseAI($('aiText').value);
+    if(!rows.length){ showToast('データがありません'); return; }
+    let html='<table class="preview-table"><tr><th>号車</th><th>出庫</th><th>帰庫</th><th>状態</th></tr>';
+    rows.forEach(r=>{ const cls=r.status==='bad'?'bad':(r.status==='unknown'?'unknown':''); const st=r.status==='bad'?'形式エラー':(r.status==='unknown'?'テンプレ外':'OK'); html+=`<tr class="${cls}"><td>${r.no}</td><td>${r.d||'-'}</td><td>${r.r||'-'}</td><td>${st}</td></tr>`; });
+    html+='</table>'; const okc=rows.filter(r=>r.status!=='bad').length; html+=`<div class="hint">反映対象 ${okc} 台（形式エラーは除外されます）。テンプレ外の号車も反映しますが、表示には出ません（テンプレに追加が必要）。</div>`;
+    const pv=$('aiPreview'); pv.style.display='block'; pv.innerHTML=html;
+  });
+  $('aiApplyBtn').addEventListener('click',()=>{
+    const rows=parseAI($('aiText').value).filter(r=>r.status!=='bad');
+    if(!rows.length){ showToast('反映できる行がありません'); return; }
+    const t=dayTimes();
+    rows.forEach(r=>{ if(!t[r.no])t[r.no]={r:'',d:'',returned:false}; t[r.no].d=r.d; t[r.no].r=r.r; });
+    pushDay(); renderList(); closeModal('aiOverlay'); showToast(rows.length+'台を反映しました'); finishModeSelect();
+  });
+
+  /* ===== OCR (photo) ===== */
+  let curQuad=0;
+  document.querySelectorAll('#quadbar button').forEach(b=>b.addEventListener('click',()=>{ curQuad=+b.dataset.q; document.querySelectorAll('#quadbar button').forEach(x=>x.classList.toggle('on',x===b)); }));
+  function openOcr(){ $('ocrPreview').style.display='none'; $('ocrResult').style.display='none'; openModal('ocrOverlay'); }
+  $('btnShoot').addEventListener('click',()=>$('fileInput').click());
+  $('fileInput').addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file)return; const url=await fileToScaledDataUrl(file,1800); $('ocrPreview').src=url; $('ocrPreview').style.display='block'; $('ocrResult').style.display='none'; runOcr(url); e.target.value=''; });
+  function fileToScaledDataUrl(file,maxEdge){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ let w=img.width,h=img.height; const s=Math.min(1,maxEdge/Math.max(w,h)); w=Math.round(w*s); h=Math.round(h*s); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h); res(cv.toDataURL('image/jpeg',0.9)); }; img.onerror=()=>res(null); const fr=new FileReader(); fr.onload=()=>img.src=fr.result; fr.readAsDataURL(file); }); }
+  function preprocess(dataUrl,mode){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ const cv=document.createElement('canvas'); cv.width=img.width; cv.height=img.height; const cx=cv.getContext('2d'); cx.drawImage(img,0,0); try{ const id=cx.getImageData(0,0,cv.width,cv.height); const p=id.data; let sum=0; for(let i=0;i<p.length;i+=4){ const g=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2]; p[i]=p[i+1]=p[i+2]=g; sum+=g; } const mean=sum/(p.length/4); const th=mode==='print'?mean*0.9:mode==='hand'?mean*0.78:mean*0.85; for(let i=0;i<p.length;i+=4){ const v=p[i]<th?0:255; p[i]=p[i+1]=p[i+2]=v; } cx.putImageData(id,0,0); }catch(e){} res(cv.toDataURL('image/png')); }; img.onerror=()=>res(dataUrl); img.src=dataUrl; }); }
+  function setStatus(t,s){ $('ocrStatus').style.display=s?'flex':'none'; $('ocrStatusText').textContent=t; }
+  function setBar(p,s){ $('ocrBar').style.display=s?'block':'none'; $('ocrFill').style.width=(p||0)+'%'; }
+  async function ensureTesseract(){ if(state.ocr.ready)return true; if(state.ocr.failed)return false; if(window.Tesseract){state.ocr.ready=true;return true;} const urls=['https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js','https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js','https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js']; for(const u of urls){ try{ await new Promise((r,j)=>{ const s=document.createElement('script'); s.src=u; s.onload=r; s.onerror=j; document.head.appendChild(s); setTimeout(()=>j(new Error('t')),15000); }); if(window.Tesseract){state.ocr.ready=true;return true;} }catch(e){} } state.ocr.failed=true; return false; }
+  async function getWorker(){ if(state.ocr.worker)return state.ocr.worker; const w=await window.Tesseract.createWorker('eng',1,{logger:m=>{ if(m.status==='recognizing text')setBar(Math.round(m.progress*100),true); }}); await w.setParameters({tessedit_char_whitelist:'0123456789'}); state.ocr.worker=w; return w; }
+  async function runOcr(dataUrl){ setStatus('OCRエンジン準備中…',true); setBar(0,true); const ok=await ensureTesseract(); if(!ok){ setStatus('',false); setBar(0,false); showToast('OCRを読み込めませんでした。通信環境を確認してください。',4000); return; } try{ setStatus('画像最適化中…',true); const pre=await preprocess(dataUrl,state.settings.ocrMode); setStatus('号車番号を解析中…',true); const w=await getWorker(); const {data}=await w.recognize(pre); matchTemplate(data&&data.text||''); setStatus('解析完了',true); setTimeout(()=>{ setStatus('',false); setBar(0,false); },1000); }catch(e){ setStatus('',false); setBar(0,false); showToast('解析に失敗しました。手書き重視モードや再撮影をお試しください。',4000); } }
+  function matchTemplate(text){ const found=Array.from(new Set((text.match(/\d{4}/g)||[]))); const tplSet=new Set(); state.template.forEach(g=>g.nos.forEach(n=>tplSet.add(n))); const matched=found.filter(n=>tplSet.has(n)); $('ocrResult').style.display='block'; const wrap=$('ocrChips'); wrap.innerHTML=''; if(!matched.length){ wrap.innerHTML='<div style="font-size:12px;color:var(--text-dim);">テンプレ一致なし。1ブロックずつ大きく撮影してください。</div>'; return; } matched.forEach(no=>{ const r=rec(no); const c=document.createElement('button'); c.className='chip'+(((r.r)||(r.d))?' matched':''); c.textContent=no; c.addEventListener('click',()=>{ closeModal('ocrOverlay'); openTimePad('帰庫予定　号車 '+no, r.r||'', (val)=>{ r.r=val; pushDay(); renderList(); showToast('号車 '+no+' を入力しました'); }); }); wrap.appendChild(c); }); }
+
+  /* ===== Edit (修正) ===== */
+  $('btnEdit').addEventListener('click',()=>{ showToast('修正したい号車をタップ、または下の一覧から選べます'); enterEditMode(); });
+  let editMode=false;
+  function enterEditMode(){ editMode=true; document.body.dataset.edit='1'; renderList(); attachEditHandlers(); showToast('修正モード：号車をタップで編集'); }
+  function attachEditHandlers(){
+    // make whole card clickable to open edit dialog
+    $('listContainer').querySelectorAll('.card').forEach(card=>{
+      card.addEventListener('click',(e)=>{ if(!editMode)return; if(e.target.closest('[data-action]'))return; const no=card.dataset.no; openEdit(no); });
     });
   }
-  async function switchDate(date){
-    state.activeDate=date;
-    renderDayTabs();
-    subscribeDay(date);
-  }
-
-  async function ensureTodayInIndex(){
-    if(!state.dates.includes(state.todayKey)) state.dates.push(state.todayKey);
-    state.dates.sort();
-    while(state.dates.length>3) state.dates.shift();
-    await pushMeta();
-  }
-
-  function subscribeMeta(){
-    onSnapshot(metaDocRef(), async (snap)=>{
-      const data = snap.exists() ? snap.data() : null;
-      let dates = (data && Array.isArray(data.dates)) ? data.dates.slice() : [];
-      if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3) dates.shift(); }
-      state.dates = dates;
-      if(!state.activeDate){ state.activeDate = state.todayKey; subscribeDay(state.activeDate); }
-      renderDayTabs();
-    }, ()=>{});
-  }
-
-  /* ===== Reset day ===== */
-  $('btnReset').addEventListener('click', async ()=>{
-    if(state.activeDate!==state.todayKey){ showToast('本日のタブで実行してください'); return; }
-    if(!confirm('本日のデータをリセットし、新しい日として記録を開始します。よろしいですか？')) return;
-    state.buses=[];
-    await pushDay();
-    renderRoster();
-    showToast('本日のデータをリセットしました');
-  });
-
-  /* ===== Manual add ===== */
-  $('btnManual').addEventListener('click', ()=>{
-    $('ocrTitle').textContent='手動で追加';
-    $('fNo').value=''; $('fReturn').value=''; $('fDepart').value='';
-    $('ocrPreview').style.display='none'; $('ocrStatus').style.display='none'; $('ocrCandidates').style.display='none';
-    openModal('ocrOverlay');
-  });
-  $('btnAddFromOcr').addEventListener('click', async ()=>{
-    if(state.activeDate!==state.todayKey){ showToast('過去の日付には追加できません'); return; }
-    const busNo=$('fNo').value.trim();
-    const returnTime=$('fReturn').value.trim();
-    const departTime=$('fDepart').value.trim();
-    if(!/^\d{4}$/.test(busNo)){ showToast('号車は4桁の数字で入力してください'); return; }
-    if(returnTime && !parseTimeToMinutes(returnTime)){ showToast('帰庫予定時間の形式が正しくありません（例: 19:38）'); return; }
-    if(departTime && !parseTimeToMinutes(departTime)){ showToast('翌日出庫時間の形式が正しくありません（例: 7:07）'); return; }
-    const existing=state.buses.find(b=>b.busNo===busNo);
-    if(existing){ existing.returnTime=returnTime; existing.departTime=departTime; }
-    else state.buses.push({ id:uid(), busNo, returnTime, departTime, returned:false });
-    await pushDay();
-    renderRoster();
-    closeModal('ocrOverlay');
-    showToast('登録しました');
-  });
-
-  /* ===== OCR ===== */
-  $('btnPhoto').addEventListener('click', ()=>{
-    if(state.activeDate!==state.todayKey){ showToast('過去の日付には追加できません'); return; }
-    $('ocrTitle').textContent='写真から読み取り';
-    $('fNo').value=''; $('fReturn').value=''; $('fDepart').value='';
-    $('ocrPreview').style.display='none'; $('ocrCandidates').style.display='none';
-    $('fileInput').click();
-  });
-  $('fileInput').addEventListener('change', async (e)=>{
-    const file=e.target.files[0]; if(!file) return;
-    $('ocrPreview').src=URL.createObjectURL(file); $('ocrPreview').style.display='block';
-    openModal('ocrOverlay');
-    await runOcr(file);
-    e.target.value='';
-  });
-  function setOcrStatus(text, show){ $('ocrStatus').style.display=show?'flex':'none'; $('ocrStatusText').textContent=text; }
-  async function ensureTesseract(){
-    if(state.ocr.ready) return true;
-    if(state.ocr.failed) return false;
-    if(window.Tesseract){ state.ocr.ready=true; return true; }
-    try{
-      await new Promise((resolve,reject)=>{
-        const s=document.createElement('script');
-        s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.5/tesseract.min.js';
-        s.onload=resolve; s.onerror=reject; document.head.appendChild(s);
-        setTimeout(()=>reject(new Error('timeout')), 12000);
-      });
-      if(!window.Tesseract) throw new Error('no tesseract');
-      state.ocr.ready=true; return true;
-    }catch(e){ state.ocr.failed=true; return false; }
-  }
-  async function runOcr(file){
-    setOcrStatus('OCR機能を読み込んでいます…', true);
-    const ok=await ensureTesseract();
-    if(!ok){ setOcrStatus('',false); showToast('OCRを読み込めませんでした。手動で入力してください。',3500); return; }
-    setOcrStatus('画像を解析しています…（端末内で処理中）', true);
-    try{
-      const result=await window.Tesseract.recognize(file,'eng',{
-        tessedit_char_whitelist:'0123456789:.ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-        logger:()=>{}
-      });
-      handleOcrText((result&&result.data&&result.data.text)||'');
-    }catch(err){ showToast('解析に失敗しました。手動で入力してください。',3500); }
-    finally{ setOcrStatus('',false); }
-  }
-  function handleOcrText(text){
-    const nums4=Array.from(new Set((text.match(/\b\d{4}\b/g)||[])));
-    const times=Array.from(new Set((text.match(/\b\d{1,2}[:.．]\d{2}\b/g)||[]).map(t=>t.replace(/[.．]/,':'))));
-    const candidates=[...nums4.map(v=>({type:'号車候補',value:v})), ...times.map(v=>({type:'時刻候補',value:v}))];
-    const chipRow=$('chipRow'); chipRow.innerHTML='';
-    if(candidates.length===0){ $('ocrCandidates').style.display='none'; showToast('数字を検出できませんでした。手動で入力してください。',3000); return; }
-    $('ocrCandidates').style.display='block';
-    candidates.forEach(c=>{
-      const chip=document.createElement('div'); chip.className='chip';
-      chip.textContent=c.value+'（'+c.type+'）';
-      chip.addEventListener('click', ()=>{
-        if(c.type==='号車候補') $('fNo').value=c.value;
-        else { if(!$('fReturn').value) $('fReturn').value=c.value; else $('fDepart').value=c.value; }
-      });
-      chipRow.appendChild(chip);
-    });
-  }
-
-  /* ===== Settings ===== */
-  $('btnSettings').addEventListener('click', ()=>{ $('fThreshold').value=state.settings.thresholdMin; updateNotifStatusText(); openModal('settingsOverlay'); });
-  function updateNotifStatusText(){
-    const p=('Notification' in window)?Notification.permission:'unsupported';
-    const map={granted:'通知は許可されています',denied:'通知が拒否されています（ブラウザ設定から変更）',default:'まだ許可されていません',unsupported:'この環境では通知に対応していません'};
-    $('notifStatusText').textContent=map[p]||'未設定';
-  }
-  $('btnNotifPermission').addEventListener('click', async ()=>{
-    if(!('Notification' in window)){ showToast('この環境では通知に対応していません'); return; }
-    try{ await Notification.requestPermission(); }catch(e){}
-    updateNotifStatusText();
-  });
-  $('btnSaveSettings').addEventListener('click', ()=>{
-    const v=parseInt($('fThreshold').value,10);
-    state.settings.thresholdMin=(isFinite(v)&&v>0)?v:15;
-    localStorage.setItem('roster-threshold', String(state.settings.thresholdMin));
-    closeModal('settingsOverlay'); renderRoster(); showToast('設定を保存しました');
-  });
-
-  /* ===== Notification loop ===== */
-  function checkNotifications(){
-    if(!('Notification' in window)||Notification.permission!=='granted') return;
-    if(state.activeDate!==state.todayKey) return;
-    const now=nowMinutes();
-    state.buses.forEach(bus=>{
-      if(bus.returned){ state.notified.delete(bus.id); return; }
-      const ret=parseTimeToMinutes(bus.returnTime); if(ret===null) return;
-      const diff=ret-now;
-      if(diff>=0 && diff<=state.settings.thresholdMin && !state.notified.has(bus.id)){
-        try{ new Notification('帰庫予定が近づいています',{body:`号車 ${bus.busNo}　帰庫予定 ${bus.returnTime}`}); }catch(e){}
-        state.notified.add(bus.id);
-      }
-      if(diff<0) state.notified.delete(bus.id);
-    });
-  }
-
-  /* ===== Gate ===== */
-  function unlock(){
-    const v=$('gateInput').value.trim();
-    if(v===TEAM_PASSCODE){
-      sessionStorage.setItem('roster-unlocked','1');
-      $('gate').style.display='none';
-      $('appRoot').style.display='block';
-      startApp();
+  function openEdit(no){ const r=rec(no); state.edit.no=no; $('editTitle').textContent='修正　号車 '+no; $('editNo').value=no; $('editD').value=r.d||''; $('editR').value=r.r||''; openModal('editOverlay'); }
+  $('editSave').addEventListener('click',()=>{
+    const oldNo=state.edit.no; const newNo=$('editNo').value.trim();
+    const d=normTime($('editD').value.trim()); const r=normTime($('editR').value.trim());
+    const t=dayTimes();
+    if(newNo!==oldNo && newNo){ // rename within times (template not changed here)
+      t[newNo]={r,d,returned:(t[oldNo]&&t[oldNo].returned)||false}; if(t[oldNo])delete t[oldNo];
+      // also update template entry label if exists
+      state.template.forEach(g=>{ const idx=g.nos.indexOf(oldNo); if(idx>=0)g.nos[idx]=newNo; }); pushTpl();
     }else{
-      $('gateErr').textContent='合言葉が違います';
+      if(!t[oldNo])t[oldNo]={r:'',d:'',returned:false}; t[oldNo].d=d; t[oldNo].r=r;
     }
-  }
-  $('gateBtn').addEventListener('click', unlock);
-  $('gateInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') unlock(); });
+    pushDay(); renderList(); attachEditHandlers(); closeModal('editOverlay'); showToast('修正しました');
+  });
+  $('editDelete').addEventListener('click',()=>{
+    const no=state.edit.no; if(!confirm('号車 '+no+' を本日の表示から削除しますか？（テンプレートからも削除されます）'))return;
+    const t=dayTimes(); if(t[no])delete t[no];
+    state.template.forEach(g=>{ const idx=g.nos.indexOf(no); if(idx>=0)g.nos.splice(idx,1); });
+    pushTpl(); pushDay(); renderList(); attachEditHandlers(); closeModal('editOverlay'); showToast('削除しました');
+  });
 
-  /* ===== Start ===== */
-  function startApp(){
-    const saved=parseInt(localStorage.getItem('roster-threshold'),10);
-    if(isFinite(saved)&&saved>0) state.settings.thresholdMin=saved;
-    renderClock();
-    subscribeMeta();
-    ensureTodayInIndex();
-    setInterval(renderClock,1000);
-    setInterval(()=>{ renderRoster(); checkNotifications(); },20000);
+  /* ===== Template editor ===== */
+  $('btnTemplate').addEventListener('click',()=>{ renderTplEditor(); openModal('tplOverlay'); });
+  function renderTplEditor(){ const wrap=$('tplEditor'); wrap.innerHTML=''; state.template.forEach((g,gi)=>{ const div=document.createElement('div'); div.className='tpl-cat'; let nos=''; g.nos.forEach((no,ni)=>{ nos+=`<span class="tpl-no">${no}<button data-g="${gi}" data-n="${ni}" data-act="delno">✕</button></span>`; }); div.innerHTML=`<h4>${g.cat}（${g.nos.length}台）</h4><div class="tpl-nos">${nos}</div><div class="tpl-add"><input type="text" inputmode="numeric" maxlength="4" placeholder="号車4桁を追加" data-addinput="${gi}"><button class="btn ghost" data-addbtn="${gi}">追加</button></div>`; wrap.appendChild(div); });
+    wrap.querySelectorAll('[data-act="delno"]').forEach(b=>b.addEventListener('click',e=>{ const gi=+e.target.dataset.g,ni=+e.target.dataset.n; state.template[gi].nos.splice(ni,1); renderTplEditor(); }));
+    wrap.querySelectorAll('[data-addbtn]').forEach(b=>b.addEventListener('click',e=>{ const gi=+e.target.dataset.addbtn; const inp=wrap.querySelector(`[data-addinput="${gi}"]`); const v=(inp.value||'').trim(); if(!/^\d{4}$/.test(v)){ showToast('号車は4桁で'); return; } if(state.template[gi].nos.includes(v)){ showToast('既に存在します'); return; } state.template[gi].nos.push(v); renderTplEditor(); }));
   }
+  $('btnSaveTpl').addEventListener('click',()=>{ pushTpl(); renderList(); closeModal('tplOverlay'); showToast('テンプレートを保存しました'); });
 
-  // auto-unlock within same session
-  if(sessionStorage.getItem('roster-unlocked')==='1'){
-    $('gate').style.display='none';
-    $('appRoot').style.display='block';
-    startApp();
-  }else{
-    setTimeout(()=>$('gateInput').focus(), 100);
-  }
-})();
+  /* ===== settings ===== */
+  function applySeg(){ document.querySelectorAll('#ocrModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===state.settings.ocrMode)); document.querySelectorAll('#winSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.above===state.settings.winAbove&&+b.dataset.below===state.settings.winBelow)); }
+  document.querySelectorAll('#ocrModeSeg button').forEach(b=>b.addEventListener('click',()=>{ state.settings.ocrMode=b.dataset.mode; applySeg(); }));
+  document.querySelectorAll('#winSeg button').forEach(b=>b.addEventListener('click',()=>{ state.settings.winAbove=+b.dataset.above; state.settings.winBelow=+b.dataset.below; applySeg(); }));
+  $('btnSettings').addEventListener('click',()=>{ $('fThreshold').value=state.settings.thresholdMin; applySeg(); updateNotif(); openModal('settingsOverlay'); });
+  function updateNotif(){ const p=('Notification'in window)?Notification.permission:'unsupported'; const m={granted:'通知は許可されています',denied:'通知が拒否されています',default:'まだ許可されていません',unsupported:'この環境では通知に対応していません'}; $('notifStatusText').textContent=m[p]||'未設定'; }
+  $('btnNotifPermission').addEventListener('click',async()=>{ if(!('Notification'in window)){showToast('通知非対応');return;} try{await Notification.requestPermission();}catch(e){} updateNotif(); });
+  $('btnSaveSettings').addEventListener('click',()=>{ const v=parseInt($('fThreshold').value,10); state.settings.thresholdMin=(isFinite(v)&&v>0)?v:5; localStorage.setItem('rb-settings',JSON.stringify(state.settings)); closeModal('settingsOverlay'); renderList(); showToast('設定を保存しました'); });
+
+  /* ===== notifications ===== */
+  function checkNotifications(){ if(!('Notification'in window)||Notification.permission!=='granted')return; if(state.activeDate!==state.todayKey)return; const now=nowMin(); allBusesFlat().forEach(b=>{ const r=rec(b.busNo); if(r.returned){state.notified.delete(b.busNo);return;} const rt=parseT(r.r); if(rt===null)return; const diff=rt-now; if(diff>=0&&diff<=state.settings.thresholdMin&&!state.notified.has(b.busNo)){ try{new Notification('帰庫が近づいています',{body:`号車 ${b.busNo}　帰庫予定 ${r.r}`});}catch(e){} state.notified.add(b.busNo); } if(diff<0)state.notified.delete(b.busNo); }); }
+
+  /* ===== power saving ===== */
+  let tickTimer=null,clockTimer=null,busTimer=null;
+  function startLoops(){ stopLoops(); clockTimer=setInterval(renderClock,1000); tickTimer=setInterval(()=>{ renderList(); checkNotifications(); },60000); busTimer=setInterval(()=>{ busFrame=(busFrame+1)%4; drawBus(); },200); }
+  function stopLoops(){ [tickTimer,clockTimer,busTimer].forEach(t=>{ if(t)clearInterval(t); }); tickTimer=clockTimer=busTimer=null; }
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden)stopLoops(); else { startLoops(); renderClock(); renderList(); } });
+  window.addEventListener('pagehide',()=>{ try{ if(state.ocr.worker){ state.ocr.worker.terminate(); state.ocr.worker=null; } }catch(e){} });
+
+  /* ===== sync ===== */
+  function loadLocalDay(d){ try{ const r=localStorage.getItem(lsDay(d)); return r?JSON.parse(r):{}; }catch(e){ return {}; } }
+  function subscribeDay(d){ if(state.unsubDay){ state.unsubDay(); state.unsubDay=null; } if(!(FB_OK&&db)){ state.times[d]=loadLocalDay(d); $('syncDot').className='sync-dot err'; $('syncText').textContent='オフライン（この端末のみ）'; renderList(); return; } state.unsubDay=FB.onSnapshot(dayRef(d),snap=>{ $('syncDot').className='sync-dot on'; $('syncText').textContent='同期済み '+pad2(new Date().getHours())+':'+pad2(new Date().getMinutes()); if(state.writing)return; const data=snap.exists()?snap.data():null; state.times[d]=(data&&data.times)?data.times:{}; renderList(); if(editMode)attachEditHandlers(); },()=>{ $('syncDot').className='sync-dot err'; $('syncText').textContent='同期エラー'; state.times[d]=loadLocalDay(d); renderList(); }); }
+  function switchDate(d){ state.activeDate=d; renderDayTabs(); subscribeDay(d); }
+  function subscribeMeta(){ if(!(FB_OK&&db)){ state.metaSeen=true; let dates=[]; try{ const r=localStorage.getItem('rb-meta'); if(r)dates=JSON.parse(r); }catch(e){} if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3)dates.shift(); } state.dates=dates; state.activeDate=state.todayKey; subscribeDay(state.activeDate); renderDayTabs(); return; } state.unsubMeta=FB.onSnapshot(metaRef(),snap=>{ state.metaSeen=true; const data=snap.exists()?snap.data():null; let dates=(data&&Array.isArray(data.dates))?data.dates.slice():[]; if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3)dates.shift(); } state.dates=dates; if(!state.activeDate){ state.activeDate=state.todayKey; subscribeDay(state.activeDate); } renderDayTabs(); },()=>{}); }
+  function subscribeTpl(){ if(!(FB_OK&&db)){ let t=null; try{ const r=localStorage.getItem('rb-tpl'); if(r)t=JSON.parse(r); }catch(e){} state.template=t||JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); renderList(); return; } state.unsubTpl=FB.onSnapshot(tplRef(),snap=>{ const data=snap.exists()?snap.data():null; if(data&&Array.isArray(data.template)&&data.template.length){ state.template=data.template; } else { state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); pushTpl(); } renderList(); if(editMode)attachEditHandlers(); },()=>{ state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); renderList(); }); }
+  async function ensureTodayIndex(){ if(!state.metaSeen){ setTimeout(ensureTodayIndex,400); return; } if(!state.dates.includes(state.todayKey)){ state.dates.push(state.todayKey); state.dates.sort(); while(state.dates.length>3)state.dates.shift(); await pushMeta(); } }
+
+  /* ===== start ===== */
+  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); }
+  function unlock(){ if($('gateInput').value.trim()===TEAM_PASSCODE){ sessionStorage.setItem('rb-unlocked','1'); $('gate').style.display='none'; startApp(); $('modesel').classList.add('show'); } else { $('gateErr').textContent='合言葉が違います'; } }
+  $('gateBtn').addEventListener('click',unlock);
+  $('gateInput').addEventListener('keydown',e=>{ if(e.key==='Enter')unlock(); });
+  if(sessionStorage.getItem('rb-unlocked')==='1'){ $('gate').style.display='none'; startApp(); $('appRoot').style.display='block'; }
+  else setTimeout(()=>$('gateInput').focus(),100);
+};
 </script>
 </body>
 </html>
