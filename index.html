@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>車両運行ボード</title>
+<title>Bus Time Scheduler</title>
 <style>
   :root{
-    --bg:#11141a; --panel:#1a1f27; --panel-2:#222933; --line:#2c343d;
-    --text:#eceae3; --text-dim:#98a2ad; --amber:#eba83f; --amber-dim:#7a5a2a;
-    --red:#d6202a; --red-soft:#c25b5b; --red-bg:rgba(194,91,91,0.26);
-    --yellow-bg:rgba(225,189,30,0.30); --yellow-line:#e1bd1e;
-    --green:#5ba07d; --next:#3a7d5c; --next-bg:rgba(58,125,92,0.22);
-    --navy:#1b2a6b; --wine:#7b1f2b; --now-orange:#e8730f;
+    --bg:#e8eaed; --panel:#ffffff; --panel-2:#f1f3f5; --line:#d4d8dd;
+    --text:#1a1f26; --text-dim:#6a737d; --amber:#d68a1f; --amber-dim:#caa468;
+    --red:#d6202a; --red-soft:#c0392b; --red-bg:#f7dcdc;
+    --yellow-bg:#fbf0c4; --yellow-line:#e1bd1e;
+    --green:#4a9a78; --next:#2f7d5a; --next-bg:#dff0e6;
+    --navy:#16235c; --wine:#8a1f2b; --now-orange:#e8730f;
+    --header-bg:#14181e; --header-text:#eceae3;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
   }
@@ -43,17 +44,18 @@
   .modesel .skip button{background:none; border:none; color:var(--text-dim); font-size:13px; text-decoration:underline;}
 
   /* Header */
-  .board-header{background:linear-gradient(180deg,#1b2129,#14181e); border-bottom:1px solid var(--line); padding:12px 14px 8px; position:sticky; top:0; z-index:20;}
+  .board-header{background:linear-gradient(180deg,#1b2129,#14181e); border-bottom:1px solid #2c343d; padding:12px 14px 8px; position:sticky; top:0; z-index:20;}
   .htop{display:flex; align-items:center; justify-content:space-between; gap:10px;}
   .htitle{font-size:15px; letter-spacing:.06em; color:var(--amber); font-weight:700; display:flex; align-items:center; gap:8px;}
-  .hclock{font-family:var(--mono); font-size:15px; color:var(--text); font-variant-numeric:tabular-nums; font-weight:700;}
+  .hclock{font-family:var(--mono); font-size:15px; color:var(--header-text); font-variant-numeric:tabular-nums; font-weight:700;}
   .sync-line{margin-top:5px; font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px;}
   .sync-dot{width:7px; height:7px; border-radius:50%; background:#666; flex:none;}
   .sync-dot.on{background:var(--green);} .sync-dot.err{background:var(--red-soft);}
-  .mascot{position:relative; width:56px; height:26px; flex:none;}
-  .dotbus{image-rendering:pixelated; position:absolute; left:0; bottom:0;}
+  .mascot{position:relative; width:92px; height:26px; flex:none; overflow:hidden; border-radius:4px;}
+  .scenery{image-rendering:pixelated; position:absolute; left:0; bottom:0; z-index:1;}
+  .dotbus{image-rendering:pixelated; position:absolute; right:0; bottom:0; z-index:2;}
   .day-tabs{display:flex; gap:6px; margin-top:10px; overflow-x:auto; padding-bottom:2px;}
-  .day-tab{font-family:var(--mono); font-size:12px; padding:6px 11px; border-radius:7px; background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line); white-space:nowrap; flex:none;}
+  .day-tab{font-family:var(--mono); font-size:12px; padding:6px 11px; border-radius:7px; background:rgba(255,255,255,0.08); color:#aeb6bf; border:1px solid #2c343d; white-space:nowrap; flex:none;}
   .day-tab.active{background:var(--amber); color:#1b1404; border-color:var(--amber); font-weight:700;}
 
   .modebar{display:flex; gap:0; padding:10px 14px 2px;}
@@ -79,35 +81,44 @@
 
   .now-divider{display:flex; align-items:center; gap:8px; margin:8px 2px; color:var(--now-orange); font-size:11px; font-weight:800;}
   .now-divider::before,.now-divider::after{content:""; height:2px; background:var(--now-orange); flex:1; opacity:.85;}
+  /* sticky now-line: stays fixed below header while bus cards slide up past it */
+  .now-divider.now-sticky{position:sticky; top:118px; z-index:15; background:linear-gradient(180deg, rgba(17,20,26,0.96) 60%, rgba(17,20,26,0)); padding:6px 2px 8px; margin:4px 0; backdrop-filter:blur(2px);}
 
   .list-wrap{padding:6px 14px 0;}
   .list-empty{text-align:center; color:var(--text-dim); padding:48px 20px; font-size:13px; line-height:1.9;}
-  .col-head{display:grid; grid-template-columns:74px 1fr 1fr 64px; gap:8px; padding:4px 12px; font-size:10px; letter-spacing:.06em; color:var(--text-dim);}
-  .card{display:grid; grid-template-columns:74px 1fr 1fr 64px; gap:8px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:9px 10px; margin-bottom:6px; transition:background .25s,border-color .25s;}
+  .col-head{display:grid; grid-template-columns:84px 1fr 1fr 54px; gap:8px; padding:4px 12px; font-size:10px; letter-spacing:.04em; color:var(--text-dim);}
+  .col-head>div:nth-child(2),.col-head>div:nth-child(3){text-align:right;}
+  .col-head .ch-r{text-align:right;}
+  .card{display:grid; grid-template-columns:84px 1fr 1fr 54px; gap:8px; align-items:stretch; background:#1c2128; border:1px solid #2c343d; border-radius:11px; padding:11px 11px; margin-bottom:7px; transition:background .25s,border-color .25s; box-shadow:0 1px 3px rgba(0,0,0,0.18);}
   .card.returned{background:var(--red-bg); border-color:var(--red-soft);}
   .card.soon{background:var(--yellow-bg); border-color:var(--yellow-line);}
   .card.nextup{border-color:var(--next); box-shadow:0 0 0 1px var(--next);}
   /* soon: navy text + 6-blink */
   .card.soon .bus-no, .card.soon .time-btn{ color:var(--navy); }
   .card.soon.blink{ animation:soonblink 0.5s steps(1) 6; }
-  @keyframes soonblink{ 0%{background:var(--yellow-bg);} 50%{background:rgba(225,189,30,0.62);} 100%{background:var(--yellow-bg);} }
+  @keyframes soonblink{ 0%{background:var(--yellow-bg);} 50%{background:#f5d836;} 100%{background:var(--yellow-bg);} }
   /* returned: wine text */
   .card.returned .bus-no, .card.returned .time-btn{ color:var(--wine); }
   .card.returned .cat-tag{ color:var(--wine); opacity:.8; }
-  .cell{display:flex; flex-direction:column; gap:3px; min-width:0;}
-  .cell .clabel{font-size:9px; color:var(--text-dim); letter-spacing:.04em;}
-  .bus-no{font-family:var(--mono); font-size:26px; font-weight:800; letter-spacing:.01em; line-height:1; color:var(--text);}
-  .cat-tag{font-size:8px; color:var(--text-dim); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:72px;}
-  .time-btn{font-family:var(--mono); font-size:23px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; background:transparent; border:none; border-bottom:2px dashed var(--line); color:var(--text); padding:1px 0; text-align:left; width:100%; white-space:nowrap; overflow:hidden;}
+  .cell{display:flex; flex-direction:column; gap:0; min-width:0; justify-content:flex-start;}
+  .cell.cell-time{align-items:flex-end;}
+  .cell .clabel{font-size:9px; color:#9aa3ad; letter-spacing:.04em; height:12px; line-height:12px;}
+  .cell.cell-time .clabel{align-self:flex-end;}
+  .cell .numline{height:34px; display:flex; align-items:center;}
+  .cell.cell-time .numline{justify-content:flex-end;}
+  .bus-no{font-family:var(--mono); font-size:var(--fs-no,30px); font-weight:800; letter-spacing:0; line-height:1; color:#ffffff;}
+  .cat-tag{font-size:8px; color:#8a939d; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78px; height:11px; line-height:11px;}
+  .time-btn{font-family:var(--mono); font-size:var(--fs-time,26px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1; background:transparent; border:none; color:#f0f2f4; padding:0; text-align:right; width:100%; white-space:nowrap; overflow:visible;}
   .time-btn.empty{color:var(--text-dim); border-bottom-color:var(--amber-dim);}
-  .nextbadge{display:inline-block; font-size:9px; font-weight:800; color:#0c2a1c; background:var(--green); border-radius:4px; padding:1px 5px; margin-bottom:3px; width:max-content;}
+  .nextbadge{position:absolute; top:-7px; right:0; font-size:9px; font-weight:800; color:#0c2a1c; background:var(--green); border-radius:4px; padding:1px 5px; width:max-content; z-index:3;}
+  .cell.cell-time{position:relative;}
   .card-actions{display:flex; flex-direction:column; gap:5px; align-items:stretch;}
-  .status-toggle{font-size:11px; padding:8px 8px; border-radius:7px; border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim); font-weight:700; white-space:nowrap; min-width:60px;}
+  .status-toggle{font-size:10px; padding:7px 4px; border-radius:7px; border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim); font-weight:700; white-space:nowrap; min-width:0; width:100%;}
   .status-toggle.on{background:var(--red-soft); color:#fff; border-color:var(--red-soft);}
   .read-only-note{text-align:center; font-size:12px; color:var(--text-dim); padding:12px 0 2px;}
   .cat-header{font-size:11px; color:var(--amber); font-weight:700; padding:10px 4px 4px; letter-spacing:.04em;}
 
-  .nowbtn{position:fixed; right:16px; bottom:84px; z-index:40; background:var(--green); color:#fff; border:none; border-radius:24px; padding:12px 16px; font-size:13px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.4); display:none; align-items:center; gap:6px;}
+  .nowbtn{position:fixed; right:16px; bottom:84px; z-index:40; background:var(--now-orange); color:#fff; border:none; border-radius:24px; padding:12px 16px; font-size:13px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.4); display:none; align-items:center; gap:6px;}
   .nowbtn:active{transform:scale(0.96);}
 
   /* Modal */
@@ -191,8 +202,8 @@
 <body>
 
 <div class="gate" id="gate">
-  <h1>🚌 車両運行ボード</h1>
-  <p>チーム用の合言葉を入力してください</p>
+  <h1>🚌 Bus Time Scheduler</h1>
+  <p>パスワードを入力してください</p>
   <input type="password" id="gateInput" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
   <button id="gateBtn">開く</button>
   <div class="err" id="gateErr"></div>
@@ -220,8 +231,8 @@
   <div class="board-header">
     <div class="htop">
       <div class="htitle">
-        <span class="mascot"><canvas class="dotbus" id="dotbus" width="56" height="26"></canvas></span>
-        車両運行ボード
+        <span class="mascot"><canvas class="scenery" id="scenery" width="92" height="26"></canvas><canvas class="dotbus" id="dotbus" width="56" height="26"></canvas></span>
+        B.T.S
       </div>
       <div class="hclock" id="clock">--:--:--</div>
     </div>
@@ -239,7 +250,7 @@
 
   <div class="toolbar">
     <button class="btn primary" id="btnInput">＋ 入力モード</button>
-    <button class="btn ghost" id="btnEdit">✎ 修正</button>
+    <button class="btn ghost" id="btnEdit" style="color:#1a1f26;">✎ 修正</button>
     <div class="spacer"></div>
     <button class="btn icon-only ghost" id="btnTemplate" title="号車テンプレート">📋</button>
     <button class="btn icon-only ghost" id="btnSettings">⚙️</button>
@@ -368,6 +379,8 @@
   <div class="modal">
     <div class="modal-header"><h3>設定</h3><button class="modal-close" data-close="settingsOverlay">✕</button></div>
     <div class="field"><label>帰庫予定の何分前から黄色く表示するか（分）</label><input type="number" id="fThreshold" min="1" max="180" value="5"></div>
+    <div class="field"><label>号車のフォントサイズ（<span id="fsNoVal">30</span>px）</label><input type="range" id="fsNo" min="18" max="56" step="1" value="30" style="width:100%;"></div>
+    <div class="field"><label>時刻のフォントサイズ（<span id="fsTimeVal">26</span>px）</label><input type="range" id="fsTime" min="16" max="48" step="1" value="26" style="width:100%;"></div>
     <div class="field"><label>帰庫順モードで表示する台数（現在時刻の上下）</label>
       <div class="seg2" id="winSeg">
         <button data-above="3" data-below="7">上3/下7</button>
@@ -408,7 +421,7 @@ window.__start = function(FB){
   "use strict";
   const FB_OK=!!FB; let db=null;
   if(FB_OK){ try{ const cfg={apiKey:"AIzaSyCC2XRPXx7iCnL5wqnXMZZ1HYvFSxzxJUk",authDomain:"bus-roster.firebaseapp.com",projectId:"bus-roster",storageBucket:"bus-roster.firebasestorage.app",messagingSenderId:"636226354728",appId:"1:636226354728:web:25f72f5bc93bc9664c7f1d"}; const app=FB.initializeApp(cfg); db=FB.getFirestore(app); }catch(e){} }
-  const TEAM_PASSCODE="2026";
+  const TEAM_PASSCODE="7677";
 
   const DEFAULT_TEMPLATE=[
     {cat:"基幹ノンステAT(車椅子2席)", nos:["1119","1120","1121","1122","1123","1256","1257"]},
@@ -454,7 +467,7 @@ window.__start = function(FB){
     todayKey:todayStr(), dates:[], activeDate:null,
     template:[], times:{},
     view:'return',
-    settings:{ thresholdMin:5, ocrMode:'auto', winAbove:4, winBelow:10 },
+    settings:{ thresholdMin:5, ocrMode:'auto', winAbove:4, winBelow:10, fsNo:30, fsTime:26 },
     notified:new Set(),
     blinked:new Set(),
     ocr:{ ready:false, failed:false, worker:null },
@@ -493,6 +506,38 @@ window.__start = function(FB){
     // tires fixed (y 9-10), rotating hub
     function tyre(cx){ px(cx,9,tire);px(cx+1,9,tire);px(cx,10,tire);px(cx+1,10,tire); x.fillStyle=hub; const f=busFrame%4; if(f===0)x.fillRect(cx*P+1,9*P+1,P,P*2-2); else if(f===1)x.fillRect(cx*P+1,9*P+P-1,P*2-2,P); else if(f===2)x.fillRect((cx+1)*P-2-1,9*P+1,P,P*2-2); else x.fillRect(cx*P+1,9*P+1,P*2-2,P); }
     tyre(5); tyre(18);
+  }
+
+  /* ===== scenery: trees & buildings sliding right->left, ~every 15s ===== */
+  let sceneX=92, sceneActive=false, sceneType=0, sceneAnim=null;
+  function drawScenery(){
+    const c=$('scenery'); if(!c)return; const x=c.getContext('2d'); const P=2;
+    x.clearRect(0,0,92,26);
+    if(!sceneActive) return;
+    const px=(cx,cy,col)=>{ x.fillStyle=col; x.fillRect(Math.round(sceneX)+cx*P,cy*P,P,P); };
+    if(sceneType===0){ const trunk='#7a5230', leaf='#3f8f4f', leaf2='#357a42';
+      for(let cy=9;cy<=11;cy++){ px(3,cy,trunk); px(4,cy,trunk); }
+      for(let cx=1;cx<=6;cx++)for(let cy=4;cy<=8;cy++){ const edge=(cx===1||cx===6||cy===4); px(cx,cy, edge?leaf2:leaf); }
+      px(2,3,leaf); px(3,3,leaf); px(4,3,leaf); px(5,3,leaf);
+    } else if(sceneType===1){ const wall='#9aa6b2', win='#cfe6ff', roof='#6b7682';
+      for(let cx=1;cx<=7;cx++)for(let cy=3;cy<=11;cy++)px(cx,cy,wall);
+      for(let cx=1;cx<=7;cx++)px(cx,2,roof);
+      for(let cy=4;cy<=10;cy+=2)for(let cx=2;cx<=6;cx+=2)px(cx,cy,win);
+    } else { const wall='#e6d8c0', roof='#b1432f', door='#7a5230';
+      for(let cx=1;cx<=8;cx++)for(let cy=6;cy<=11;cy++)px(cx,cy,wall);
+      for(let cx=1;cx<=8;cx++)px(cx,5,roof);
+      for(let cx=2;cx<=7;cx++)px(cx,4,roof);
+      for(let cx=3;cx<=6;cx++)px(cx,3,roof);
+      for(const cy of [8,9,10,11]){ px(4,cy,door); px(5,cy,door); }
+    }
+  }
+  function runScenery(){
+    if(sceneActive) return;
+    sceneActive=true; sceneX=92; sceneType=Math.floor(Math.random()*3);
+    if(sceneAnim) clearInterval(sceneAnim);
+    sceneAnim=setInterval(()=>{ sceneX-=2; drawScenery();
+      if(sceneX < -20){ clearInterval(sceneAnim); sceneAnim=null; sceneActive=false; const cc=$('scenery'); if(cc) cc.getContext('2d').clearRect(0,0,92,26); }
+    },120);
   }
 
   /* ===== data helpers ===== */
@@ -540,7 +585,7 @@ window.__start = function(FB){
       const {items,nextIdx,sliceStart}=buildReturnWindow();
       if(!items.length) html+='<div class="list-empty">帰庫予定時間が未入力です。<br>入力モードから時刻を登録してください。</div>';
       const now=nowMin(); let placed=false;
-      items.forEach((b,i)=>{ const gi=(sliceStart||0)+i; const passed=parseT(b.r)<now; if(!placed&&!passed){ html+=`<div class="now-divider">現在 ${pad2(new Date().getHours())}:${pad2(new Date().getMinutes())}　↓ これから帰庫</div>`; placed=true; } html+=cardHtml(b.busNo,b.cat, gi===nextIdx); });
+      items.forEach((b,i)=>{ const gi=(sliceStart||0)+i; const passed=parseT(b.r)<now; if(!placed&&!passed){ html+=`<div class="now-divider now-sticky">現在 ${pad2(new Date().getHours())}:${pad2(new Date().getMinutes())}　↓ これから帰庫</div>`; placed=true; } html+=cardHtml(b.busNo,b.cat, gi===nextIdx); });
       if(!placed&&items.length) html+=`<div class="now-divider">全便 帰庫予定を過ぎています</div>`;
     }
     if(ro) html+='<div class="read-only-note">過去の記録は参照専用です（編集不可）</div>';
@@ -569,7 +614,7 @@ window.__start = function(FB){
   function cardHtml(no,cat,isNext){
     const r=rec(no); const cls=rowClass(no);
     return `<div class="card ${cls} ${isNext?'nextup':''}" data-no="${no}">`+
-      `<div class="cell"><span class="clabel">号車</span><span class="bus-no">${no}</span><span class="cat-tag">${cat}</span></div>`+
+      `<div class="cell"><span class="clabel">号車</span><span class="numline"><span class="bus-no">${no}</span></span><span class="cat-tag">${cat}</span></div>`+
       colCell(no,'c1',isNext)+colCell(no,'c2',false)+
       `<div class="card-actions"><button class="status-toggle ${r.returned?'on':''}" data-action="toggle">${r.returned?'帰庫済':'未帰庫'}</button></div>`+
     `</div>`;
@@ -582,7 +627,7 @@ window.__start = function(FB){
     const val=r[f]||'';
     let badge='';
     if(isNext){ if(state.view==='depart'&&f==='d') badge='<span class="nextbadge">次に出庫</span>'; else if(state.view!=='depart'&&f==='r') badge='<span class="nextbadge">次に帰庫</span>'; }
-    return `<div class="cell">${badge}<span class="clabel">${lab}</span><button class="time-btn ${val?'':'empty'}" data-edit="${f}">${val||'--:--'}</button></div>`;
+    return `<div class="cell cell-time">${badge}<span class="clabel">${lab}</span><span class="numline"><button class="time-btn ${val?'':'empty'}" data-edit="${f}">${val||'--:--'}</button></span><span class="cat-tag">&nbsp;</span></div>`;
   }
   function rowClass(no){ const r=rec(no); if(r.returned)return 'returned'; const rt=parseT(r.r); if(rt===null)return ''; const diff=rt-nowMin(); if(diff>=0&&diff<=state.settings.thresholdMin)return 'soon'; return ''; }
   function bindCards(){
@@ -769,18 +814,21 @@ window.__start = function(FB){
   function applySeg(){ document.querySelectorAll('#ocrModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===state.settings.ocrMode)); document.querySelectorAll('#winSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.above===state.settings.winAbove&&+b.dataset.below===state.settings.winBelow)); }
   document.querySelectorAll('#ocrModeSeg button').forEach(b=>b.addEventListener('click',()=>{ state.settings.ocrMode=b.dataset.mode; applySeg(); }));
   document.querySelectorAll('#winSeg button').forEach(b=>b.addEventListener('click',()=>{ state.settings.winAbove=+b.dataset.above; state.settings.winBelow=+b.dataset.below; applySeg(); }));
-  $('btnSettings').addEventListener('click',()=>{ $('fThreshold').value=state.settings.thresholdMin; applySeg(); updateNotif(); openModal('settingsOverlay'); });
+  $('btnSettings').addEventListener('click',()=>{ $('fThreshold').value=state.settings.thresholdMin; $('fsNo').value=state.settings.fsNo; $('fsNoVal').textContent=state.settings.fsNo; $('fsTime').value=state.settings.fsTime; $('fsTimeVal').textContent=state.settings.fsTime; applySeg(); updateNotif(); openModal('settingsOverlay'); });
+  function applyFontSizes(){ document.documentElement.style.setProperty('--fs-no', state.settings.fsNo+'px'); document.documentElement.style.setProperty('--fs-time', state.settings.fsTime+'px'); }
+  $('fsNo').addEventListener('input',e=>{ $('fsNoVal').textContent=e.target.value; document.documentElement.style.setProperty('--fs-no', e.target.value+'px'); });
+  $('fsTime').addEventListener('input',e=>{ $('fsTimeVal').textContent=e.target.value; document.documentElement.style.setProperty('--fs-time', e.target.value+'px'); });
   function updateNotif(){ const p=('Notification'in window)?Notification.permission:'unsupported'; const m={granted:'通知は許可されています',denied:'通知が拒否されています',default:'まだ許可されていません',unsupported:'この環境では通知に対応していません'}; $('notifStatusText').textContent=m[p]||'未設定'; }
   $('btnNotifPermission').addEventListener('click',async()=>{ if(!('Notification'in window)){showToast('通知非対応');return;} try{await Notification.requestPermission();}catch(e){} updateNotif(); });
-  $('btnSaveSettings').addEventListener('click',()=>{ const v=parseInt($('fThreshold').value,10); state.settings.thresholdMin=(isFinite(v)&&v>0)?v:5; localStorage.setItem('rb-settings',JSON.stringify(state.settings)); closeModal('settingsOverlay'); renderList(); showToast('設定を保存しました'); });
+  $('btnSaveSettings').addEventListener('click',()=>{ const v=parseInt($('fThreshold').value,10); state.settings.thresholdMin=(isFinite(v)&&v>0)?v:5; state.settings.fsNo=parseInt($('fsNo').value,10)||30; state.settings.fsTime=parseInt($('fsTime').value,10)||26; applyFontSizes(); localStorage.setItem('rb-settings',JSON.stringify(state.settings)); closeModal('settingsOverlay'); renderList(); showToast('設定を保存しました'); });
 
   /* ===== notifications ===== */
   function checkNotifications(){ if(!('Notification'in window)||Notification.permission!=='granted')return; if(state.activeDate!==state.todayKey)return; const now=nowMin(); allBusesFlat().forEach(b=>{ const r=rec(b.busNo); if(r.returned){state.notified.delete(b.busNo);return;} const rt=parseT(r.r); if(rt===null)return; const diff=rt-now; if(diff>=0&&diff<=state.settings.thresholdMin&&!state.notified.has(b.busNo)){ try{new Notification('帰庫が近づいています',{body:`号車 ${b.busNo}　帰庫予定 ${r.r}`});}catch(e){} state.notified.add(b.busNo); } if(diff<0)state.notified.delete(b.busNo); }); }
 
   /* ===== power saving ===== */
-  let tickTimer=null,clockTimer=null,busTimer=null;
-  function startLoops(){ stopLoops(); clockTimer=setInterval(renderClock,1000); tickTimer=setInterval(()=>{ renderList(); checkNotifications(); },60000); busTimer=setInterval(()=>{ busFrame=(busFrame+1)%4; drawBus(); },200); }
-  function stopLoops(){ [tickTimer,clockTimer,busTimer].forEach(t=>{ if(t)clearInterval(t); }); tickTimer=clockTimer=busTimer=null; }
+  let tickTimer=null,clockTimer=null,busTimer=null,sceneTimer=null;
+  function startLoops(){ stopLoops(); clockTimer=setInterval(renderClock,1000); tickTimer=setInterval(()=>{ renderList(); checkNotifications(); },60000); busTimer=setInterval(()=>{ busFrame=(busFrame+1)%4; drawBus(); },200); sceneTimer=setInterval(runScenery,15000); setTimeout(runScenery,1500); }
+  function stopLoops(){ [tickTimer,clockTimer,busTimer,sceneTimer].forEach(t=>{ if(t)clearInterval(t); }); tickTimer=clockTimer=busTimer=sceneTimer=null; if(sceneAnim){ clearInterval(sceneAnim); sceneAnim=null; sceneActive=false; } }
   document.addEventListener('visibilitychange',()=>{ if(document.hidden)stopLoops(); else { startLoops(); renderClock(); renderList(); } });
   window.addEventListener('pagehide',()=>{ try{ if(state.ocr.worker){ state.ocr.worker.terminate(); state.ocr.worker=null; } }catch(e){} });
 
@@ -793,8 +841,8 @@ window.__start = function(FB){
   async function ensureTodayIndex(){ if(!state.metaSeen){ setTimeout(ensureTodayIndex,400); return; } if(!state.dates.includes(state.todayKey)){ state.dates.push(state.todayKey); state.dates.sort(); while(state.dates.length>3)state.dates.shift(); await pushMeta(); } }
 
   /* ===== start ===== */
-  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); }
-  function unlock(){ if($('gateInput').value.trim()===TEAM_PASSCODE){ sessionStorage.setItem('rb-unlocked','1'); $('gate').style.display='none'; startApp(); $('modesel').classList.add('show'); } else { $('gateErr').textContent='合言葉が違います'; } }
+  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; if(!(state.settings.fsNo>0))state.settings.fsNo=30; if(!(state.settings.fsTime>0))state.settings.fsTime=26; applyFontSizes(); drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); }
+  function unlock(){ if($('gateInput').value.trim()===TEAM_PASSCODE){ sessionStorage.setItem('rb-unlocked','1'); $('gate').style.display='none'; startApp(); $('modesel').classList.add('show'); } else { $('gateErr').textContent='パスワードが違います'; } }
   $('gateBtn').addEventListener('click',unlock);
   $('gateInput').addEventListener('keydown',e=>{ if(e.key==='Enter')unlock(); });
   if(sessionStorage.getItem('rb-unlocked')==='1'){ $('gate').style.display='none'; startApp(); $('appRoot').style.display='block'; }
