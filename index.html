@@ -18,7 +18,8 @@
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
-  body{background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh;}
+  body{background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; touch-action:manipulation;}
+  button{touch-action:manipulation;}
   .app{max-width:820px; margin:0 auto; padding:0 0 90px;}
 
   /* Gate */
@@ -108,7 +109,7 @@
   .cell.cell-time .numline{justify-content:flex-end;}
   .bus-no{font-family:var(--mono); font-size:var(--fs-no,30px); font-weight:800; letter-spacing:0; line-height:1; color:#ffffff;}
   .cat-tag{font-size:8px; color:#8a939d; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78px; height:11px; line-height:11px;}
-  .time-btn{font-family:var(--mono); font-size:var(--fs-time,26px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1; background:transparent; border:none; color:#f0f2f4; padding:0; text-align:right; width:100%; white-space:nowrap; overflow:visible;}
+  .time-btn{font-family:var(--mono); font-size:var(--fs-time,22px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1; background:transparent; border:none; color:#f0f2f4; padding:0; text-align:right; width:100%; white-space:nowrap; overflow:visible;}
   .time-btn.empty{color:var(--text-dim); border-bottom-color:var(--amber-dim);}
   .nextbadge{position:absolute; top:-7px; right:0; font-size:9px; font-weight:800; color:#0c2a1c; background:var(--green); border-radius:4px; padding:1px 5px; width:max-content; z-index:3;}
   .cell.cell-time{position:relative;}
@@ -140,7 +141,7 @@
   .timepad-display .ph{color:var(--text-dim);}
   .timepad-display .colon{color:var(--amber); margin:0 4px;}
   .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px;}
-  .key{background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:17px 0; font-family:var(--mono); font-size:22px; font-weight:700; color:var(--text); text-align:center;}
+  .key{background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:17px 0; font-family:var(--mono); font-size:22px; font-weight:700; color:var(--text); text-align:center; touch-action:manipulation; user-select:none; -webkit-user-select:none;}
   .key:active{background:var(--amber); color:#1b1404;}
   .key.fn{font-size:13px; color:var(--text-dim);}
 
@@ -212,10 +213,6 @@
 <div class="modesel" id="modesel">
   <h2>入力モードを選択</h2>
   <div class="sub">本日のデータをどの方法で入力しますか？</div>
-  <div class="mode-card" id="modePhoto">
-    <div class="ico">📷</div>
-    <div class="mc-body"><h3>写真撮影モード</h3><p>運行表を4分割で撮影し、号車・出庫・帰庫を読み取ります。手書きは精度が落ちるため、結果を確認・修正してください。</p></div>
-  </div>
   <div class="mode-card" id="modeManual">
     <div class="ico">⌨️</div>
     <div class="mc-body"><h3>手打ち入力モード</h3><p>号車順に「出庫→帰庫」を数字だけで連続入力。確定せずに打ち続け、最後にまとめて反映します。一番速くて確実です。</p></div>
@@ -242,9 +239,10 @@
 
   <div class="modebar">
     <div class="seg" id="viewSeg">
-      <button data-view="return" class="on">帰庫順</button>
+      <button data-view="genpon" class="on">原本順</button>
       <button data-view="depart">出庫順</button>
-      <button data-view="busNo">号車順</button>
+      <button data-view="return">帰庫順</button>
+      <button data-view="carNo">車番順</button>
     </div>
   </div>
 
@@ -364,6 +362,35 @@
   </div>
 </div>
 
+<!-- テンプレ自動メンテ: 新号車の追加 -->
+<div class="modal-overlay" id="tplAddOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3>新しい号車がデータにあります</h3><button class="modal-close" data-close="tplAddOverlay">✕</button></div>
+    <div class="hint" id="tplAddProg" style="margin-bottom:10px;"></div>
+    <div class="seq-target" style="padding:4px 0 10px;"><div class="sno" id="tplAddNo" style="font-size:34px;">----</div></div>
+    <div class="field"><label>この号車をテンプレートに追加しますか? 「はい」で車種カテゴリを選んで追加・反映します。「いいえ」の場合この号車は今回反映されません。</label>
+      <select id="tplAddCat" style="width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; color:var(--text); padding:11px 12px; font-size:15px;"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="tplAddSkip">いいえ（追加しない）</button>
+      <button class="btn primary" id="tplAddYes">はい（追加）</button>
+    </div>
+  </div>
+</div>
+
+<!-- テンプレ自動メンテ: 不在号車の削除 -->
+<div class="modal-overlay" id="tplDelOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3>データに無い号車がテンプレートにあります</h3><button class="modal-close" data-close="tplDelOverlay">✕</button></div>
+    <div class="hint" style="margin-bottom:10px;">今回のデータに含まれていない号車です。テンプレートから削除しますか? チェックを入れた号車だけ削除します（移籍・廃車など）。残すものはチェックを外してください。</div>
+    <div id="tplDelList" style="max-height:40vh; overflow-y:auto; margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="tplDelNone">削除しない</button>
+      <button class="btn primary" id="tplDelApply">チェックした号車を削除</button>
+    </div>
+  </div>
+</div>
+
 <!-- Template editor -->
 <div class="modal-overlay" id="tplOverlay">
   <div class="modal">
@@ -380,20 +407,13 @@
     <div class="modal-header"><h3>設定</h3><button class="modal-close" data-close="settingsOverlay">✕</button></div>
     <div class="field"><label>帰庫予定の何分前から黄色く表示するか（分）</label><input type="number" id="fThreshold" min="1" max="180" value="5"></div>
     <div class="field"><label>号車のフォントサイズ（<span id="fsNoVal">30</span>px）</label><input type="range" id="fsNo" min="18" max="56" step="1" value="30" style="width:100%;"></div>
-    <div class="field"><label>時刻のフォントサイズ（<span id="fsTimeVal">26</span>px）</label><input type="range" id="fsTime" min="16" max="48" step="1" value="26" style="width:100%;"></div>
+    <div class="field"><label>時刻のフォントサイズ（<span id="fsTimeVal">22</span>px）</label><input type="range" id="fsTime" min="16" max="48" step="1" value="22" style="width:100%;"></div>
     <div class="field"><label>帰庫順モードで表示する台数（現在時刻の上下）</label>
       <div class="seg2" id="winSeg">
         <button data-above="3" data-below="7">上3/下7</button>
-        <button data-above="4" data-below="10" class="on">上4/下10</button>
+        <button data-above="4" data-below="10">上4/下10</button>
         <button data-above="6" data-below="14">上6/下14</button>
-        <button data-above="0" data-below="999">全件</button>
-      </div>
-    </div>
-    <div class="field"><label>OCR読み取りモード</label>
-      <div class="seg2" id="ocrModeSeg">
-        <button data-mode="auto" class="on">自動</button>
-        <button data-mode="print">印刷重視</button>
-        <button data-mode="hand">手書き重視</button>
+        <button data-above="0" data-below="999" class="on">全件</button>
       </div>
     </div>
     <div class="field"><label>ブラウザ通知</label>
@@ -466,8 +486,8 @@ window.__start = function(FB){
   const state={
     todayKey:todayStr(), dates:[], activeDate:null,
     template:[], times:{},
-    view:'return',
-    settings:{ thresholdMin:5, ocrMode:'auto', winAbove:4, winBelow:10, fsNo:30, fsTime:26 },
+    view:'genpon', carOrderOffset:0,
+    settings:{ thresholdMin:5, winAbove:0, winBelow:999, fsNo:30, fsTime:22 },
     notified:new Set(),
     blinked:new Set(),
     ocr:{ ready:false, failed:false, worker:null },
@@ -544,15 +564,50 @@ window.__start = function(FB){
   function dayTimes(){ if(!state.times[state.activeDate]) state.times[state.activeDate]={}; return state.times[state.activeDate]; }
   function rec(no){ const t=dayTimes(); if(!t[no]) t[no]={r:'',d:'',returned:false}; return t[no]; }
   function allBusesFlat(){ const out=[]; state.template.forEach(g=>g.nos.forEach(no=>out.push({busNo:no,cat:g.cat}))); return out; }
+  function catOf(no){ for(const g of state.template){ if(g.nos.includes(no))return g.cat; } return ''; }
 
   /* ===== render ===== */
   function renderClock(){ const d=new Date(); $('clock').textContent=pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
   function renderDayTabs(){ const w=$('dayTabs'); w.innerHTML=''; state.dates.forEach(dt=>{ const t=document.createElement('div'); t.className='day-tab'+(dt===state.activeDate?' active':''); t.textContent=fmtDateLabel(dt,state.todayKey); t.addEventListener('click',()=>switchDate(dt)); w.appendChild(t); }); }
   function renderViewUI(){
     document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.view===state.view));
-    if(state.view==='busNo'){ $('chCol1').textContent='帰庫予定'; $('chCol2').textContent='翌日出庫'; $('windowNote').textContent=''; }
+    if(state.view==='genpon'){ $('chCol1').textContent='翌日出庫'; $('chCol2').textContent='帰庫予定'; $('windowNote').textContent='原本と同じ並び'; }
+    else if(state.view==='carNo'){ $('chCol1').textContent='帰庫予定'; $('chCol2').textContent='翌日出庫'; const order=[0,1,2,3].map(i=>['大型','中型','特車','コミュ'][(i+state.carOrderOffset)%4]); $('windowNote').textContent='車番順 '+order.join('→')+'（車番順を再タップで並び替え）'; }
     else if(state.view==='depart'){ $('chCol1').textContent='翌日出庫 ▲'; $('chCol2').textContent='帰庫予定'; $('windowNote').textContent='出庫が早い順'; }
     else { $('chCol1').textContent='帰庫予定 ▲'; $('chCol2').textContent='翌日出庫'; $('windowNote').textContent=state.settings.winBelow>900?'全件':('現在 上'+state.settings.winAbove+'/下'+state.settings.winBelow); }
+  }
+
+  // 車番順: 大型/中型/特車/コミュニティ の4グループ。特例号車はコミュニティへ。
+  const COMMUNITY_EXCEPTIONS=['8901','8010','7303','7304'];
+  function carGroup(no){
+    if(COMMUNITY_EXCEPTIONS.includes(no)) return 3; // コミュニティ・ポンチョ
+    const lead=no[0];
+    // 大型: 1000/4000/6000番台
+    if(lead==='1'||lead==='4'||lead==='6') return 0;
+    // 中型: 8000〜9000番台
+    if(lead==='8'||lead==='9') return 1;
+    // 特車: 2000/3000/5000番台
+    if(lead==='2'||lead==='3'||lead==='5') return 2;
+    // コミュニティ: 0〜900番台(0または7始まり等の残り)
+    return 3;
+  }
+  const CAR_GROUP_NAMES=['大型','中型','特車','コミュニティ・ポンチョ'];
+  // コミュニティ・ポンチョ内の使用車両別の並び順（ポンチョ→くるりんばす→長久手Nバス）
+  const COMMUNITY_ORDER=['0255','0002','0101','0753','0754','0851','8010','8901','0102','0121','0253','0453','7303','7304'];
+  function buildCarNoGroups(){
+    const flat=allBusesFlat();
+    const groups=[[],[],[],[]];
+    flat.forEach(b=>{ groups[carGroup(b.busNo)].push(b); });
+    // 大型・中型・特車は号車の数字昇順
+    [0,1,2].forEach(gi=>groups[gi].sort((a,b)=>a.busNo.localeCompare(b.busNo)));
+    // コミュニティは使用車両別の固定順。リスト外はその後に数字昇順で続ける
+    groups[3].sort((a,b)=>{
+      let ia=COMMUNITY_ORDER.indexOf(a.busNo), ib=COMMUNITY_ORDER.indexOf(b.busNo);
+      if(ia===-1) ia=COMMUNITY_ORDER.length + parseInt(a.busNo,10);
+      if(ib===-1) ib=COMMUNITY_ORDER.length + parseInt(b.busNo,10);
+      return ia-ib;
+    });
+    return groups;
   }
 
   function buildReturnWindow(){
@@ -572,8 +627,12 @@ window.__start = function(FB){
     const c=$('listContainer'); renderViewUI();
     if(state.template.length===0){ c.innerHTML='<div class="list-empty">テンプレートが空です。📋から号車を登録してください。</div>'; return; }
     let html='';
-    if(state.view==='busNo'){
-      state.template.forEach(g=>{ if(!g.nos.length)return; html+=`<div class="cat-header">${g.cat}</div>`; [...g.nos].sort((a,b)=>a.localeCompare(b)).forEach(no=>html+=cardHtml(no,g.cat,false)); });
+    if(state.view==='genpon'){
+      state.template.forEach(g=>{ if(!g.nos.length)return; html+=`<div class="cat-header">${g.cat}</div>`; g.nos.forEach(no=>html+=cardHtml(no,g.cat,false)); });
+    } else if(state.view==='carNo'){
+      const groups=buildCarNoGroups();
+      const order=[0,1,2,3].map(i=>(i+state.carOrderOffset)%4);
+      order.forEach(gi=>{ const arr=groups[gi]; if(!arr.length)return; html+=`<div class="cat-header">${CAR_GROUP_NAMES[gi]}（${arr.length}台）</div>`; arr.forEach(b=>html+=cardHtml(b.busNo,b.cat,false)); });
     } else if(state.view==='depart'){
       const flat=allBusesFlat().map(b=>{ const r=rec(b.busNo); return {busNo:b.busNo,cat:b.cat,r:r.r,d:r.d}; });
       const withT=flat.filter(b=>parseT(b.d)!==null).sort((a,b)=>parseT(a.d)-parseT(b.d));
@@ -622,20 +681,28 @@ window.__start = function(FB){
   function colCell(no,slot,isNext){
     const r=rec(no);
     let f,lab;
-    if(state.view==='depart'){ f=(slot==='c1')?'d':'r'; } else { f=(slot==='c1')?'r':'d'; }
+    if(state.view==='depart'||state.view==='genpon'){ f=(slot==='c1')?'d':'r'; } else { f=(slot==='c1')?'r':'d'; }
     lab=(f==='r')?'帰庫予定':'翌日出庫';
     const val=r[f]||'';
     let badge='';
-    if(isNext){ if(state.view==='depart'&&f==='d') badge='<span class="nextbadge">次に出庫</span>'; else if(state.view!=='depart'&&f==='r') badge='<span class="nextbadge">次に帰庫</span>'; }
+    if(isNext){ if((state.view==='depart')&&f==='d') badge='<span class="nextbadge">次に出庫</span>'; else if((state.view==='return')&&f==='r') badge='<span class="nextbadge">次に帰庫</span>'; }
     return `<div class="cell cell-time">${badge}<span class="clabel">${lab}</span><span class="numline"><button class="time-btn ${val?'':'empty'}" data-edit="${f}">${val||'--:--'}</button></span><span class="cat-tag">&nbsp;</span></div>`;
   }
   function rowClass(no){ const r=rec(no); if(r.returned)return 'returned'; const rt=parseT(r.r); if(rt===null)return ''; const diff=rt-nowMin(); if(diff>=0&&diff<=state.settings.thresholdMin)return 'soon'; return ''; }
+  let editMode=false;
   function bindCards(){
     const c=$('listContainer');
-    c.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{ const no=e.target.closest('.card').dataset.no; const f=e.target.dataset.edit; const r=rec(no); openTimePad((f==='r'?'帰庫予定':'翌日出庫')+'　号車 '+no, r[f]||'', (val)=>{ r[f]=val; pushDay(); renderList(); }); }));
+    c.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{ if(editMode){ return; } const no=e.target.closest('.card').dataset.no; const f=e.target.dataset.edit; const r=rec(no); openTimePad((f==='r'?'帰庫予定':'翌日出庫')+'　号車 '+no, r[f]||'', (val)=>{ r[f]=val; pushDay(); renderList(); }); }));
     c.querySelectorAll('[data-action="toggle"]').forEach(btn=>btn.addEventListener('click',e=>{ const no=e.target.closest('.card').dataset.no; const r=rec(no); r.returned=!r.returned; pushDay(); renderList(); }));
   }
-  document.querySelectorAll('#viewSeg button').forEach(b=>b.addEventListener('click',()=>{ state.view=b.dataset.view; renderList(); }));
+  document.querySelectorAll('#viewSeg button').forEach(b=>b.addEventListener('click',()=>{
+    const v=b.dataset.view;
+    if(v==='carNo'){
+      if(state.view==='carNo'){ state.carOrderOffset=(state.carOrderOffset+1)%4; } // 再クリックでローテーション
+      else { state.carOrderOffset=0; } // 他ビューから切替時はデフォルト
+    }
+    state.view=v; renderList();
+  }));
 
   /* ===== single time pad ===== */
   function buildKeypad(elId,handler){ const kp=$(elId); kp.innerHTML=''; ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].forEach(l=>{ const k=document.createElement('button'); k.className='key'+(l==='⌫'||l==='OK'?' fn':''); k.textContent=l; k.addEventListener('click',()=>handler(l)); kp.appendChild(k); }); }
@@ -720,7 +787,6 @@ window.__start = function(FB){
 
   /* ===== input mode entry points ===== */
   $('btnInput').addEventListener('click',()=>{ $('modesel').classList.add('show'); });
-  $('modePhoto').addEventListener('click',()=>{ $('modesel').classList.remove('show'); openOcr(); });
   $('modeManual').addEventListener('click',()=>{ $('modesel').classList.remove('show'); startSeq(); });
   $('modeAI').addEventListener('click',()=>{ $('modesel').classList.remove('show'); $('aiText').value=''; $('aiPreview').style.display='none'; openModal('aiOverlay'); });
   $('modeSkip').addEventListener('click',()=>{ finishModeSelect(); });
@@ -745,16 +811,74 @@ window.__start = function(FB){
     if(!rows.length){ showToast('データがありません'); return; }
     let html='<table class="preview-table"><tr><th>号車</th><th>出庫</th><th>帰庫</th><th>状態</th></tr>';
     rows.forEach(r=>{ const cls=r.status==='bad'?'bad':(r.status==='unknown'?'unknown':''); const st=r.status==='bad'?'形式エラー':(r.status==='unknown'?'テンプレ外':'OK'); html+=`<tr class="${cls}"><td>${r.no}</td><td>${r.d||'-'}</td><td>${r.r||'-'}</td><td>${st}</td></tr>`; });
-    html+='</table>'; const okc=rows.filter(r=>r.status!=='bad').length; html+=`<div class="hint">反映対象 ${okc} 台（形式エラーは除外されます）。テンプレ外の号車も反映しますが、表示には出ません（テンプレに追加が必要）。</div>`;
+    html+='</table>'; const okc=rows.filter(r=>r.status!=='bad').length; const unk=rows.filter(r=>r.status==='unknown').length; html+=`<div class="hint">反映対象 ${okc} 台（形式エラーは除外）。${unk?('うち '+unk+' 台はテンプレ外の新号車です。一括反映時に「追加するか」を確認します。'):''}</div>`;
     const pv=$('aiPreview'); pv.style.display='block'; pv.innerHTML=html;
   });
   $('aiApplyBtn').addEventListener('click',()=>{
     const rows=parseAI($('aiText').value).filter(r=>r.status!=='bad');
     if(!rows.length){ showToast('反映できる行がありません'); return; }
+    closeModal('aiOverlay');
+    const tplSet=new Set(); state.template.forEach(g=>g.nos.forEach(n=>tplSet.add(n)));
+    const dataNos=new Set(rows.map(r=>r.no));
+    // テンプレ内の号車は即反映確定。テンプレ外は追加確認の結果次第
+    const knownRows=rows.filter(r=>tplSet.has(r.no));
+    const newRows=rows.filter(r=>!tplSet.has(r.no));
+    const toDel=[]; state.template.forEach(g=>g.nos.forEach(n=>{ if(!dataNos.has(n)) toDel.push(n); }));
+    startTplMaintain(knownRows, newRows, toDel);
+  });
+
+  /* ===== テンプレート自動メンテナンス ===== */
+  const tplMaint={ applyRows:[], newRows:[], addIdx:0, delList:[] };
+  function startTplMaintain(knownRows, newRows, toDel){
+    tplMaint.applyRows=knownRows.slice(); // 反映確定リスト（テンプレ内は確定）
+    tplMaint.newRows=newRows.slice(); tplMaint.addIdx=0; tplMaint.delList=toDel.slice();
+    if(tplMaint.newRows.length){ showNextAdd(); }
+    else { proceedToDelete(); }
+  }
+  function showNextAdd(){
+    if(tplMaint.addIdx>=tplMaint.newRows.length){ closeModal('tplAddOverlay'); proceedToDelete(); return; }
+    const row=tplMaint.newRows[tplMaint.addIdx];
+    $('tplAddProg').textContent='追加候補 '+(tplMaint.addIdx+1)+' / '+tplMaint.newRows.length+' 台';
+    $('tplAddNo').textContent=row.no;
+    const sel=$('tplAddCat'); sel.innerHTML='';
+    state.template.forEach((g,gi)=>{ const o=document.createElement('option'); o.value=gi; o.textContent=g.cat; sel.appendChild(o); });
+    openModal('tplAddOverlay');
+  }
+  $('tplAddYes').addEventListener('click',()=>{
+    const row=tplMaint.newRows[tplMaint.addIdx]; const gi=+$('tplAddCat').value;
+    if(state.template[gi] && !state.template[gi].nos.includes(row.no)){ state.template[gi].nos.push(row.no); }
+    tplMaint.applyRows.push(row); // 追加したので反映対象に含める
+    tplMaint.addIdx++; showNextAdd();
+  });
+  $('tplAddSkip').addEventListener('click',()=>{ /* いいえ：反映もしない（applyRowsに含めない） */ tplMaint.addIdx++; showNextAdd(); });
+  function proceedToDelete(){
+    // ここまでで反映対象が確定したのでデータ反映
+    applyAiRows(tplMaint.applyRows);
+    if(tplMaint.delList.length){ showDelList(); }
+    else { pushTpl(); renderList(); finishModeSelect(); }
+  }
+  function applyAiRows(rows){
     const t=dayTimes();
     rows.forEach(r=>{ if(!t[r.no])t[r.no]={r:'',d:'',returned:false}; t[r.no].d=r.d; t[r.no].r=r.r; });
-    pushDay(); renderList(); closeModal('aiOverlay'); showToast(rows.length+'台を反映しました'); finishModeSelect();
+    pushDay(); renderList(); showToast(rows.length+'台を反映しました');
+  }
+  function showDelList(){
+    const wrap=$('tplDelList'); wrap.innerHTML='';
+    tplMaint.delList.forEach(no=>{
+      const cat=catOf(no);
+      const row=document.createElement('label');
+      row.style.cssText='display:flex; align-items:center; gap:10px; padding:9px 6px; border-bottom:1px solid var(--line); font-size:14px;';
+      row.innerHTML=`<input type="checkbox" data-delno="${no}" style="width:18px;height:18px;"><span style="font-family:var(--mono); font-weight:700;">${no}</span><span style="color:var(--text-dim); font-size:11px;">${cat}</span>`;
+      wrap.appendChild(row);
+    });
+    openModal('tplDelOverlay');
+  }
+  $('tplDelApply').addEventListener('click',()=>{
+    const checked=[...$('tplDelList').querySelectorAll('input[data-delno]:checked')].map(c=>c.dataset.delno);
+    checked.forEach(no=>{ state.template.forEach(g=>{ const idx=g.nos.indexOf(no); if(idx>=0)g.nos.splice(idx,1); }); });
+    pushTpl(); renderList(); closeModal('tplDelOverlay'); if(checked.length)showToast(checked.length+'台をテンプレートから削除しました'); finishModeSelect();
   });
+  $('tplDelNone').addEventListener('click',()=>{ pushTpl(); renderList(); closeModal('tplDelOverlay'); finishModeSelect(); });
 
   /* ===== OCR (photo) ===== */
   let curQuad=0;
@@ -773,7 +897,6 @@ window.__start = function(FB){
 
   /* ===== Edit (修正) ===== */
   $('btnEdit').addEventListener('click',()=>{ showToast('修正したい号車をタップ、または下の一覧から選べます'); enterEditMode(); });
-  let editMode=false;
   function enterEditMode(){ editMode=true; document.body.dataset.edit='1'; renderList(); attachEditHandlers(); showToast('修正モード：号車をタップで編集'); }
   function attachEditHandlers(){
     // make whole card clickable to open edit dialog
@@ -811,8 +934,7 @@ window.__start = function(FB){
   $('btnSaveTpl').addEventListener('click',()=>{ pushTpl(); renderList(); closeModal('tplOverlay'); showToast('テンプレートを保存しました'); });
 
   /* ===== settings ===== */
-  function applySeg(){ document.querySelectorAll('#ocrModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===state.settings.ocrMode)); document.querySelectorAll('#winSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.above===state.settings.winAbove&&+b.dataset.below===state.settings.winBelow)); }
-  document.querySelectorAll('#ocrModeSeg button').forEach(b=>b.addEventListener('click',()=>{ state.settings.ocrMode=b.dataset.mode; applySeg(); }));
+  function applySeg(){ document.querySelectorAll('#winSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.above===state.settings.winAbove&&+b.dataset.below===state.settings.winBelow)); }
   document.querySelectorAll('#winSeg button').forEach(b=>b.addEventListener('click',()=>{ state.settings.winAbove=+b.dataset.above; state.settings.winBelow=+b.dataset.below; applySeg(); }));
   $('btnSettings').addEventListener('click',()=>{ $('fThreshold').value=state.settings.thresholdMin; $('fsNo').value=state.settings.fsNo; $('fsNoVal').textContent=state.settings.fsNo; $('fsTime').value=state.settings.fsTime; $('fsTimeVal').textContent=state.settings.fsTime; applySeg(); updateNotif(); openModal('settingsOverlay'); });
   function applyFontSizes(){ document.documentElement.style.setProperty('--fs-no', state.settings.fsNo+'px'); document.documentElement.style.setProperty('--fs-time', state.settings.fsTime+'px'); }
@@ -841,7 +963,7 @@ window.__start = function(FB){
   async function ensureTodayIndex(){ if(!state.metaSeen){ setTimeout(ensureTodayIndex,400); return; } if(!state.dates.includes(state.todayKey)){ state.dates.push(state.todayKey); state.dates.sort(); while(state.dates.length>3)state.dates.shift(); await pushMeta(); } }
 
   /* ===== start ===== */
-  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; if(!(state.settings.fsNo>0))state.settings.fsNo=30; if(!(state.settings.fsTime>0))state.settings.fsTime=26; applyFontSizes(); drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); }
+  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; if(!(state.settings.fsNo>0))state.settings.fsNo=30; if(!(state.settings.fsTime>0))state.settings.fsTime=22; applyFontSizes(); drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); }
   function unlock(){ if($('gateInput').value.trim()===TEAM_PASSCODE){ sessionStorage.setItem('rb-unlocked','1'); $('gate').style.display='none'; startApp(); $('modesel').classList.add('show'); } else { $('gateErr').textContent='パスワードが違います'; } }
   $('gateBtn').addEventListener('click',unlock);
   $('gateInput').addEventListener('keydown',e=>{ if(e.key==='Enter')unlock(); });
