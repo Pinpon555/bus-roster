@@ -94,9 +94,9 @@
   .card.returned{background:var(--red-bg); border-color:var(--red-soft);}
   .card.soon{background:var(--yellow-bg); border-color:var(--yellow-line);}
   .card.nextup{border-color:var(--next); box-shadow:0 0 0 1px var(--next);}
-  /* soon: navy text + 6-blink */
+  /* soon: navy text + 10-blink */
   .card.soon .bus-no, .card.soon .time-btn{ color:var(--navy); }
-  .card.soon.blink{ animation:soonblink 0.5s steps(1) 6; }
+  .card.soon.blink{ animation:soonblink 0.5s steps(1) 10; }
   @keyframes soonblink{ 0%{background:var(--yellow-bg);} 50%{background:#f5d836;} 100%{background:var(--yellow-bg);} }
   /* returned: wine text */
   .card.returned .bus-no, .card.returned .time-btn{ color:var(--wine); }
@@ -242,7 +242,14 @@
       <button data-view="genpon" class="on">原本順</button>
       <button data-view="depart">出庫順</button>
       <button data-view="return">帰庫順</button>
-      <button data-view="carNo">車番順</button>
+      <button data-view="carNo">車種順</button>
+    </div>
+  </div>
+  <div class="modebar" id="carSubBar" style="display:none; padding-top:6px;">
+    <div class="seg" id="carSortSeg">
+      <button data-sort="busNo" class="on">号車順</button>
+      <button data-sort="return">帰庫順</button>
+      <button data-sort="depart">出庫順</button>
     </div>
   </div>
 
@@ -486,7 +493,7 @@ window.__start = function(FB){
   const state={
     todayKey:todayStr(), dates:[], activeDate:null,
     template:[], times:{},
-    view:'genpon', carOrderOffset:0,
+    view:'genpon', carOrderOffset:0, carSort:'busNo',
     settings:{ thresholdMin:5, winAbove:0, winBelow:999, fsNo:30, fsTime:22 },
     notified:new Set(),
     blinked:new Set(),
@@ -572,9 +579,11 @@ window.__start = function(FB){
   function renderViewUI(){
     document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.view===state.view));
     if(state.view==='genpon'){ $('chCol1').textContent='翌日出庫'; $('chCol2').textContent='帰庫予定'; $('windowNote').textContent='原本と同じ並び'; }
-    else if(state.view==='carNo'){ $('chCol1').textContent='帰庫予定'; $('chCol2').textContent='翌日出庫'; const order=[0,1,2,3].map(i=>['大型','中型','特車','コミュ'][(i+state.carOrderOffset)%4]); $('windowNote').textContent='車番順 '+order.join('→')+'（車番順を再タップで並び替え）'; }
+    else if(state.view==='carNo'){ $('chCol1').textContent='帰庫予定'; $('chCol2').textContent='翌日出庫'; const order=[0,1,2,3].map(i=>['大型','中型','特車','コミュ'][(i+state.carOrderOffset)%4]); $('windowNote').textContent='車種順 '+order.join('→')+'（車種順を再タップで並び替え）'; }
     else if(state.view==='depart'){ $('chCol1').textContent='翌日出庫 ▲'; $('chCol2').textContent='帰庫予定'; $('windowNote').textContent='出庫が早い順'; }
     else { $('chCol1').textContent='帰庫予定 ▲'; $('chCol2').textContent='翌日出庫'; $('windowNote').textContent=state.settings.winBelow>900?'全件':('現在 上'+state.settings.winAbove+'/下'+state.settings.winBelow); }
+    // 車種順サブバー（号車順/帰庫順/出庫順）
+    const sub=$('carSubBar'); if(sub){ sub.style.display=(state.view==='carNo')?'flex':'none'; document.querySelectorAll('#carSortSeg button').forEach(b=>b.classList.toggle('on',b.dataset.sort===state.carSort)); }
   }
 
   // 車番順: 大型/中型/特車/コミュニティ の4グループ。特例号車はコミュニティへ。
@@ -598,14 +607,19 @@ window.__start = function(FB){
     const flat=allBusesFlat();
     const groups=[[],[],[],[]];
     flat.forEach(b=>{ groups[carGroup(b.busNo)].push(b); });
-    // 大型・中型・特車は号車の数字昇順
-    [0,1,2].forEach(gi=>groups[gi].sort((a,b)=>a.busNo.localeCompare(b.busNo)));
-    // コミュニティは使用車両別の固定順。リスト外はその後に数字昇順で続ける
-    groups[3].sort((a,b)=>{
-      let ia=COMMUNITY_ORDER.indexOf(a.busNo), ib=COMMUNITY_ORDER.indexOf(b.busNo);
-      if(ia===-1) ia=COMMUNITY_ORDER.length + parseInt(a.busNo,10);
-      if(ib===-1) ib=COMMUNITY_ORDER.length + parseInt(b.busNo,10);
-      return ia-ib;
+    const sort=state.carSort||'busNo';
+    function busNoSort(arr,gi){
+      if(gi===3){ // コミュニティは使用車両別固定順
+        arr.sort((a,b)=>{ let ia=COMMUNITY_ORDER.indexOf(a.busNo), ib=COMMUNITY_ORDER.indexOf(b.busNo); if(ia===-1)ia=COMMUNITY_ORDER.length+parseInt(a.busNo,10); if(ib===-1)ib=COMMUNITY_ORDER.length+parseInt(b.busNo,10); return ia-ib; });
+      } else { arr.sort((a,b)=>a.busNo.localeCompare(b.busNo)); }
+    }
+    function timeSort(arr,field){
+      arr.sort((a,b)=>{ const ta=parseT(rec(a.busNo)[field]), tb=parseT(rec(b.busNo)[field]); if(ta===null&&tb===null)return a.busNo.localeCompare(b.busNo); if(ta===null)return 1; if(tb===null)return -1; return ta-tb; });
+    }
+    groups.forEach((arr,gi)=>{
+      if(sort==='return') timeSort(arr,'r');
+      else if(sort==='depart') timeSort(arr,'d');
+      else busNoSort(arr,gi);
     });
     return groups;
   }
@@ -654,13 +668,13 @@ window.__start = function(FB){
     applyBlink();
   }
   function applyBlink(){
-    // blink cards newly entering "soon" once (6 times)
+    // blink cards newly entering "soon" once (10 times)
     $('listContainer').querySelectorAll('.card.soon').forEach(card=>{
       const no=card.dataset.no;
       if(!state.blinked.has(no)){
         state.blinked.add(no);
         card.classList.add('blink');
-        setTimeout(()=>{ card.classList.remove('blink'); }, 3200);
+        setTimeout(()=>{ card.classList.remove('blink'); }, 5200);
       }
     });
   }
@@ -703,6 +717,7 @@ window.__start = function(FB){
     }
     state.view=v; renderList();
   }));
+  document.querySelectorAll('#carSortSeg button').forEach(b=>b.addEventListener('click',()=>{ state.carSort=b.dataset.sort; renderList(); }));
 
   /* ===== single time pad ===== */
   function buildKeypad(elId,handler){ const kp=$(elId); kp.innerHTML=''; ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].forEach(l=>{ const k=document.createElement('button'); k.className='key'+(l==='⌫'||l==='OK'?' fn':''); k.textContent=l; k.addEventListener('click',()=>handler(l)); kp.appendChild(k); }); }
