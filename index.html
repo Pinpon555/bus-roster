@@ -66,7 +66,9 @@
   .mascot{position:relative; width:92px; height:26px; flex:none; overflow:hidden; border-radius:4px;}
   .scenery{image-rendering:pixelated; position:absolute; left:0; bottom:0; z-index:1;}
   .dotbus{image-rendering:pixelated; position:absolute; right:0; bottom:0; z-index:2;}
-  .day-tabs{display:flex; gap:6px; margin-top:10px; overflow-x:auto; padding-bottom:2px;}
+  .day-tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; flex-shrink:0;}
+  .main-session-row{display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin-top:6px; flex-wrap:nowrap;}
+  .main-session-row .main-session-bar{margin-top:0; flex:1; min-width:0;}
   .day-tab{font-family:var(--mono); font-size:12px; padding:6px 11px; border-radius:7px; background:rgba(255,255,255,0.08); color:#aeb6bf; border:1px solid #2c343d; white-space:nowrap; flex:none;}
   .day-tab.active{background:var(--amber); color:#1b1404; border-color:var(--amber); font-weight:700;}
 
@@ -264,8 +266,10 @@
       <div class="hclock" id="clock">--:--:--</div>
     </div>
     <div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncText">接続中…</span></div>
-    <div class="main-session-bar" id="mainSessionBar">現在のメイン：確認中…</div>
-    <div class="day-tabs" id="dayTabs"></div>
+    <div class="main-session-row">
+      <div class="main-session-bar" id="mainSessionBar">現在のメイン：確認中…</div>
+      <div class="day-tabs" id="dayTabs"></div>
+    </div>
   </div>
 
   <div class="modebar">
@@ -518,14 +522,14 @@ window.__start = function(FB){
   const pad2=(n)=>String(n).padStart(2,'0');
   const todayStr=(d=new Date())=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
   function fmtDateLabel(s,t){ if(s===t)return '本日'; const d=new Date(s+'T00:00:00'); return (d.getMonth()+1)+'/'+d.getDate(); }
-  function parseT(t){ if(!t)return null; const m=String(t).match(/^(\d{1,2}):(\d{2})$/); if(!m)return null; const h=+m[1],mi=+m[2]; if(h>23||mi>59)return null; return h*60+mi; }
+  function parseT(t){ if(!t)return null; const m=String(t).match(/^(\d{1,2}):(\d{2})$/); if(!m)return null; const h=+m[1],mi=+m[2]; if(h>29||mi>59)return null; return h*60+mi; } // 24:00〜29:59は深夜帯の同一営業日として扱う（23:59の続きとして正しく並ぶ）
   function normTime(s){ // accept "1938"/"19:38"/"7:7" -> "HH:MM" or '' 
     if(s==null) return '';
     s=String(s).trim();
     if(s==='') return '';
     let m=s.match(/^(\d{1,2}):(\d{1,2})$/);
-    if(m){ const h=+m[1],mi=+m[2]; if(h<=23&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
-    if(/^\d{4}$/.test(s)){ const h=+s.slice(0,2),mi=+s.slice(2); if(h<=23&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
+    if(m){ const h=+m[1],mi=+m[2]; if(h<=29&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
+    if(/^\d{4}$/.test(s)){ const h=+s.slice(0,2),mi=+s.slice(2); if(h<=29&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
     if(/^\d{3}$/.test(s)){ const h=+s.slice(0,1),mi=+s.slice(1); if(h<=23&&mi<=59) return pad2(h)+':'+pad2(mi); return s; }
     return s; // leave as-is (文字など)
   }
