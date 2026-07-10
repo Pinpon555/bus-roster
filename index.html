@@ -30,6 +30,17 @@
   .gate input:focus{outline:none; border-color:var(--amber);}
   .gate button{margin-top:16px; width:100%; max-width:240px; background:var(--amber); color:#1b1404; border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:700;}
   .gate .err{color:var(--red-soft); font-size:12px; margin-top:10px; min-height:16px;}
+  .role-select{width:100%; max-width:240px; display:flex; flex-direction:column; gap:12px;}
+  .role-btn{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:16px; font-size:16px; font-weight:700;}
+  .role-btn:active{border-color:var(--amber);}
+  .role-btn .sub-label{display:block; font-size:11px; font-weight:400; color:var(--text-dim); margin-top:3px;}
+  .role-back{margin-top:14px; background:none; border:none; color:var(--text-dim); font-size:12px; text-decoration:underline;}
+  .name-select{width:100%; max-width:240px; display:flex; gap:10px; margin-top:6px;}
+  .name-select button{flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:14px 6px; font-size:14px; font-weight:700;}
+  .name-select button:active{border-color:var(--amber);}
+  .main-session-bar{margin-top:4px; font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .main-session-bar .who{color:var(--amber); font-weight:700;}
+  .main-session-bar .viewer-tag{color:var(--text-dim);}
 
   /* Mode select */
   .modesel{position:fixed; inset:0; background:var(--bg); z-index:90; display:none; flex-direction:column; padding:24px 20px; overflow-y:auto;}
@@ -204,10 +215,29 @@
 
 <div class="gate" id="gate">
   <h1>🚌 Bus Time Scheduler</h1>
-  <p>パスワードを入力してください</p>
-  <input type="password" id="gateInput" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
-  <button id="gateBtn">開く</button>
-  <div class="err" id="gateErr"></div>
+
+  <div class="role-select" id="roleSelect">
+    <p style="margin-bottom:14px;">利用方法を選んでください</p>
+    <button class="role-btn" id="roleMainBtn">構内21c用<span class="sub-label">配車の指示・編集ができます</span></button>
+    <button class="role-btn" id="roleSubBtn">予備用<span class="sub-label">閲覧のみ（編集はできません）</span></button>
+  </div>
+
+  <div id="passStep" style="display:none; width:100%; max-width:240px; flex-direction:column; align-items:center;">
+    <p id="passStepLabel">パスワードを入力してください</p>
+    <input type="password" id="gateInput" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
+    <button id="gateBtn">開く</button>
+    <button class="role-back" id="passBackBtn">← 選び直す</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+
+  <div id="nameStep" style="display:none; width:100%; max-width:240px; flex-direction:column; align-items:center;">
+    <p>お名前を選んでください</p>
+    <div class="name-select">
+      <button id="nameYobi1Btn">予備</button>
+      <button id="nameYobi2Btn">予備2</button>
+    </div>
+    <button class="role-back" id="nameBackBtn">← 選び直す</button>
+  </div>
 </div>
 
 <div class="modesel" id="modesel">
@@ -234,6 +264,7 @@
       <div class="hclock" id="clock">--:--:--</div>
     </div>
     <div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncText">接続中…</span></div>
+    <div class="main-session-bar" id="mainSessionBar">現在のメイン：確認中…</div>
     <div class="day-tabs" id="dayTabs"></div>
   </div>
 
@@ -257,6 +288,7 @@
     <button class="btn primary" id="btnInput">＋ 入力モード</button>
     <button class="btn ghost" id="btnEdit" style="color:#1a1f26;">✎ 修正</button>
     <div class="spacer"></div>
+    <button class="btn ghost ico-only" id="btnEndMain" title="メインを終了" style="display:none; font-size:11px; color:#1a1f26;">メイン終了</button>
     <button class="btn icon-only ghost" id="btnTemplate" title="号車テンプレート">📋</button>
     <button class="btn icon-only ghost" id="btnSettings">⚙️</button>
   </div>
@@ -444,7 +476,7 @@ try{
   const db=f.getFirestore(app);
   const auth=au.getAuth(app);
   await au.signInAnonymously(auth); // 匿名ログインの完了を待ってからDB操作を許可（未認証アクセスを弾くルール対応）
-  FB={db, doc:f.doc, setDoc:f.setDoc, onSnapshot:f.onSnapshot};
+  FB={db, doc:f.doc, setDoc:f.setDoc, onSnapshot:f.onSnapshot, getDoc:f.getDoc};
   FB_OK=true;
 }catch(e){ FB_OK=false; } // 匿名ログイン未有効/通信失敗時はこの端末のみlocalStorage動作に安全退避
 window.__start(FB_OK?FB:null);
@@ -455,6 +487,13 @@ window.__start = function(FB){
   const FB_OK=!!FB; let db=null;
   if(FB_OK){ try{ db=FB.db; }catch(e){} }
   const TEAM_PASSCODE="7677";
+  const SUB_PASSCODE="7777";
+  const MAIN_STALE_MS=90000; // メインの生存判定（心拍90秒以内なら「使用中」とみなす）
+  let userRole=null;      // 'main' | 'sub'
+  let subName=null;       // '予備' | '予備2'
+  let mainHolderId=null;  // このタブが確保したメインセッションのID
+  let mainHeartbeatTimer=null;
+  function isSessionActive(heartbeatAt, now, thresholdMs){ return !!heartbeatAt && (now-heartbeatAt) < thresholdMs; }
 
   const DEFAULT_TEMPLATE=[
     {cat:"基幹ノンステAT(車椅子2席)", nos:["1119","1120","1121","1122","1123","1256","1257"]},
@@ -514,6 +553,7 @@ window.__start = function(FB){
   const dayRef=(d)=>FB.doc(db,'days',d);
   const metaRef=()=>FB.doc(db,'meta','index');
   const tplRef=()=>FB.doc(db,'meta','template');
+  const mainSessionRef=()=>FB.doc(db,'meta','mainSession');
   const lsDay=(d)=>'rb-day-'+d;
 
   async function pushDay(){ state.writing=true; const payload=state.times[state.activeDate]||{}; if(FB_OK&&db){ try{ await FB.setDoc(dayRef(state.activeDate),{times:payload,updatedAt:Date.now()}); }catch(e){ showToast('保存に失敗（通信を確認）',3000);} } try{ localStorage.setItem(lsDay(state.activeDate),JSON.stringify(payload)); }catch(e){} setTimeout(()=>state.writing=false,500); }
@@ -712,8 +752,8 @@ window.__start = function(FB){
   let editMode=false;
   function bindCards(){
     const c=$('listContainer');
-    c.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{ if(editMode){ return; } const no=e.target.closest('.card').dataset.no; const f=e.target.dataset.edit; const r=rec(no); openTimePad((f==='r'?'帰庫予定':'翌日出庫')+'　号車 '+no, r[f]||'', (val)=>{ r[f]=val; pushDay(); renderList(); }); }));
-    c.querySelectorAll('[data-action="toggle"]').forEach(btn=>btn.addEventListener('click',e=>{ const no=e.target.closest('.card').dataset.no; const r=rec(no); r.returned=!r.returned; pushDay(); renderList(); }));
+    c.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{ if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; } if(editMode){ return; } const no=e.target.closest('.card').dataset.no; const f=e.target.dataset.edit; const r=rec(no); openTimePad((f==='r'?'帰庫予定':'翌日出庫')+'　号車 '+no, r[f]||'', (val)=>{ r[f]=val; pushDay(); renderList(); }); }));
+    c.querySelectorAll('[data-action="toggle"]').forEach(btn=>btn.addEventListener('click',e=>{ if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; } const no=e.target.closest('.card').dataset.no; const r=rec(no); r.returned=!r.returned; pushDay(); renderList(); }));
   }
   document.querySelectorAll('#viewSeg button').forEach(b=>b.addEventListener('click',()=>{
     const v=b.dataset.view;
@@ -922,7 +962,7 @@ window.__start = function(FB){
   function attachEditHandlers(){
     // make whole card clickable to open edit dialog
     $('listContainer').querySelectorAll('.card').forEach(card=>{
-      card.addEventListener('click',(e)=>{ if(!editMode)return; if(e.target.closest('[data-action]'))return; const no=card.dataset.no; openEdit(no); });
+      card.addEventListener('click',(e)=>{ if(userRole==='sub')return; if(!editMode)return; if(e.target.closest('[data-action]'))return; const no=card.dataset.no; openEdit(no); });
     });
   }
   function openEdit(no){ const r=rec(no); state.edit.no=no; $('editTitle').textContent='修正　号車 '+no; $('editNo').value=no; $('editD').value=r.d||''; $('editR').value=r.r||''; openModal('editOverlay'); }
@@ -981,15 +1021,119 @@ window.__start = function(FB){
   function switchDate(d){ state.activeDate=d; renderDayTabs(); subscribeDay(d); }
   function subscribeMeta(){ if(!(FB_OK&&db)){ state.metaSeen=true; let dates=[]; try{ const r=localStorage.getItem('rb-meta'); if(r)dates=JSON.parse(r); }catch(e){} if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3)dates.shift(); } state.dates=dates; state.activeDate=state.todayKey; subscribeDay(state.activeDate); renderDayTabs(); return; } state.unsubMeta=FB.onSnapshot(metaRef(),snap=>{ state.metaSeen=true; const data=snap.exists()?snap.data():null; let dates=(data&&Array.isArray(data.dates))?data.dates.slice():[]; if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3)dates.shift(); } state.dates=dates; if(!state.activeDate){ state.activeDate=state.todayKey; subscribeDay(state.activeDate); } renderDayTabs(); },()=>{}); }
   function subscribeTpl(){ if(!(FB_OK&&db)){ let t=null; try{ const r=localStorage.getItem('rb-tpl'); if(r)t=JSON.parse(r); }catch(e){} state.template=t||JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); renderList(); return; } state.unsubTpl=FB.onSnapshot(tplRef(),snap=>{ const data=snap.exists()?snap.data():null; if(data&&Array.isArray(data.template)&&data.template.length){ state.template=data.template; } else { state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); pushTpl(); } renderList(); if(editMode)attachEditHandlers(); },()=>{ state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); renderList(); }); }
+
+  /* ===== メイン/サブ 権限管理 ===== */
+  function updateMainBar(activeBool,sinceMs){
+    const el=$('mainSessionBar'); if(!el) return;
+    let txt = activeBool ? ('現在のメイン：<span class="who">構内21c</span>（'+pad2(new Date(sinceMs).getHours())+':'+pad2(new Date(sinceMs).getMinutes())+'〜）') : '現在のメイン：なし';
+    if(userRole==='sub') txt += ' <span class="viewer-tag">・あなたは閲覧のみ（'+subName+'）</span>';
+    else if(userRole==='main') txt += ' <span class="viewer-tag">・あなたが構内21c（メイン）です</span>';
+    el.innerHTML=txt;
+  }
+  function subscribeMainSession(){
+    if(!(FB_OK&&db)){ updateMainBar(userRole==='main', Date.now()); return; }
+    FB.onSnapshot(mainSessionRef(), snap=>{
+      const data=snap.exists()?snap.data():null;
+      const active=data?isSessionActive(data.heartbeatAt, Date.now(), MAIN_STALE_MS):false;
+      updateMainBar(active, data?data.since:null);
+    }, ()=>{});
+  }
+  async function claimMainSession(){
+    // FB未接続（オフライン）時は競合確認をスキップしてローカルでメイン扱い
+    if(!(FB_OK&&db)){ mainHolderId='local-'+Date.now(); return true; }
+    try{
+      const snap=await FB.getDoc(mainSessionRef());
+      const data=snap.exists()?snap.data():null;
+      const now=Date.now();
+      if(data && isSessionActive(data.heartbeatAt, now, MAIN_STALE_MS) && data.holderId!==mainHolderId){
+        const since=new Date(data.since||now);
+        const ok=confirm('現在 構内21c が別端末で操作中です（'+pad2(since.getHours())+':'+pad2(since.getMinutes())+'〜）。\nそれでもメインとしてログインしますか？');
+        if(!ok) return false;
+      }
+      mainHolderId = mainHolderId || ('h-'+now+'-'+Math.random().toString(36).slice(2,8));
+      await FB.setDoc(mainSessionRef(),{holderId:mainHolderId, since:now, heartbeatAt:now});
+      return true;
+    }catch(e){ mainHolderId=mainHolderId||('local-'+Date.now()); return true; } // 通信失敗時はローカルメインとして継続（業務を止めない）
+  }
+  function startMainHeartbeat(){
+    stopMainHeartbeat();
+    mainHeartbeatTimer=setInterval(()=>{
+      if(!(FB_OK&&db)||!mainHolderId) return;
+      FB.setDoc(mainSessionRef(),{holderId:mainHolderId, since:Date.now(), heartbeatAt:Date.now()},{merge:true}).catch(()=>{});
+    },30000);
+  }
+  function stopMainHeartbeat(){ if(mainHeartbeatTimer){ clearInterval(mainHeartbeatTimer); mainHeartbeatTimer=null; } }
+  async function endMainSession(){
+    stopMainHeartbeat();
+    if(FB_OK&&db&&mainHolderId){ try{ await FB.setDoc(mainSessionRef(),{holderId:'', since:0, heartbeatAt:0}); }catch(e){} }
+    sessionStorage.removeItem('rb-unlocked'); sessionStorage.removeItem('rb-role'); sessionStorage.removeItem('rb-subname'); sessionStorage.removeItem('rb-holderid');
+    location.reload();
+  }
+  function applyRoleUI(){
+    const isSub = userRole==='sub';
+    ['btnInput','btnEdit','btnTemplate'].forEach(id=>{ const el=$(id); if(el) el.style.display = isSub ? 'none' : ''; });
+    const endBtn=$('btnEndMain'); if(endBtn) endBtn.style.display = userRole==='main' ? '' : 'none';
+  }
   async function ensureTodayIndex(){ if(!state.metaSeen){ setTimeout(ensureTodayIndex,400); return; } if(!state.dates.includes(state.todayKey)){ state.dates.push(state.todayKey); state.dates.sort(); while(state.dates.length>3)state.dates.shift(); await pushMeta(); } }
 
   /* ===== start ===== */
-  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; if(!(state.settings.fsNo>0))state.settings.fsNo=30; if(!(state.settings.fsTime>0))state.settings.fsTime=22; applyFontSizes(); drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); }
-  function unlock(){ if($('gateInput').value.trim()===TEAM_PASSCODE){ sessionStorage.setItem('rb-unlocked','1'); $('gate').style.display='none'; startApp(); $('modesel').classList.add('show'); } else { $('gateErr').textContent='パスワードが違います'; } }
+  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; if(!(state.settings.fsNo>0))state.settings.fsNo=30; if(!(state.settings.fsTime>0))state.settings.fsTime=22; applyFontSizes(); drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); applyRoleUI(); subscribeMainSession(); if(userRole==='main') startMainHeartbeat(); }
+  /* ===== ログインフロー：役割選択 → パスコード → （サブのみ）名前選択 ===== */
+  let pendingRole=null;
+  function showRoleSelect(){ pendingRole=null; $('roleSelect').style.display='flex'; $('passStep').style.display='none'; $('nameStep').style.display='none'; $('gateInput').value=''; $('gateErr').textContent=''; }
+  function showPassStep(role){ pendingRole=role; $('roleSelect').style.display='none'; $('nameStep').style.display='none'; $('passStep').style.display='flex'; $('passStepLabel').textContent = role==='main' ? '構内21c用パスワードを入力してください' : '予備用パスワードを入力してください'; $('gateInput').value=''; $('gateErr').textContent=''; setTimeout(()=>$('gateInput').focus(),100); }
+  function showNameStep(){ $('passStep').style.display='none'; $('nameStep').style.display='flex'; }
+  $('roleMainBtn').addEventListener('click',()=>showPassStep('main'));
+  $('roleSubBtn').addEventListener('click',()=>showPassStep('sub'));
+  $('passBackBtn').addEventListener('click',showRoleSelect);
+  $('nameBackBtn').addEventListener('click',showRoleSelect);
+
+  async function finishLoginAsMain(){
+    sessionStorage.setItem('rb-unlocked','1'); sessionStorage.setItem('rb-role','main');
+    userRole='main'; subName=null;
+    $('gate').style.display='none';
+    const ok=await claimMainSession();
+    if(!ok){ // 相手を優先して自分はサブ扱いで閲覧のみに切替
+      userRole='sub'; subName='(閲覧)'; sessionStorage.setItem('rb-role','sub'); sessionStorage.setItem('rb-subname',subName);
+      startApp(); $('appRoot').style.display='block';
+      return;
+    }
+    sessionStorage.setItem('rb-holderid',mainHolderId);
+    startApp(); $('modesel').classList.add('show');
+  }
+  function finishLoginAsSub(name){
+    sessionStorage.setItem('rb-unlocked','1'); sessionStorage.setItem('rb-role','sub'); sessionStorage.setItem('rb-subname',name);
+    userRole='sub'; subName=name;
+    $('gate').style.display='none'; $('nameStep').style.display='none';
+    startApp(); $('appRoot').style.display='block';
+  }
+  $('nameYobi1Btn').addEventListener('click',()=>finishLoginAsSub('予備'));
+  $('nameYobi2Btn').addEventListener('click',()=>finishLoginAsSub('予備2'));
+
+  function unlock(){
+    const v=$('gateInput').value.trim();
+    if(pendingRole==='main'){
+      if(v===TEAM_PASSCODE){ finishLoginAsMain(); } else { $('gateErr').textContent='パスワードが違います'; }
+    } else if(pendingRole==='sub'){
+      if(v===SUB_PASSCODE){ showNameStep(); } else { $('gateErr').textContent='パスワードが違います'; }
+    }
+  }
   $('gateBtn').addEventListener('click',unlock);
   $('gateInput').addEventListener('keydown',e=>{ if(e.key==='Enter')unlock(); });
-  if(sessionStorage.getItem('rb-unlocked')==='1'){ $('gate').style.display='none'; startApp(); $('appRoot').style.display='block'; }
-  else setTimeout(()=>$('gateInput').focus(),100);
+  $('btnEndMain').addEventListener('click',()=>{ if(confirm('メインを終了して閲覧のみに戻りますか？')) endMainSession(); });
+
+  if(sessionStorage.getItem('rb-unlocked')==='1'){
+    const savedRole=sessionStorage.getItem('rb-role');
+    $('gate').style.display='none';
+    if(savedRole==='main'){
+      userRole='main'; mainHolderId=sessionStorage.getItem('rb-holderid')||null;
+      startApp(); $('appRoot').style.display='block';
+      claimMainSession().then(ok=>{ if(ok) sessionStorage.setItem('rb-holderid',mainHolderId); });
+    } else {
+      userRole='sub'; subName=sessionStorage.getItem('rb-subname')||'予備';
+      startApp(); $('appRoot').style.display='block';
+    }
+  } else { showRoleSelect(); }
 };
 </script>
 </body>
