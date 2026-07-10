@@ -438,16 +438,22 @@ let FB=null, FB_OK=false;
 try{
   const a=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
   const f=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-  FB={initializeApp:a.initializeApp,getFirestore:f.getFirestore,doc:f.doc,setDoc:f.setDoc,onSnapshot:f.onSnapshot};
+  const au=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+  const cfg={apiKey:"AIzaSyCC2XRPXx7iCnL5wqnXMZZ1HYvFSxzxJUk",authDomain:"bus-roster.firebaseapp.com",projectId:"bus-roster",storageBucket:"bus-roster.firebasestorage.app",messagingSenderId:"636226354728",appId:"1:636226354728:web:25f72f5bc93bc9664c7f1d"};
+  const app=a.initializeApp(cfg);
+  const db=f.getFirestore(app);
+  const auth=au.getAuth(app);
+  await au.signInAnonymously(auth); // 匿名ログインの完了を待ってからDB操作を許可（未認証アクセスを弾くルール対応）
+  FB={db, doc:f.doc, setDoc:f.setDoc, onSnapshot:f.onSnapshot};
   FB_OK=true;
-}catch(e){ FB_OK=false; }
+}catch(e){ FB_OK=false; } // 匿名ログイン未有効/通信失敗時はこの端末のみlocalStorage動作に安全退避
 window.__start(FB_OK?FB:null);
 </script>
 <script>
 window.__start = function(FB){
   "use strict";
   const FB_OK=!!FB; let db=null;
-  if(FB_OK){ try{ const cfg={apiKey:"AIzaSyCC2XRPXx7iCnL5wqnXMZZ1HYvFSxzxJUk",authDomain:"bus-roster.firebaseapp.com",projectId:"bus-roster",storageBucket:"bus-roster.firebasestorage.app",messagingSenderId:"636226354728",appId:"1:636226354728:web:25f72f5bc93bc9664c7f1d"}; const app=FB.initializeApp(cfg); db=FB.getFirestore(app); }catch(e){} }
+  if(FB_OK){ try{ db=FB.db; }catch(e){} }
   const TEAM_PASSCODE="7677";
 
   const DEFAULT_TEMPLATE=[
