@@ -11,6 +11,7 @@
     --red:#d6202a; --red-soft:#c0392b; --red-bg:#f7dcdc;
     --yellow-bg:#fbf0c4; --yellow-line:#e1bd1e;
     --green:#4a9a78; --next:#2f7d5a; --next-bg:#dff0e6;
+    --green-soft:#2e8b57; --green-bg:#dcf0e2; --forest:#1d5c38;
     --navy:#16235c; --wine:#8a1f2b; --now-orange:#e8730f;
     --header-bg:#14181e; --header-text:#eceae3;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -105,6 +106,7 @@
   .col-head .ch-r{text-align:right;}
   .card{display:grid; grid-template-columns:84px 1fr 1fr 54px; gap:8px; align-items:stretch; background:#1c2128; border:1px solid #2c343d; border-radius:11px; padding:11px 11px; margin-bottom:7px; transition:background .25s,border-color .25s; box-shadow:0 1px 3px rgba(0,0,0,0.18);}
   .card.returned{background:var(--red-bg); border-color:var(--red-soft);}
+  .card.placed{background:var(--green-bg); border-color:var(--green-soft);}
   .card.soon{background:var(--yellow-bg); border-color:var(--yellow-line);}
   .card.nextup{border-color:var(--next); box-shadow:0 0 0 1px var(--next);}
   /* soon: navy text + 10-blink */
@@ -114,6 +116,9 @@
   /* returned: wine text */
   .card.returned .bus-no, .card.returned .time-btn{ color:var(--wine); }
   .card.returned .cat-tag{ color:var(--wine); opacity:.8; }
+  /* placed: forest text */
+  .card.placed .bus-no, .card.placed .time-btn{ color:var(--forest); }
+  .card.placed .cat-tag{ color:var(--forest); opacity:.8; }
   .cell{display:flex; flex-direction:column; gap:0; min-width:0; justify-content:flex-start;}
   .cell.cell-time{align-items:flex-end;}
   .cell .clabel{font-size:9px; color:#9aa3ad; letter-spacing:.04em; height:12px; line-height:12px;}
@@ -129,6 +134,7 @@
   .card-actions{display:flex; flex-direction:column; gap:5px; align-items:stretch;}
   .status-toggle{font-size:10px; padding:7px 4px; border-radius:7px; border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim); font-weight:700; white-space:nowrap; min-width:0; width:100%;}
   .status-toggle.on{background:var(--red-soft); color:#fff; border-color:var(--red-soft);}
+  .status-toggle.placed{background:var(--green-soft); color:#fff; border-color:var(--green-soft);}
   .read-only-note{text-align:center; font-size:12px; color:var(--text-dim); padding:12px 0 2px;}
   .cat-header{font-size:11px; color:var(--amber); font-weight:700; padding:10px 4px 4px; letter-spacing:.04em;}
 
@@ -222,27 +228,27 @@
   .pk-msg{min-height:18px; font-size:11.5px; color:#a33; padding:2px 12px 4px; white-space:pre-line;}
   .pk-svgwrap{flex:1; overflow:hidden; position:relative; background:#eef0f3; touch-action:none;}
   .pk-svginner{transform-origin:0 0; will-change:transform; width:100%; height:100%;}
-  #pkSvg{width:100%; height:100%; display:block;}
-  #pkSvg .slot{pointer-events:all; cursor:pointer;}
-  #pkSvg .slot.slot-warn{stroke:#e02b2b !important; stroke-width:3px !important;}
-  #pkSvg .slot.slot-target{stroke:#0a8f4d !important; stroke-width:3px !important;}
+  .pk-map{width:100%; height:100%; display:none;}
+  .pk-map.on{display:block;}
+  .pk-slot{pointer-events:all; cursor:pointer;}
+  /* 枠そのものを状態色で塗る（カードの矩形は描かない） */
+  .pk-slot.pk-auto{fill:#EDEFF1 !important; stroke:#9AA0A6 !important;}
+  .pk-slot.pk-confirmed{fill:#1c2128 !important; stroke:#1c2128 !important;}
+  .pk-slot.pk-returned{fill:#f7dede !important; stroke:#c94f4f !important;}
+  .pk-slot.pk-moved{fill:#DCEBF7 !important; stroke:#2E7DB2 !important;}
+  .pk-slot.pk-soon{fill:#fff7d1 !important; stroke:#d7c26a !important;}
+  .pk-slot.pk-warn{stroke:#e02b2b !important; stroke-width:3px !important;}
+  .pk-slot.pk-sel{stroke:#d98324 !important; stroke-width:3px !important;}
+  .pk-slot.pk-unlocked{stroke-dasharray:5 3;}
+  /* 数字 */
+  .pk-num{font-family:var(--mono); font-weight:800; font-variant-numeric:tabular-nums;
+          fill:#111; pointer-events:none; user-select:none;}
+  .pk-num.t-confirmed{fill:#f2f5f7;}
+  .pk-num.t-auto{fill:#5F6368;}
+  .pk-num.t-returned{fill:#8c2b2b;}
+  .pk-num.t-moved{fill:#1F5C86;}
+  .pk-num.t-soon{fill:#1f2d5c;}
   /* 状態カード */
-  .pcard{cursor:grab;}
-  .pcard rect{stroke-width:1.6;}
-  .pcard.pc-auto rect{fill:#EDEFF1; stroke:#9AA0A6;}
-  .pcard.pc-auto text{fill:#5F6368;}
-  .pcard.pc-confirmed rect{fill:#1c2128; stroke:#1c2128;}
-  .pcard.pc-confirmed text{fill:#f2f5f7;}
-  .pcard.pc-returned rect{fill:#f7dede; stroke:#c94f4f;}
-  .pcard.pc-returned text{fill:#8c2b2b;}
-  .pcard.pc-moved rect{fill:#DCEBF7; stroke:#2E7DB2;}
-  .pcard.pc-moved text{fill:#1F5C86;}
-  .pcard.pc-soonblink rect{animation:pksoon 0.5s steps(1) 10;}
-  @keyframes pksoon{ 0%,100%{fill:#fff7d1;} 50%{fill:#EDEFF1;} }
-  .pcard.pc-soon rect{fill:#fff7d1 !important; stroke:#d7c26a !important;}
-  .pcard.pc-soon text{fill:#1f2d5c !important;}
-  .pcard.pc-locked{cursor:default;}
-  .pcard.pc-unlocked rect{stroke-dasharray:5 3;}
   /* 未配置トレイ */
   .pk-tray{display:flex; gap:6px; overflow-x:auto; padding:8px 10px; background:#fff; border-top:1px solid var(--line); -webkit-overflow-scrolling:touch;}
   .pk-chip{flex:0 0 auto; background:#1c2128; color:#f2f5f7; border-radius:8px; padding:6px 10px; font-family:var(--mono); font-size:14px; user-select:none; touch-action:none;}
@@ -381,423 +387,1187 @@
   <div class="pk-rotate-hint" id="pkRotateHint" style="display:none;">📱 この画面はスマホ横向きがおすすめです</div>
   <div class="pk-msg" id="pkMsg"></div>
   <div class="pk-svgwrap" id="pkWrap">
-    <div class="pk-svginner" id="pkInner"><svg id="pkSvg" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1032.56 1684.17">
+    <div class="pk-svginner" id="pkInner">
+<svg class="pk-map" id="pkMap-full" data-map="full" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1103.22 1945.89">
   <defs>
-    <style> #pkSvg .st0 {
+    <style>
+      #pkSvgWrap .full-st0 {
         stroke-dasharray: 6.73 6.73;
-      } #pkSvg .st0, #pkSvg .st1, #pkSvg .st2, #pkSvg .st3, #pkSvg .st4, #pkSvg .st5, #pkSvg .st6, #pkSvg .st7, #pkSvg .st8 {
+      }
+
+      #pkSvgWrap .full-st0, #pkSvgWrap .full-st1, #pkSvgWrap .full-st2, #pkSvgWrap .full-st3, #pkSvgWrap .full-st4, #pkSvgWrap .full-st5, #pkSvgWrap .full-st6, #pkSvgWrap .full-st7, #pkSvgWrap .full-st8 {
         stroke-miterlimit: 10;
-      } #pkSvg .st0, #pkSvg .st1, #pkSvg .st2, #pkSvg .st3, #pkSvg .st6, #pkSvg .st7, #pkSvg .st8 {
+      }
+
+      #pkSvgWrap .full-st0, #pkSvgWrap .full-st1, #pkSvgWrap .full-st2, #pkSvgWrap .full-st4, #pkSvgWrap .full-st8 {
         fill: none;
-      } #pkSvg .st0, #pkSvg .st1, #pkSvg .st4, #pkSvg .st5, #pkSvg .st7 {
+      }
+
+      #pkSvgWrap .full-st0, #pkSvgWrap .full-st1, #pkSvgWrap .full-st3, #pkSvgWrap .full-st5, #pkSvgWrap .full-st6, #pkSvgWrap .full-st8 {
         stroke-width: .5px;
-      } #pkSvg .st0, #pkSvg .st1, #pkSvg .st4, #pkSvg .st7 {
+      }
+
+      #pkSvgWrap .full-st0, #pkSvgWrap .full-st1, #pkSvgWrap .full-st5, #pkSvgWrap .full-st7, #pkSvgWrap .full-st8 {
         stroke: #000;
-      } #pkSvg .st9 {
-        letter-spacing: .25em;
-      } #pkSvg .st2 {
-        stroke: #00aa51;
-      } #pkSvg .st2, #pkSvg .st3, #pkSvg .st8 {
-        stroke-width: 5px;
-      } #pkSvg .st3 {
-        stroke: #002f99;
-      } #pkSvg .st10 {
-        fill: #002f99;
-      } #pkSvg .st10, #pkSvg .st11, #pkSvg .st12, #pkSvg .st13, #pkSvg .st14 {
+      }
+
+      #pkSvgWrap .full-st2 {
+        stroke-dasharray: 7.41 7.41;
+      }
+
+      #pkSvgWrap .full-st2, #pkSvgWrap .full-st4 {
+        stroke: #e5e3da;
+        stroke-width: 4px;
+      }
+
+      #pkSvgWrap .full-st3 {
+        fill: #7a6a56;
+        stroke: #7a6a56;
+      }
+
+      #pkSvgWrap .full-st9 {
+        opacity: .98;
+      }
+
+      #pkSvgWrap .full-st9, #pkSvgWrap .full-st10, #pkSvgWrap .full-st11, #pkSvgWrap .full-st12, #pkSvgWrap .full-st13, #pkSvgWrap .full-st14, #pkSvgWrap .full-st15, #pkSvgWrap .full-st16 {
+        fill: #f2f2f2;
         font-family: MS-Gothic, 'MS Gothic';
-      } #pkSvg .st10, #pkSvg .st12, #pkSvg .st13, #pkSvg .st14 {
-        font-size: 25px;
-      } #pkSvg .st11 {
-        font-size: 52.5px;
+      }
+
+      #pkSvgWrap .full-st9, #pkSvgWrap .full-st15 {
+        font-size: 35px;
+      }
+
+      #pkSvgWrap .full-st17, #pkSvgWrap .full-st18 {
+        fill: #afa194;
+      }
+
+      #pkSvgWrap .full-st19, #pkSvgWrap .full-st5, #pkSvgWrap .full-st6 {
+        fill: #fff;
+      }
+
+      #pkSvgWrap .full-st20 {
+        fill: #605446;
+      }
+
+      #pkSvgWrap .full-st10 {
+        font-size: 28.05px;
+      }
+
+      #pkSvgWrap .full-st18 {
+        font-family: HeiseiKakuGoStdN-W5-90ms-RKSJ-H, 'Heisei Kaku Gothic StdN';
+        font-size: 24.7px;
+      }
+
+      #pkSvgWrap .full-st18, #pkSvgWrap .full-st11, #pkSvgWrap .full-st13, #pkSvgWrap .full-st16 {
         glyph-orientation-vertical: 0deg;
         text-orientation: upright;
         writing-mode: tb;
-      } #pkSvg .st11, #pkSvg .st12 {
-        fill: #ffc100;
-      } #pkSvg .st4, #pkSvg .st5 {
-        fill: #fff;
-      } #pkSvg .st5 {
+      }
+
+      #pkSvgWrap .full-st11 {
+        font-size: 30.37px;
+      }
+
+      #pkSvgWrap .full-st6 {
         stroke: #231815;
-      } #pkSvg .st13 {
-        fill: #e60012;
-      } #pkSvg .st6 {
-        stroke: #ffc100;
-      } #pkSvg .st7 {
+      }
+
+      #pkSvgWrap .full-st12, #pkSvgWrap .full-st16 {
+        font-size: 20px;
+      }
+
+      #pkSvgWrap .full-st7 {
+        fill: #e5e3da;
+      }
+
+      #pkSvgWrap .full-st13, #pkSvgWrap .full-st14 {
+        font-size: 25px;
+      }
+
+      #pkSvgWrap .full-st21 {
+        fill: #c6bda7;
+      }
+
+      #pkSvgWrap .full-st8 {
         stroke-dasharray: 6.79 6.79;
-      } #pkSvg .st8 {
-        stroke: #e60012;
-      } #pkSvg .st14 {
-        fill: #00aa51;
+      }
+    </style>
+  </defs>
+  <g id="_レイヤー_2" data-name="レイヤー_2">
+    <rect class="full-st7" x=".5" y=".5" width="1102.22" height="1944.89"/>
+  </g>
+  <g id="_レイヤー_1" data-name="レイヤー_1">
+    <g>
+      <rect class="full-st3" x="53.07" y="1173.5" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="53.07" y="1220.11" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="53.07" y="1266.72" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="53.07" y="1313.33" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="53.07" y="1359.94" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="53.07" y="1406.55" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="53.07" y="1453.16" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="53.07" y="1499.78" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1173.5" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1220.11" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1266.72" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1313.33" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1359.94" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1406.55" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1453.16" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="201.92" y="1499.78" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1173.5" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1220.11" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1266.72" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1313.33" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1359.94" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1406.55" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1453.16" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="350.76" y="1499.78" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1173.5" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1220.11" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1266.72" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1313.33" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1359.94" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1406.55" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1453.16" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="499.61" y="1499.78" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1173.5" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1220.11" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1266.72" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1313.33" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1359.94" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1406.55" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1453.16" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="648.46" y="1499.78" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1173.5" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1220.11" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1266.72" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1313.33" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1359.94" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1406.55" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1453.16" width="148.85" height="46.61"/>
+      <rect class="full-st3" x="797.31" y="1499.78" width="148.85" height="46.61"/>
+    </g>
+    <rect class="full-st3" x="868.34" y="359.86" width="116.89" height="38.9" transform="translate(-34.41 98.39) rotate(-5.97)"/>
+    <rect class="full-st3" x="872.38" y="398.55" width="116.89" height="38.9" transform="translate(-38.41 99.02) rotate(-5.97)"/>
+    <rect class="full-st3" x="876.42" y="437.24" width="116.89" height="38.9" transform="translate(-42.41 99.65) rotate(-5.97)"/>
+    <rect class="full-st3" x="880.47" y="475.93" width="116.89" height="38.9" transform="translate(-46.41 100.28) rotate(-5.97)"/>
+    <rect class="full-st3" x="884.51" y="514.62" width="116.89" height="38.9" transform="translate(-50.41 100.91) rotate(-5.97)"/>
+    <rect class="full-st3" x="888.55" y="553.3" width="116.89" height="38.9" transform="translate(-54.4 101.54) rotate(-5.97)"/>
+    <rect class="full-st3" x="892.6" y="591.99" width="116.89" height="38.9" transform="translate(-58.4 102.17) rotate(-5.97)"/>
+    <rect class="full-st3" x="896.64" y="630.68" width="116.89" height="38.9" transform="translate(-62.4 102.8) rotate(-5.97)"/>
+    <rect class="full-st3" x="856.21" y="243.8" width="116.89" height="38.9" transform="translate(-22.41 96.5) rotate(-5.97)"/>
+    <rect class="full-st3" x="860.25" y="282.49" width="116.89" height="38.9" transform="translate(-26.41 97.13) rotate(-5.97)"/>
+    <rect class="full-st3" x="864.29" y="321.18" width="116.89" height="38.9" transform="translate(-30.41 97.76) rotate(-5.97)"/>
+    <g>
+      <polygon class="full-st3" points="151.97 1154.59 98.17 1035.67 136.95 1018.53 190.75 1137.44 151.97 1154.59"/>
+      <polygon class="full-st3" points="198.49 1154.59 144.7 1035.67 183.48 1018.53 237.27 1137.44 198.49 1154.59"/>
+      <polygon class="full-st3" points="245.02 1154.59 191.22 1035.67 230 1018.53 283.8 1137.44 245.02 1154.59"/>
+      <polygon class="full-st3" points="291.54 1154.59 237.74 1035.67 276.53 1018.53 330.32 1137.44 291.54 1154.59"/>
+      <polygon class="full-st3" points="338.06 1154.59 284.27 1035.67 323.05 1018.53 376.84 1137.44 338.06 1154.59"/>
+      <polygon class="full-st3" points="384.59 1154.59 330.79 1035.67 369.57 1018.53 423.37 1137.44 384.59 1154.59"/>
+      <polygon class="full-st3" points="431.11 1154.59 377.32 1035.67 416.1 1018.53 469.89 1137.44 431.11 1154.59"/>
+      <polygon class="full-st3" points="477.64 1154.59 423.84 1035.67 462.62 1018.53 516.42 1137.44 477.64 1154.59"/>
+      <polygon class="full-st3" points="524.16 1154.59 470.37 1035.67 509.15 1018.53 562.94 1137.44 524.16 1154.59"/>
+      <polygon class="full-st3" points="570.68 1154.59 516.89 1035.67 555.67 1018.53 609.47 1137.44 570.68 1154.59"/>
+      <polygon class="full-st3" points="617.21 1154.59 563.41 1035.67 602.2 1018.53 655.99 1137.44 617.21 1154.59"/>
+      <polygon class="full-st3" points="663.73 1154.59 609.94 1035.67 648.72 1018.53 702.51 1137.44 663.73 1154.59"/>
+      <polygon class="full-st3" points="710.26 1154.59 656.46 1035.67 695.24 1018.53 749.04 1137.44 710.26 1154.59"/>
+      <polygon class="full-st3" points="756.78 1154.59 702.99 1035.67 741.77 1018.53 795.56 1137.44 756.78 1154.59"/>
+      <polygon class="full-st3" points="803.31 1154.59 749.51 1035.67 788.29 1018.53 842.09 1137.44 803.31 1154.59"/>
+      <polygon class="full-st3" points="849.83 1154.59 796.04 1035.67 834.82 1018.53 888.61 1137.44 849.83 1154.59"/>
+      <polygon class="full-st3" points="896.35 1154.59 842.56 1035.67 881.34 1018.53 935.14 1137.44 896.35 1154.59"/>
+      <polygon class="full-st3" points="942.88 1154.59 889.08 1035.67 927.87 1018.53 981.66 1137.44 942.88 1154.59"/>
+      <polygon class="full-st3" points="990.38 1154.59 935.82 1036.01 974.6 1018.87 1029.17 1137.44 990.38 1154.59"/>
+    </g>
+    <g>
+      <rect class="full-st3" x="74.6" y="748.83" width="40.67" height="109.33"/>
+      <rect class="full-st3" x="115.27" y="748.83" width="40.67" height="109.33"/>
+      <rect class="full-st3" x="155.93" y="748.83" width="40.67" height="109.33"/>
+      <rect class="full-st3" x="196.6" y="748.83" width="40.67" height="109.33"/>
+    </g>
+    <rect class="full-st3" x="386.26" y="735.82" width="99.36" height="34.79"/>
+    <rect class="full-st3" x="386.26" y="769.36" width="99.36" height="34.79"/>
+    <rect class="full-st3" x="283.82" y="686.94" width="104.29" height="40.89"/>
+    <rect class="full-st3" x="392.66" y="686.94" width="104.29" height="40.89"/>
+    <rect class="full-st3" x="546.94" y="686.94" width="104.29" height="40.89"/>
+    <rect class="full-st3" x="731.72" y="182.32" width="34.84" height="115.89"/>
+    <rect class="full-st3" x="766.55" y="182.32" width="34.84" height="115.89"/>
+    <rect class="full-st3" x="801.39" y="182.32" width="34.84" height="115.89"/>
+    <rect class="full-st3" x="599.4" y="152.63" width="35.78" height="100.99" transform="translate(820.41 -414.17) rotate(90)"/>
+    <rect class="full-st3" x="599.4" y="188.41" width="35.78" height="100.99" transform="translate(856.19 -378.39) rotate(90)"/>
+    <polygon class="full-st3" points="342.61 302.38 313.02 289.73 358.32 188.65 387.91 201.3 342.61 302.38"/>
+    <polygon class="full-st3" points="377.69 303.19 348.09 290.54 393.39 189.46 422.98 202.11 377.69 303.19"/>
+    <polygon class="full-st3" points="412.76 303.99 383.17 291.35 428.47 190.27 458.06 202.91 412.76 303.99"/>
+    <polygon class="full-st3" points="447.84 304.8 418.25 292.15 463.55 191.07 493.14 203.72 447.84 304.8"/>
+    <polygon class="full-st3" points="482.92 305.61 453.33 292.96 498.62 191.88 528.22 204.53 482.92 305.61"/>
+    <polygon class="full-st3" points="517.99 306.42 488.4 293.77 533.7 192.69 563.29 205.34 517.99 306.42"/>
+    <rect class="full-st3" x="316.6" y="430.12" width="122.51" height="40.67"/>
+    <rect class="full-st3" x="439.12" y="389.45" width="122.51" height="40.67"/>
+    <rect class="full-st3" x="439.12" y="430.12" width="122.51" height="40.67"/>
+    <rect class="full-st3" x="561.63" y="389.45" width="122.51" height="40.67"/>
+    <rect class="full-st3" x="561.63" y="430.12" width="122.51" height="40.67"/>
+    <rect class="full-st3" x="155.68" y="430.12" width="122.51" height="40.67" transform="translate(667.39 233.51) rotate(90)"/>
+    <rect class="full-st3" x="196.35" y="430.12" width="122.51" height="40.67" transform="translate(708.06 192.84) rotate(90)"/>
+    <rect class="full-st3" x="691.68" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="726.63" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="761.58" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="796.53" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="831.48" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="866.43" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="901.38" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="936.32" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="971.27" y="808.24" width="35" height="109.1"/>
+    <rect class="full-st3" x="1018.78" y="808.24" width="35" height="109.1" transform="translate(-150.76 223.09) rotate(-11.46)"/>
+    <rect class="full-st3" x="691.65" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="726.6" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="761.55" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="796.5" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="831.45" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="866.4" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="901.35" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="936.3" y="698.67" width="35" height="109.1"/>
+    <rect class="full-st3" x="981.66" y="721.22" width="82.68" height="34.79"/>
+    <rect class="full-st3" x="981.66" y="754.75" width="82.68" height="34.79"/>
+    <g>
+      <rect class="full-st3" x="451.77" y="1575.64" width="46.96" height="100.58"/>
+      <rect class="full-st3" x="451.77" y="1676.22" width="46.96" height="100.58"/>
+    </g>
+    <rect class="full-st3" x="343.74" y="498.96" width="41.4" height="120.65" transform="translate(340.87 -107.84) rotate(31.07)"/>
+    <rect class="full-st3" x="391.96" y="498.93" width="41.4" height="120.65" transform="translate(347.77 -132.73) rotate(31.07)"/>
+    <rect class="full-st3" x="440.19" y="498.91" width="41.4" height="120.65" transform="translate(354.68 -157.62) rotate(31.07)"/>
+    <rect class="full-st3" x="488.42" y="498.89" width="41.4" height="120.65" transform="translate(361.58 -182.51) rotate(31.07)"/>
+    <rect class="full-st3" x="536.65" y="498.86" width="41.4" height="120.65" transform="translate(368.48 -207.4) rotate(31.07)"/>
+    <rect class="full-st3" x="584.88" y="498.84" width="41.4" height="120.65" transform="translate(375.39 -232.29) rotate(31.07)"/>
+    <rect class="full-st3" x="633.11" y="498.81" width="41.4" height="120.65" transform="translate(382.29 -257.18) rotate(31.07)"/>
+    <rect class="full-st3" x="681.34" y="498.79" width="41.4" height="120.65" transform="translate(389.2 -282.07) rotate(31.07)"/>
+    <rect class="full-st3" x="729.56" y="498.76" width="41.4" height="120.65" transform="translate(396.1 -306.96) rotate(31.07)"/>
+    <rect class="full-st3" x="273.32" y="549.91" width="89.77" height="31.43" transform="translate(-330.5 546.32) rotate(-58.93)"/>
+    <g>
+      <rect class="full-st5 pk-slot" x="50.07" y="1171.5" width="148.85" height="46.61" id="m-1"/>
+      <rect class="full-st5 pk-slot" x="50.07" y="1218.11" width="148.85" height="46.61" id="m-2"/>
+      <rect class="full-st5 pk-slot" x="50.07" y="1264.72" width="148.85" height="46.61" id="m-3"/>
+      <rect class="full-st5 pk-slot" x="50.07" y="1311.33" width="148.85" height="46.61" id="m-4"/>
+      <rect class="full-st5 pk-slot" x="50.07" y="1357.94" width="148.85" height="46.61" id="m-5"/>
+      <rect class="full-st5 pk-slot" x="50.07" y="1404.55" width="148.85" height="46.61" id="m-6"/>
+      <rect class="full-st5 pk-slot" x="50.07" y="1451.16" width="148.85" height="46.61" id="m-7"/>
+      <rect class="full-st5 pk-slot" x="50.07" y="1497.78" width="148.85" height="46.61" id="m-8"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1171.5" width="148.85" height="46.61" id="m-9"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1218.11" width="148.85" height="46.61" id="m-10"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1264.72" width="148.85" height="46.61" id="m-11"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1311.33" width="148.85" height="46.61" id="m-12"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1357.94" width="148.85" height="46.61" id="m-13"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1404.55" width="148.85" height="46.61" id="m-14"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1451.16" width="148.85" height="46.61" id="m-15"/>
+      <rect class="full-st5 pk-slot" x="198.92" y="1497.78" width="148.85" height="46.61" id="m-16"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1171.5" width="148.85" height="46.61" id="m-17"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1218.11" width="148.85" height="46.61" id="m-18"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1264.72" width="148.85" height="46.61" id="m-19"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1311.33" width="148.85" height="46.61" id="m-20"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1357.94" width="148.85" height="46.61" id="m-21"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1404.55" width="148.85" height="46.61" id="m-22"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1451.16" width="148.85" height="46.61" id="m-23"/>
+      <rect class="full-st5 pk-slot" x="347.76" y="1497.78" width="148.85" height="46.61" id="m-24"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1171.5" width="148.85" height="46.61" id="m-25"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1218.11" width="148.85" height="46.61" id="m-26"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1264.72" width="148.85" height="46.61" id="m-27"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1311.33" width="148.85" height="46.61" id="m-28"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1357.94" width="148.85" height="46.61" id="m-29"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1404.55" width="148.85" height="46.61" id="m-30"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1451.16" width="148.85" height="46.61" id="m-31"/>
+      <rect class="full-st5 pk-slot" x="496.61" y="1497.78" width="148.85" height="46.61" id="m-32"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1171.5" width="148.85" height="46.61" id="m-33"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1218.11" width="148.85" height="46.61" id="m-34"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1264.72" width="148.85" height="46.61" id="m-35"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1311.33" width="148.85" height="46.61" id="m-36"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1357.94" width="148.85" height="46.61" id="m-37"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1404.55" width="148.85" height="46.61" id="m-38"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1451.16" width="148.85" height="46.61" id="m-39"/>
+      <rect class="full-st5 pk-slot" x="645.46" y="1497.78" width="148.85" height="46.61" id="m-40"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1171.5" width="148.85" height="46.61" id="m-41"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1218.11" width="148.85" height="46.61" id="m-42"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1264.72" width="148.85" height="46.61" id="m-43"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1311.33" width="148.85" height="46.61" id="m-44"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1357.94" width="148.85" height="46.61" id="m-45"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1404.55" width="148.85" height="46.61" id="m-46"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1451.16" width="148.85" height="46.61" id="m-47"/>
+      <rect class="full-st5 pk-slot" x="794.31" y="1497.78" width="148.85" height="46.61" id="m-48"/>
+    </g>
+    <g>
+      <rect class="full-st5 pk-slot" x="865.34" y="357.86" width="116.89" height="38.9" transform="translate(-34.22 98.07) rotate(-5.97)" id="d-4"/>
+      <rect class="full-st5 pk-slot" x="869.38" y="396.55" width="116.89" height="38.9" transform="translate(-38.22 98.7) rotate(-5.97)" id="d-5"/>
+      <rect class="full-st5 pk-slot" x="873.42" y="435.24" width="116.89" height="38.9" transform="translate(-42.21 99.33) rotate(-5.97)" id="d-6"/>
+      <rect class="full-st5 pk-slot" x="877.47" y="473.93" width="116.89" height="38.9" transform="translate(-46.21 99.96) rotate(-5.97)" id="d-7"/>
+      <rect class="full-st5 pk-slot" x="881.51" y="512.62" width="116.89" height="38.9" transform="translate(-50.21 100.59) rotate(-5.97)" id="d-8"/>
+      <rect class="full-st5 pk-slot" x="885.55" y="551.3" width="116.89" height="38.9" transform="translate(-54.21 101.22) rotate(-5.97)" id="d-9"/>
+      <rect class="full-st5 pk-slot" x="889.6" y="589.99" width="116.89" height="38.9" transform="translate(-58.21 101.84) rotate(-5.97)" id="d-10"/>
+      <rect class="full-st5 pk-slot" x="893.64" y="628.68" width="116.89" height="38.9" transform="translate(-62.21 102.47) rotate(-5.97)" id="d-11"/>
+      <rect class="full-st5 pk-slot" x="853.21" y="241.8" width="116.89" height="38.9" transform="translate(-22.22 96.18) rotate(-5.97)" id="d-1"/>
+      <rect class="full-st5 pk-slot" x="857.25" y="280.49" width="116.89" height="38.9" transform="translate(-26.22 96.81) rotate(-5.97)" id="d-2"/>
+      <rect class="full-st5 pk-slot" x="861.29" y="319.18" width="116.89" height="38.9" transform="translate(-30.22 97.44) rotate(-5.97)" id="d-3"/>
+    </g>
+    <g>
+      <polygon class="full-st6 pk-slot" points="148.97 1152.59 95.17 1033.67 133.95 1016.53 187.75 1135.44 148.97 1152.59" id="l-19"/>
+      <polygon class="full-st6 pk-slot" points="195.49 1152.59 141.7 1033.67 180.48 1016.53 234.27 1135.44 195.49 1152.59" id="l-18"/>
+      <polygon class="full-st6 pk-slot" points="242.01 1152.59 188.22 1033.67 227 1016.53 280.8 1135.44 242.01 1152.59" id="l-17"/>
+      <polygon class="full-st6 pk-slot" points="288.54 1152.59 234.74 1033.67 273.53 1016.53 327.32 1135.44 288.54 1152.59" id="l-16"/>
+      <polygon class="full-st6 pk-slot" points="335.06 1152.59 281.27 1033.67 320.05 1016.53 373.84 1135.44 335.06 1152.59" id="l-15"/>
+      <polygon class="full-st6 pk-slot" points="381.59 1152.59 327.79 1033.67 366.57 1016.53 420.37 1135.44 381.59 1152.59" id="l-14"/>
+      <polygon class="full-st6 pk-slot" points="428.11 1152.59 374.32 1033.67 413.1 1016.53 466.89 1135.44 428.11 1152.59" id="l-13"/>
+      <polygon class="full-st6 pk-slot" points="474.64 1152.59 420.84 1033.67 459.62 1016.53 513.42 1135.44 474.64 1152.59" id="l-12"/>
+      <polygon class="full-st6 pk-slot" points="521.16 1152.59 467.37 1033.67 506.15 1016.53 559.94 1135.44 521.16 1152.59" id="l-11"/>
+      <polygon class="full-st6 pk-slot" points="567.68 1152.59 513.89 1033.67 552.67 1016.53 606.47 1135.44 567.68 1152.59" id="l-10"/>
+      <polygon class="full-st6 pk-slot" points="614.21 1152.59 560.41 1033.67 599.2 1016.53 652.99 1135.44 614.21 1152.59" id="l-9"/>
+      <polygon class="full-st6 pk-slot" points="660.73 1152.59 606.94 1033.67 645.72 1016.53 699.51 1135.44 660.73 1152.59" id="l-8"/>
+      <polygon class="full-st6 pk-slot" points="707.26 1152.59 653.46 1033.67 692.24 1016.53 746.04 1135.44 707.26 1152.59" id="l-7"/>
+      <polygon class="full-st6 pk-slot" points="753.78 1152.59 699.99 1033.67 738.77 1016.53 792.56 1135.44 753.78 1152.59" id="l-6"/>
+      <polygon class="full-st6 pk-slot" points="800.31 1152.59 746.51 1033.67 785.29 1016.53 839.09 1135.44 800.31 1152.59" id="l-5"/>
+      <polygon class="full-st6 pk-slot" points="846.83 1152.59 793.04 1033.67 831.82 1016.53 885.61 1135.44 846.83 1152.59" id="l-4"/>
+      <polygon class="full-st6 pk-slot" points="893.35 1152.59 839.56 1033.67 878.34 1016.53 932.14 1135.44 893.35 1152.59" id="l-3"/>
+      <polygon class="full-st6 pk-slot" points="939.88 1152.59 886.08 1033.67 924.86 1016.53 978.66 1135.44 939.88 1152.59" id="l-2"/>
+      <polygon class="full-st6 pk-slot" points="987.38 1152.59 932.82 1034.01 971.6 1016.87 1026.17 1135.44 987.38 1152.59" id="l-1"/>
+    </g>
+    <g>
+      <rect class="full-st5 pk-slot" x="71.6" y="746.83" width="40.67" height="109.33" id="h-1"/>
+      <rect class="full-st5 pk-slot" x="112.27" y="746.83" width="40.67" height="109.33" id="h-2"/>
+      <rect class="full-st5 pk-slot" x="152.93" y="746.83" width="40.67" height="109.33" id="h-3"/>
+      <rect class="full-st5 pk-slot" x="193.6" y="746.83" width="40.67" height="109.33" id="h-4"/>
+    </g>
+    <g>
+      <rect class="full-st5 pk-slot" x="383.26" y="733.82" width="99.36" height="34.79" id="j-1"/>
+      <rect class="full-st5 pk-slot" x="383.26" y="767.36" width="99.36" height="34.79" id="j-2"/>
+    </g>
+    <g>
+      <rect class="full-st5 pk-slot" x="280.82" y="684.94" width="104.29" height="40.89" id="i-1"/>
+      <rect class="full-st5 pk-slot" x="389.66" y="684.94" width="104.29" height="40.89" id="i-2"/>
+      <rect class="full-st5 pk-slot" x="543.94" y="684.94" width="104.29" height="40.89" id="i-3"/>
+    </g>
+    <g>
+      <rect class="full-st5 pk-slot" x="728.72" y="180.32" width="34.84" height="115.89" id="c-1"/>
+      <rect class="full-st5 pk-slot" x="763.55" y="180.32" width="34.84" height="115.89" id="c-2"/>
+      <rect class="full-st5 pk-slot" x="798.39" y="180.32" width="34.84" height="115.89" id="c-3"/>
+    </g>
+    <g>
+      <rect class="full-st5 pk-slot" x="596.4" y="150.63" width="35.78" height="100.99" transform="translate(815.41 -413.17) rotate(90)" id="b-1"/>
+      <rect class="full-st5 pk-slot" x="596.4" y="186.4" width="35.78" height="100.99" transform="translate(851.19 -377.39) rotate(90)" id="b-2"/>
+    </g>
+    <polygon class="full-st5 pk-slot" points="339.61 300.38 310.02 287.73 355.32 186.65 384.91 199.3 339.61 300.38" id="a-1"/>
+    <polygon class="full-st5 pk-slot" points="374.69 301.19 345.09 288.54 390.39 187.46 419.98 200.11 374.69 301.19" id="a-2"/>
+    <polygon class="full-st5 pk-slot" points="409.76 301.99 380.17 289.35 425.47 188.27 455.06 200.91 409.76 301.99" id="a-3"/>
+    <polygon class="full-st5 pk-slot" points="444.84 302.8 415.25 290.15 460.55 189.07 490.14 201.72 444.84 302.8" id="a-4"/>
+    <polygon class="full-st5 pk-slot" points="479.92 303.61 450.33 290.96 495.62 189.88 525.22 202.53 479.92 303.61" id="a-5"/>
+    <polygon class="full-st5 pk-slot" points="514.99 304.42 485.4 291.77 530.7 190.69 560.29 203.34 514.99 304.42" id="a-6"/>
+    <rect class="full-st17" x="279.85" y="181.71" width="33.13" height="90.37" rx="12" ry="12"/>
+    <rect class="full-st17" x="498.5" y="674.08" width="40.89" height="99.27" rx="12" ry="12"/>
+    <path class="full-st17" d="M552.29,883.23v-63.56c0-6.6-5.4-12-12-12l-272.36.22c-6.6,0-12,5.4-12,12v39.6c0,6.3-5.1,11.4-11.4,11.4H77.55c-6.6,0-12,5.4-12,12v20.44c0,6.6,5.4,12,12,12h462.74c6.6,0,12-5.4,12-12v-20.1h0Z"/>
+    <g>
+      <g>
+        <polyline class="full-st1" points="436.12 424.62 436.12 428.12 432.62 428.12"/>
+        <line class="full-st8" x1="425.82" y1="428.12" x2="320.5" y2="428.12"/>
+        <polyline class="full-st1" points="317.1 428.12 313.6 428.12 313.6 424.62"/>
+        <line class="full-st0" x1="313.6" y1="417.88" x2="313.6" y2="394.31"/>
+        <polyline class="full-st1" points="313.6 390.95 313.6 387.45 317.1 387.45"/>
+        <line class="full-st8" x1="323.9" y1="387.45" x2="429.22" y2="387.45"/>
+        <polyline class="full-st1" points="432.62 387.45 436.12 387.45 436.12 390.95"/>
+        <line class="full-st0" x1="436.12" y1="397.68" x2="436.12" y2="421.25"/>
+      </g>
+      <rect class="full-st5 pk-slot" x="313.6" y="428.12" width="122.51" height="40.67" id="f-1"/>
+      <rect class="full-st5 pk-slot" x="436.12" y="387.45" width="122.51" height="40.67" id="f-2"/>
+      <rect class="full-st5 pk-slot" x="436.12" y="428.12" width="122.51" height="40.67" id="f-3"/>
+      <rect class="full-st5 pk-slot" x="558.63" y="387.45" width="122.51" height="40.67" id="f-4"/>
+      <rect class="full-st5 pk-slot" x="558.63" y="428.12" width="122.51" height="40.67" id="f-5"/>
+    </g>
+    <rect class="full-st17" x="553.37" y="264.68" width="121.84" height="45.33" rx="12" ry="12"/>
+    <g>
+      <rect class="full-st5 pk-slot" x="152.68" y="428.12" width="122.51" height="40.67" transform="translate(662.39 234.51) rotate(90)" id="e-1"/>
+      <rect class="full-st5 pk-slot" x="193.35" y="428.12" width="122.51" height="40.67" transform="translate(703.06 193.84) rotate(90)" id="e-2"/>
+    </g>
+    <g>
+      <rect class="full-st5 pk-slot" x="651.63" y="843.29" width="109.1" height="35" transform="translate(1566.9692 154.6054) rotate(90)" id="k-9"/>
+      <rect class="full-st5 pk-slot" x="686.58" y="843.29" width="109.1" height="35" transform="translate(1601.9184 119.6563) rotate(90)" id="k-10"/>
+      <rect class="full-st5 pk-slot" x="721.53" y="843.29" width="109.1" height="35" transform="translate(1636.8675 84.7072) rotate(90)" id="k-11"/>
+      <rect class="full-st5 pk-slot" x="756.48" y="843.29" width="109.1" height="35" transform="translate(1671.8166 49.7581) rotate(90)" id="k-12"/>
+      <rect class="full-st5 pk-slot" x="791.43" y="843.29" width="109.1" height="35" transform="translate(1706.7657 14.8089) rotate(90)" id="k-13"/>
+      <rect class="full-st5 pk-slot" x="826.38" y="843.29" width="109.1" height="35" transform="translate(1741.7148 -20.1402) rotate(90)" id="k-14"/>
+      <rect class="full-st5 pk-slot" x="861.33" y="843.29" width="109.1" height="35" transform="translate(1776.664 -55.0893) rotate(90)" id="k-15"/>
+      <rect class="full-st5 pk-slot" x="896.28" y="843.29" width="109.1" height="35" transform="translate(1811.6131 -90.0384) rotate(90)" id="k-16"/>
+      <rect class="full-st5 pk-slot" x="931.23" y="843.29" width="109.1" height="35" transform="translate(1846.5622 -124.9875) rotate(90)" id="k-17"/>
+      <rect class="full-st5 pk-slot" x="978.74" y="843.29" width="109.1" height="35" transform="translate(1671.6179 -322.9203) rotate(78.5402)" id="k-18"/>
+      <rect class="full-st5 pk-slot" x="651.61" y="733.72" width="109.1" height="35" transform="translate(1457.3754 45.0654) rotate(90)" id="k-1"/>
+      <rect class="full-st5 pk-slot" x="686.55" y="733.72" width="109.1" height="35" transform="translate(1492.3245 10.1163) rotate(90)" id="k-2"/>
+      <rect class="full-st5 pk-slot" x="721.5" y="733.72" width="109.1" height="35" transform="translate(1527.2736 -24.8329) rotate(90)" id="k-3"/>
+      <rect class="full-st5 pk-slot" x="756.45" y="733.72" width="109.1" height="35" transform="translate(1562.2228 -59.782) rotate(90)" id="k-4"/>
+      <rect class="full-st5 pk-slot" x="791.4" y="733.72" width="109.1" height="35" transform="translate(1597.1719 -94.7311) rotate(90)" id="k-5"/>
+      <rect class="full-st5 pk-slot" x="826.35" y="733.72" width="109.1" height="35" transform="translate(1632.121 -129.6802) rotate(90)" id="k-6"/>
+      <rect class="full-st5 pk-slot" x="861.3" y="733.72" width="109.1" height="35" transform="translate(1667.0701 -164.6293) rotate(90)" id="k-7"/>
+      <rect class="full-st5 pk-slot" x="896.25" y="733.72" width="109.1" height="35" transform="translate(1702.0192 -199.5785) rotate(90)" id="k-8"/>
+    </g>
+    <rect class="full-st5 pk-slot" x="978.66" y="719.22" width="82.68" height="34.79" id="k-19"/>
+    <rect class="full-st5 pk-slot" x="978.66" y="752.75" width="82.68" height="34.79" id="k-20"/>
+    <rect class="full-st17" x="855.4" y="183.7" width="110.58" height="45.2" rx="12" ry="12"/>
+    <rect class="full-st17" x="562.76" y="787.54" width="111.01" height="127.8" rx="13.01" ry="13.01"/>
+    <rect class="full-st17" x="130.24" y="181.71" width="35.18" height="96.89" rx="12" ry="12"/>
+    <rect class="full-st20" x="281.22" y="144.41" width="784.07" height="14.22" rx="4.43" ry="4.43"/>
+    <rect class="full-st20" x="52.07" y="967.78" width="1020.14" height="14.22" rx="4.13" ry="4.13"/>
+    <rect class="full-st21" x="279.22" y="142.41" width="784.07" height="14.22" rx="4.91" ry="4.91"/>
+    <path class="full-st20" d="M53.07,144.41h113.5c2.16,0,3.92,1.76,3.92,3.92v6.38c0,2.16-1.76,3.92-3.92,3.92H53.07v-14.22h0Z"/>
+    <path class="full-st21" d="M51.07,142.41h112.51c2.71,0,4.91,2.2,4.91,4.91v4.41c0,2.71-2.2,4.91-4.91,4.91H51.07v-14.22h0Z"/>
+    <rect class="full-st21" x="50.07" y="965.78" width="1020.14" height="14.22" rx="4.91" ry="4.91"/>
+    <rect class="full-st20" x="534.75" y="1760.58" width="538.47" height="14.22" rx="3.89" ry="3.89"/>
+    <rect class="full-st21" x="532.75" y="1758.58" width="538.47" height="14.22" rx="4.91" ry="4.91"/>
+    <path class="full-st17" d="M422.76,1730.77h-196.74c-10.63,0-19.27,6.38-19.38,14.31l-.19,13.8c-.11,7.71-8.52,13.93-18.87,13.93h-119.35c-10.02,0-18.15-6.06-18.15-13.54v-173.3c0-7.48,8.13-13.54,18.15-13.54h354.54c10.02,0,18.15,6.06,18.15,13.54v131.27c0,7.48-8.13,13.54-18.15,13.54Z"/>
+    <g>
+      <rect class="full-st5 pk-slot" x="448.77" y="1573.64" width="46.96" height="100.58" id="o-1"/>
+      <rect class="full-st5 pk-slot" x="448.77" y="1674.22" width="46.96" height="100.58" id="o-2"/>
+    </g>
+    <text class="full-st9" transform="translate(325.71 875.21)"><tspan x="0" y="0" xml:space="preserve">営  業  所</tspan></text>
+    <text class="full-st14" transform="translate(580.76 864.16)"><tspan x="0" y="0">駐車場</tspan></text>
+    <text class="full-st14" transform="translate(575.37 295.78)"><tspan x="0" y="0">給油所</tspan></text>
+    <text class="full-st16" transform="translate(518.94 683.72)"><tspan x="0" y="0">洗</tspan><tspan x=".51" y="20"> </tspan><tspan x="0" y="30">車</tspan><tspan x=".51" y="50"> </tspan><tspan x="0" y="60">機</tspan></text>
+    <text class="full-st13" transform="translate(146.83 189.21)"><tspan x="0" y="0">バス停</tspan></text>
+    <text class="full-st15" transform="translate(115.7638 1672.6139)"><tspan x="0" y="0">整 備 工 場</tspan></text>
+    <rect class="full-st17" x="529.65" y="1572.43" width="490.04" height="176.02" rx="12" ry="12"/>
+    <text class="full-st12" transform="translate(870.32 212.95)"><tspan x="0" y="0">掃除小屋</tspan></text>
+    <text class="full-st13" transform="translate(296.41 201.9)"><tspan x="0" y="0">花壇</tspan></text>
+    <rect class="full-st17" x="220.31" y="1738.92" width="220.59" height="34.61" rx="12" ry="12"/>
+    <g>
+      <rect class="full-st5 pk-slot" x="340.74" y="496.96" width="41.4" height="120.65" transform="translate(339.4 -106.58) rotate(31.07)" id="g-2"/>
+      <rect class="full-st5 pk-slot" x="388.96" y="496.93" width="41.4" height="120.65" transform="translate(346.31 -131.47) rotate(31.07)" id="g-3"/>
+      <rect class="full-st5 pk-slot" x="437.19" y="496.91" width="41.4" height="120.65" transform="translate(353.21 -156.36) rotate(31.07)" id="g-4"/>
+      <rect class="full-st5 pk-slot" x="485.42" y="496.89" width="41.4" height="120.65" transform="translate(360.12 -181.25) rotate(31.07)" id="g-5"/>
+      <rect class="full-st5 pk-slot" x="533.65" y="496.86" width="41.4" height="120.65" transform="translate(367.02 -206.14) rotate(31.07)" id="g-6"/>
+      <rect class="full-st5 pk-slot" x="581.88" y="496.84" width="41.4" height="120.65" transform="translate(373.93 -231.03) rotate(31.07)" id="g-7"/>
+      <rect class="full-st5 pk-slot" x="630.11" y="496.81" width="41.4" height="120.65" transform="translate(380.83 -255.92) rotate(31.07)" id="g-8"/>
+      <rect class="full-st5 pk-slot" x="678.34" y="496.79" width="41.4" height="120.65" transform="translate(387.73 -280.81) rotate(31.07)" id="g-9"/>
+      <rect class="full-st5 pk-slot" x="726.56" y="496.76" width="41.4" height="120.65" transform="translate(394.64 -305.7) rotate(31.07)" id="g-10"/>
+      <rect class="full-st5 pk-slot" x="270.32" y="547.91" width="89.77" height="31.43" transform="translate(-330.24 542.78) rotate(-58.93)" id="g-1"/>
+    </g>
+    <text class="full-st15" transform="translate(678.4897 1672.6139)"><tspan x="0" y="0">駐　車　場</tspan></text>
+    <text class="full-st10" transform="translate(260.9433 1764.6823) scale(1 .9)"><tspan x="0" y="0">駐　車　場</tspan></text>
+    <rect class="full-st3" x="361.68" y="1584.8" width="50.21" height="133.55"/>
+    <rect class="full-st5 pk-slot" x="358.68" y="1582.8" width="50.21" height="133.55" id="n-1"/>
+    <rect class="full-st19" x="183.61" y="142.32" width="79.82" height="102.39"/>
+    <text class="full-st18" transform="translate(222.93 152.39) scale(1 .85)"><tspan x="0" y="0">出</tspan><tspan x=".06" y="24.7" xml:space="preserve">  </tspan><tspan x="0" y="35.77">入</tspan><tspan x=".06" y="60.47" xml:space="preserve">  </tspan><tspan x="0" y="71.54">口</tspan></text>
+    <g>
+      <g>
+        <line class="full-st4" x1="259.08" y1="144.15" x2="259.08" y2="147.65"/>
+        <line class="full-st2" x1="259.08" y1="155.06" x2="259.08" y2="240.24"/>
+        <line class="full-st4" x1="259.08" y1="243.94" x2="259.08" y2="247.44"/>
+      </g>
+      <g>
+        <line class="full-st4" x1="187.96" y1="247.44" x2="187.96" y2="243.94"/>
+        <line class="full-st2" x1="187.96" y1="236.54" x2="187.96" y2="151.35"/>
+        <line class="full-st4" x1="187.96" y1="147.65" x2="187.96" y2="144.15"/>
+      </g>
+    </g>
+    <rect class="full-st17" x="1025.18" y="1016.53" width="42.73" height="100.26" rx="12" ry="12"/>
+    <text class="full-st11" transform="translate(1045.3333 1024.2868) scale(1 .8518)"><tspan x="0" y="0">バス停</tspan></text>
+  </g>
+</svg>
+<svg class="pk-map" id="pkMap-lower" data-map="lower" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1920 1081.26">
+  <defs>
+    <style>
+      #pkSvgWrap .lower-st0 {
+        font-size: 33.18px;
+      }
+
+      #pkSvgWrap .lower-st0, #pkSvgWrap .lower-st1, #pkSvgWrap .lower-st2 {
+        fill: #f2f2f2;
+      }
+
+      #pkSvgWrap .lower-st0, #pkSvgWrap .lower-st1, #pkSvgWrap .lower-st2, #pkSvgWrap .lower-st3, #pkSvgWrap .lower-st4 {
+        font-family: MS-Gothic, 'MS Gothic';
+      }
+
+      #pkSvgWrap .lower-st5 {
+        stroke-dasharray: 6.8 6.8;
+      }
+
+      #pkSvgWrap .lower-st5, #pkSvgWrap .lower-st6, #pkSvgWrap .lower-st7, #pkSvgWrap .lower-st8, #pkSvgWrap .lower-st9, #pkSvgWrap .lower-st10, #pkSvgWrap .lower-st11 {
+        stroke-miterlimit: 10;
+      }
+
+      #pkSvgWrap .lower-st5, #pkSvgWrap .lower-st7 {
+        stroke: #e5e3da;
+        stroke-width: 4px;
+      }
+
+      #pkSvgWrap .lower-st5, #pkSvgWrap .lower-st7, #pkSvgWrap .lower-st12, #pkSvgWrap .lower-st11 {
+        fill: none;
+      }
+
+      #pkSvgWrap .lower-st1 {
+        font-size: 46.15px;
+      }
+
+      #pkSvgWrap .lower-st6 {
+        fill: #7a6a56;
+        stroke: #7a6a56;
+      }
+
+      #pkSvgWrap .lower-st6, #pkSvgWrap .lower-st9, #pkSvgWrap .lower-st10 {
+        stroke-width: .5px;
+      }
+
+      #pkSvgWrap .lower-st13 {
+        font-family: HeiseiKakuGoStdN-W5-90ms-RKSJ-H, 'Heisei Kaku Gothic StdN';
+        font-size: 35.83px;
+      }
+
+      #pkSvgWrap .lower-st13, #pkSvgWrap .lower-st14 {
+        fill: #afa194;
+      }
+
+      #pkSvgWrap .lower-st13, #pkSvgWrap .lower-st2, #pkSvgWrap .lower-st3 {
+        glyph-orientation-vertical: 0deg;
+        text-orientation: upright;
+        writing-mode: tb;
+      }
+
+      #pkSvgWrap .lower-st15, #pkSvgWrap .lower-st9, #pkSvgWrap .lower-st10 {
+        fill: #fff;
+      }
+
+      #pkSvgWrap .lower-st12 {
+        stroke-linejoin: round;
+        stroke-width: 3px;
+      }
+
+      #pkSvgWrap .lower-st12, #pkSvgWrap .lower-st11 {
+        stroke: #fff;
+      }
+
+      #pkSvgWrap .lower-st8 {
+        fill: #e6a3ef;
+        stroke: #e6a3ef;
+      }
+
+      #pkSvgWrap .lower-st8, #pkSvgWrap .lower-st11 {
+        stroke-width: 2px;
+      }
+
+      #pkSvgWrap .lower-st16 {
+        fill: #e5e3da;
+      }
+
+      #pkSvgWrap .lower-st2 {
+        font-size: 39.15px;
+      }
+
+      #pkSvgWrap .lower-st3 {
+        font-size: 30px;
+        letter-spacing: 1.04em;
+      }
+
+      #pkSvgWrap .lower-st3, #pkSvgWrap .lower-st4 {
+        fill: #604a45;
+      }
+
+      #pkSvgWrap .lower-st9 {
+        stroke: #000;
+      }
+
+      #pkSvgWrap .lower-st10 {
+        stroke: #231815;
+      }
+
+      #pkSvgWrap .lower-st4 {
+        font-size: 28px;
+        letter-spacing: 1.19em;
       }
     </style>
   </defs>
   <g id="_レイヤー_1" data-name="レイヤー_1">
     <g>
-      <rect class="st4 slot" x="7.32" y="1039.35" width="148.85" height="46.61" id="m-1" data-area="m" data-area-name="整備" data-slot="1"/>
-      <rect class="st4 slot" x="7.32" y="1085.96" width="148.85" height="46.61" id="m-2" data-area="m" data-area-name="整備" data-slot="2"/>
-      <rect class="st4 slot" x="7.32" y="1132.57" width="148.85" height="46.61" id="m-3" data-area="m" data-area-name="整備" data-slot="3"/>
-      <rect class="st4 slot" x="7.32" y="1179.18" width="148.85" height="46.61" id="m-4" data-area="m" data-area-name="整備" data-slot="4"/>
-      <rect class="st4 slot" x="7.32" y="1225.79" width="148.85" height="46.61" id="m-5" data-area="m" data-area-name="整備" data-slot="5"/>
-      <rect class="st4 slot" x="7.32" y="1272.41" width="148.85" height="46.61" id="m-6" data-area="m" data-area-name="整備" data-slot="6"/>
-      <rect class="st4 slot" x="7.32" y="1319.02" width="148.85" height="46.61" id="m-7" data-area="m" data-area-name="整備" data-slot="7"/>
-      <rect class="st4 slot" x="7.32" y="1365.63" width="148.85" height="46.61" id="m-8" data-area="m" data-area-name="整備" data-slot="8"/>
-      <rect class="st4 slot" x="156.17" y="1039.35" width="148.85" height="46.61" id="m-9" data-area="m" data-area-name="整備" data-slot="9"/>
-      <rect class="st4 slot" x="156.17" y="1085.96" width="148.85" height="46.61" id="m-10" data-area="m" data-area-name="整備" data-slot="10"/>
-      <rect class="st4 slot" x="156.17" y="1132.57" width="148.85" height="46.61" id="m-11" data-area="m" data-area-name="整備" data-slot="11"/>
-      <rect class="st4 slot" x="156.17" y="1179.18" width="148.85" height="46.61" id="m-12" data-area="m" data-area-name="整備" data-slot="12"/>
-      <rect class="st4 slot" x="156.17" y="1225.79" width="148.85" height="46.61" id="m-13" data-area="m" data-area-name="整備" data-slot="13"/>
-      <rect class="st4 slot" x="156.17" y="1272.41" width="148.85" height="46.61" id="m-14" data-area="m" data-area-name="整備" data-slot="14"/>
-      <rect class="st4 slot" x="156.17" y="1319.02" width="148.85" height="46.61" id="m-15" data-area="m" data-area-name="整備" data-slot="15"/>
-      <rect class="st4 slot" x="156.17" y="1365.63" width="148.85" height="46.61" id="m-16" data-area="m" data-area-name="整備" data-slot="16"/>
-      <rect class="st4 slot" x="305.02" y="1039.35" width="148.85" height="46.61" id="m-17" data-area="m" data-area-name="整備" data-slot="17"/>
-      <rect class="st4 slot" x="305.02" y="1085.96" width="148.85" height="46.61" id="m-18" data-area="m" data-area-name="整備" data-slot="18"/>
-      <rect class="st4 slot" x="305.02" y="1132.57" width="148.85" height="46.61" id="m-19" data-area="m" data-area-name="整備" data-slot="19"/>
-      <rect class="st4 slot" x="305.02" y="1179.18" width="148.85" height="46.61" id="m-20" data-area="m" data-area-name="整備" data-slot="20"/>
-      <rect class="st4 slot" x="305.02" y="1225.79" width="148.85" height="46.61" id="m-21" data-area="m" data-area-name="整備" data-slot="21"/>
-      <rect class="st4 slot" x="305.02" y="1272.41" width="148.85" height="46.61" id="m-22" data-area="m" data-area-name="整備" data-slot="22"/>
-      <rect class="st4 slot" x="305.02" y="1319.02" width="148.85" height="46.61" id="m-23" data-area="m" data-area-name="整備" data-slot="23"/>
-      <rect class="st4 slot" x="305.02" y="1365.63" width="148.85" height="46.61" id="m-24" data-area="m" data-area-name="整備" data-slot="24"/>
-      <rect class="st4 slot" x="453.86" y="1039.35" width="148.85" height="46.61" id="m-25" data-area="m" data-area-name="整備" data-slot="25"/>
-      <rect class="st4 slot" x="453.86" y="1085.96" width="148.85" height="46.61" id="m-26" data-area="m" data-area-name="整備" data-slot="26"/>
-      <rect class="st4 slot" x="453.86" y="1132.57" width="148.85" height="46.61" id="m-27" data-area="m" data-area-name="整備" data-slot="27"/>
-      <rect class="st4 slot" x="453.86" y="1179.18" width="148.85" height="46.61" id="m-28" data-area="m" data-area-name="整備" data-slot="28"/>
-      <rect class="st4 slot" x="453.86" y="1225.79" width="148.85" height="46.61" id="m-29" data-area="m" data-area-name="整備" data-slot="29"/>
-      <rect class="st4 slot" x="453.86" y="1272.41" width="148.85" height="46.61" id="m-30" data-area="m" data-area-name="整備" data-slot="30"/>
-      <rect class="st4 slot" x="453.86" y="1319.02" width="148.85" height="46.61" id="m-31" data-area="m" data-area-name="整備" data-slot="31"/>
-      <rect class="st4 slot" x="453.86" y="1365.63" width="148.85" height="46.61" id="m-32" data-area="m" data-area-name="整備" data-slot="32"/>
-      <rect class="st4 slot" x="602.71" y="1039.35" width="148.85" height="46.61" id="m-33" data-area="m" data-area-name="整備" data-slot="33"/>
-      <rect class="st4 slot" x="602.71" y="1085.96" width="148.85" height="46.61" id="m-34" data-area="m" data-area-name="整備" data-slot="34"/>
-      <rect class="st4 slot" x="602.71" y="1132.57" width="148.85" height="46.61" id="m-35" data-area="m" data-area-name="整備" data-slot="35"/>
-      <rect class="st4 slot" x="602.71" y="1179.18" width="148.85" height="46.61" id="m-36" data-area="m" data-area-name="整備" data-slot="36"/>
-      <rect class="st4 slot" x="602.71" y="1225.79" width="148.85" height="46.61" id="m-37" data-area="m" data-area-name="整備" data-slot="37"/>
-      <rect class="st4 slot" x="602.71" y="1272.41" width="148.85" height="46.61" id="m-38" data-area="m" data-area-name="整備" data-slot="38"/>
-      <rect class="st4 slot" x="602.71" y="1319.02" width="148.85" height="46.61" id="m-39" data-area="m" data-area-name="整備" data-slot="39"/>
-      <rect class="st4 slot" x="602.71" y="1365.63" width="148.85" height="46.61" id="m-40" data-area="m" data-area-name="整備" data-slot="40"/>
-      <rect class="st4 slot" x="751.56" y="1039.35" width="148.85" height="46.61" id="m-41" data-area="m" data-area-name="整備" data-slot="41"/>
-      <rect class="st4 slot" x="751.56" y="1085.96" width="148.85" height="46.61" id="m-42" data-area="m" data-area-name="整備" data-slot="42"/>
-      <rect class="st4 slot" x="751.56" y="1132.57" width="148.85" height="46.61" id="m-43" data-area="m" data-area-name="整備" data-slot="43"/>
-      <rect class="st4 slot" x="751.56" y="1179.18" width="148.85" height="46.61" id="m-44" data-area="m" data-area-name="整備" data-slot="44"/>
-      <rect class="st4 slot" x="751.56" y="1225.79" width="148.85" height="46.61" id="m-45" data-area="m" data-area-name="整備" data-slot="45"/>
-      <rect class="st4 slot" x="751.56" y="1272.41" width="148.85" height="46.61" id="m-46" data-area="m" data-area-name="整備" data-slot="46"/>
-      <rect class="st4 slot" x="751.56" y="1319.02" width="148.85" height="46.61" id="m-47" data-area="m" data-area-name="整備" data-slot="47"/>
-      <rect class="st4 slot" x="751.56" y="1365.63" width="148.85" height="46.61" id="m-48" data-area="m" data-area-name="整備" data-slot="48"/>
+      <rect class="lower-st16" x="419.37" y="-419.37" width="1081.26" height="1920" transform="translate(419.3698 1500.6302) rotate(-90)"/>
+      <g>
+        <rect class="lower-st11" x="93.55" y="34.3" width="1719.93" height="1004.81" rx="21.93" ry="21.93"/>
+        <rect class="lower-st11" x="49.07" y="19.37" width="1811.26" height="1035.78"/>
+        <g>
+          <circle class="lower-st11" cx="70.83" cy="41.47" r="11.17"/>
+          <line class="lower-st12" x1="72.72" y1="47.09" x2="68.94" y2="35.85"/>
+          <line class="lower-st12" x1="65.07" y1="43.41" x2="76.59" y2="39.53"/>
+        </g>
+      </g>
     </g>
     <g>
-      <rect class="st4 slot" x="822.59" y="225.72" width="116.89" height="38.9" transform="translate(-20.71 92.91) rotate(-5.97)" id="d-4" data-area="d" data-area-name="ヤナセ" data-slot="4"/>
-      <rect class="st4 slot" x="826.63" y="264.4" width="116.89" height="38.9" transform="translate(-24.71 93.54) rotate(-5.97)" id="d-5" data-area="d" data-area-name="ヤナセ" data-slot="5"/>
-      <rect class="st4 slot" x="830.68" y="303.09" width="116.89" height="38.9" transform="translate(-28.71 94.17) rotate(-5.97)" id="d-6" data-area="d" data-area-name="ヤナセ" data-slot="6"/>
-      <rect class="st4 slot" x="834.72" y="341.78" width="116.89" height="38.9" transform="translate(-32.71 94.8) rotate(-5.97)" id="d-7" data-area="d" data-area-name="ヤナセ" data-slot="7"/>
-      <rect class="st4 slot" x="838.76" y="380.47" width="116.89" height="38.9" transform="translate(-36.71 95.43) rotate(-5.97)" id="d-8" data-area="d" data-area-name="ヤナセ" data-slot="8"/>
-      <rect class="st4 slot" x="842.81" y="419.16" width="116.89" height="38.9" transform="translate(-40.71 96.06) rotate(-5.97)" id="d-9" data-area="d" data-area-name="ヤナセ" data-slot="9"/>
-      <rect class="st4 slot" x="846.85" y="457.84" width="116.89" height="38.9" transform="translate(-44.71 96.69) rotate(-5.97)" id="d-10" data-area="d" data-area-name="ヤナセ" data-slot="10"/>
-      <rect class="st4 slot" x="850.89" y="496.53" width="116.89" height="38.9" transform="translate(-48.71 97.32) rotate(-5.97)" id="d-11" data-area="d" data-area-name="ヤナセ" data-slot="11"/>
-      <rect class="st4 slot" x="810.46" y="109.65" width="116.89" height="38.9" transform="translate(-8.71 91.02) rotate(-5.97)" id="d-1" data-area="d" data-area-name="ヤナセ" data-slot="1"/>
-      <rect class="st4 slot" x="814.5" y="148.34" width="116.89" height="38.9" transform="translate(-12.71 91.65) rotate(-5.97)" id="d-2" data-area="d" data-area-name="ヤナセ" data-slot="2"/>
-      <rect class="st4 slot" x="818.55" y="187.03" width="116.89" height="38.9" transform="translate(-16.71 92.28) rotate(-5.97)" id="d-3" data-area="d" data-area-name="ヤナセ" data-slot="3"/>
+      <circle class="lower-st11" cx="1839.01" cy="41.47" r="11.17"/>
+      <line class="lower-st12" x1="1833.9" y1="44.47" x2="1844.13" y2="38.46"/>
+      <line class="lower-st12" x1="1835.93" y1="36.23" x2="1842.09" y2="46.71"/>
     </g>
     <g>
-      <polygon class="st5 slot" points="106.22 1020.44 52.42 901.53 91.21 884.38 145 1003.29 106.22 1020.44" id="l-19" data-area="l" data-area-name="グリーン" data-slot="19"/>
-      <polygon class="st5 slot" points="152.74 1020.44 98.95 901.53 137.73 884.38 191.52 1003.29 152.74 1020.44" id="l-18" data-area="l" data-area-name="グリーン" data-slot="18"/>
-      <polygon class="st5 slot" points="199.27 1020.44 145.47 901.53 184.25 884.38 238.05 1003.29 199.27 1020.44" id="l-17" data-area="l" data-area-name="グリーン" data-slot="17"/>
-      <polygon class="st5 slot" points="245.79 1020.44 192 901.53 230.78 884.38 284.57 1003.29 245.79 1020.44" id="l-16" data-area="l" data-area-name="グリーン" data-slot="16"/>
-      <polygon class="st5 slot" points="292.32 1020.44 238.52 901.53 277.3 884.38 331.1 1003.29 292.32 1020.44" id="l-15" data-area="l" data-area-name="グリーン" data-slot="15"/>
-      <polygon class="st5 slot" points="338.84 1020.44 285.05 901.53 323.83 884.38 377.62 1003.29 338.84 1020.44" id="l-14" data-area="l" data-area-name="グリーン" data-slot="14"/>
-      <polygon class="st5 slot" points="385.36 1020.44 331.57 901.53 370.35 884.38 424.15 1003.29 385.36 1020.44" id="l-13" data-area="l" data-area-name="グリーン" data-slot="13"/>
-      <polygon class="st5 slot" points="431.89 1020.44 378.09 901.53 416.87 884.38 470.67 1003.29 431.89 1020.44" id="l-12" data-area="l" data-area-name="グリーン" data-slot="12"/>
-      <polygon class="st5 slot" points="478.41 1020.44 424.62 901.53 463.4 884.38 517.19 1003.29 478.41 1020.44" id="l-11" data-area="l" data-area-name="グリーン" data-slot="11"/>
-      <polygon class="st5 slot" points="524.94 1020.44 471.14 901.53 509.92 884.38 563.72 1003.29 524.94 1020.44" id="l-10" data-area="l" data-area-name="グリーン" data-slot="10"/>
-      <polygon class="st5 slot" points="571.46 1020.44 517.67 901.53 556.45 884.38 610.24 1003.29 571.46 1020.44" id="l-9" data-area="l" data-area-name="グリーン" data-slot="9"/>
-      <polygon class="st5 slot" points="617.99 1020.44 564.19 901.53 602.97 884.38 656.77 1003.29 617.99 1020.44" id="l-8" data-area="l" data-area-name="グリーン" data-slot="8"/>
-      <polygon class="st5 slot" points="664.51 1020.44 610.71 901.53 649.5 884.38 703.29 1003.29 664.51 1020.44" id="l-7" data-area="l" data-area-name="グリーン" data-slot="7"/>
-      <polygon class="st5 slot" points="711.03 1020.44 657.24 901.53 696.02 884.38 749.82 1003.29 711.03 1020.44" id="l-6" data-area="l" data-area-name="グリーン" data-slot="6"/>
-      <polygon class="st5 slot" points="757.56 1020.44 703.76 901.53 742.54 884.38 796.34 1003.29 757.56 1020.44" id="l-5" data-area="l" data-area-name="グリーン" data-slot="5"/>
-      <polygon class="st5 slot" points="804.08 1020.44 750.29 901.53 789.07 884.38 842.86 1003.29 804.08 1020.44" id="l-4" data-area="l" data-area-name="グリーン" data-slot="4"/>
-      <polygon class="st5 slot" points="850.61 1020.44 796.81 901.53 835.59 884.38 889.39 1003.29 850.61 1020.44" id="l-3" data-area="l" data-area-name="グリーン" data-slot="3"/>
-      <polygon class="st5 slot" points="897.13 1020.44 843.34 901.53 882.12 884.38 935.91 1003.29 897.13 1020.44" id="l-2" data-area="l" data-area-name="グリーン" data-slot="2"/>
-      <polygon class="st5 slot" points="943.66 1020.44 890.01 901.46 928.79 884.31 982.44 1003.29 943.66 1020.44" id="l-1" data-area="l" data-area-name="グリーン" data-slot="1"/>
+      <circle class="lower-st11" cx="1839.01" cy="1033.52" r="11.17"/>
+      <line class="lower-st12" x1="1833.82" y1="1030.67" x2="1844.21" y2="1036.37"/>
+      <line class="lower-st12" x1="1841.94" y1="1028.19" x2="1836.09" y2="1038.85"/>
     </g>
     <g>
-      <rect class="st4 slot" x="28.85" y="614.68" width="40.67" height="109.33" id="h-1" data-area="h" data-area-name="休憩室前" data-slot="1"/>
-      <rect class="st4 slot" x="69.52" y="614.68" width="40.67" height="109.33" id="h-2" data-area="h" data-area-name="休憩室前" data-slot="2"/>
-      <rect class="st4 slot" x="110.19" y="614.68" width="40.67" height="109.33" id="h-3" data-area="h" data-area-name="休憩室前" data-slot="3"/>
-      <rect class="st4 slot" x="150.86" y="614.68" width="40.67" height="109.33" id="h-4" data-area="h" data-area-name="休憩室前" data-slot="4"/>
+      <circle class="lower-st11" cx="70.83" cy="1033.52" r="11.17"/>
+      <line class="lower-st12" x1="64.9" y1="1033.52" x2="76.76" y2="1033.52"/>
+      <line class="lower-st12" x1="70.83" y1="1027.44" x2="70.83" y2="1039.6"/>
     </g>
     <g>
-      <rect class="st4 slot" x="340.51" y="601.68" width="99.36" height="34.79" id="j-1" data-area="j" data-area-name="事務所前" data-slot="1"/>
-      <rect class="st4 slot" x="340.51" y="635.21" width="99.36" height="34.79" id="j-2" data-area="j" data-area-name="事務所前" data-slot="2"/>
+      <rect class="lower-st6" x="326.28" y="263.94" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="326.28" y="325.4" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="326.28" y="386.86" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="326.28" y="448.32" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="326.28" y="509.77" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="326.28" y="571.23" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="326.28" y="632.69" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="326.28" y="694.15" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="263.94" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="325.4" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="386.86" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="448.32" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="509.77" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="571.23" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="632.69" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="522.54" y="694.15" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="263.94" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="325.4" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="386.86" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="448.32" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="509.77" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="571.23" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="632.69" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="718.8" y="694.15" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="263.94" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="325.4" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="386.86" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="448.32" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="509.77" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="571.23" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="632.69" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="915.07" y="694.15" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="263.94" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="325.4" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="386.86" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="448.32" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="509.77" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="571.23" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="632.69" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1111.33" y="694.15" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="263.94" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="325.4" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="386.86" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="448.32" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="509.77" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="571.23" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="632.69" width="196.26" height="61.46"/>
+      <rect class="lower-st6" x="1307.59" y="694.15" width="196.26" height="61.46"/>
     </g>
     <g>
-      <rect class="st4 slot" x="238.07" y="552.79" width="104.29" height="40.89" id="i-1" data-area="i" data-area-name="洗車機" data-slot="1"/>
-      <rect class="st4 slot" x="346.91" y="552.79" width="104.29" height="40.89" id="i-2" data-area="i" data-area-name="洗車機" data-slot="2"/>
-      <rect class="st4 slot" x="501.19" y="552.79" width="104.29" height="40.89" id="i-3" data-area="i" data-area-name="洗車機" data-slot="3"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="262" width="196.26" height="61.46" id="m-1"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="323.46" width="196.26" height="61.46" id="m-2"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="384.92" width="196.26" height="61.46" id="m-3"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="446.38" width="196.26" height="61.46" id="m-4"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="507.84" width="196.26" height="61.46" id="m-5"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="569.3" width="196.26" height="61.46" id="m-6"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="630.76" width="196.26" height="61.46" id="m-7"/>
+      <rect class="lower-st9 pk-slot" x="323.34" y="692.22" width="196.26" height="61.46" id="m-8"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="262" width="196.26" height="61.46" id="m-9"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="323.46" width="196.26" height="61.46" id="m-10"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="384.92" width="196.26" height="61.46" id="m-11"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="446.38" width="196.26" height="61.46" id="m-12"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="507.84" width="196.26" height="61.46" id="m-13"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="569.3" width="196.26" height="61.46" id="m-14"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="630.76" width="196.26" height="61.46" id="m-15"/>
+      <rect class="lower-st9 pk-slot" x="519.61" y="692.22" width="196.26" height="61.46" id="m-16"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="262" width="196.26" height="61.46" id="m-17"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="323.46" width="196.26" height="61.46" id="m-18"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="384.92" width="196.26" height="61.46" id="m-19"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="446.38" width="196.26" height="61.46" id="m-20"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="507.84" width="196.26" height="61.46" id="m-21"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="569.3" width="196.26" height="61.46" id="m-22"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="630.76" width="196.26" height="61.46" id="m-23"/>
+      <rect class="lower-st9 pk-slot" x="715.87" y="692.22" width="196.26" height="61.46" id="m-24"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="262" width="196.26" height="61.46" id="m-25"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="323.46" width="196.26" height="61.46" id="m-26"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="384.92" width="196.26" height="61.46" id="m-27"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="446.38" width="196.26" height="61.46" id="m-28"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="507.84" width="196.26" height="61.46" id="m-29"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="569.3" width="196.26" height="61.46" id="m-30"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="630.76" width="196.26" height="61.46" id="m-31"/>
+      <rect class="lower-st9 pk-slot" x="912.13" y="692.22" width="196.26" height="61.46" id="m-32"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="262" width="196.26" height="61.46" id="m-33"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="323.46" width="196.26" height="61.46" id="m-34"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="384.92" width="196.26" height="61.46" id="m-35"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="446.38" width="196.26" height="61.46" id="m-36"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="507.84" width="196.26" height="61.46" id="m-37"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="569.3" width="196.26" height="61.46" id="m-38"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="630.76" width="196.26" height="61.46" id="m-39"/>
+      <rect class="lower-st9 pk-slot" x="1108.4" y="692.22" width="196.26" height="61.46" id="m-40"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="262" width="196.26" height="61.46" id="m-41"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="323.46" width="196.26" height="61.46" id="m-42"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="384.92" width="196.26" height="61.46" id="m-43"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="446.38" width="196.26" height="61.46" id="m-44"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="507.84" width="196.26" height="61.46" id="m-45"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="569.3" width="196.26" height="61.46" id="m-46"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="630.76" width="196.26" height="61.46" id="m-47"/>
+      <rect class="lower-st9 pk-slot" x="1304.66" y="692.22" width="196.26" height="61.46" id="m-48"/>
     </g>
     <g>
-      <rect class="st4 slot" x="685.97" y="48.17" width="34.84" height="115.89" id="c-1" data-area="c" data-area-name="小屋" data-slot="1"/>
-      <rect class="st4 slot" x="720.81" y="48.17" width="34.84" height="115.89" id="c-2" data-area="c" data-area-name="小屋" data-slot="2"/>
-      <rect class="st4 slot" x="755.64" y="48.17" width="34.84" height="115.89" id="c-3" data-area="c" data-area-name="小屋" data-slot="3"/>
+      <polygon class="lower-st6" points="456.68 239 385.75 82.21 436.88 59.6 507.81 216.39 456.68 239"/>
+      <polygon class="lower-st6" points="518.02 239 447.09 82.21 498.23 59.6 569.16 216.39 518.02 239"/>
+      <polygon class="lower-st6" points="579.37 239 508.44 82.21 559.57 59.6 630.5 216.39 579.37 239"/>
+      <polygon class="lower-st6" points="640.71 239 569.78 82.21 620.92 59.6 691.85 216.39 640.71 239"/>
+      <polygon class="lower-st6" points="702.06 239 631.13 82.21 682.26 59.6 753.19 216.39 702.06 239"/>
+      <polygon class="lower-st6" points="763.4 239 692.47 82.21 743.61 59.6 814.54 216.39 763.4 239"/>
+      <polygon class="lower-st6" points="824.75 239 753.82 82.21 804.95 59.6 875.88 216.39 824.75 239"/>
+      <polygon class="lower-st6" points="886.09 239 815.16 82.21 866.3 59.6 937.23 216.39 886.09 239"/>
+      <polygon class="lower-st6" points="947.44 239 876.5 82.21 927.64 59.6 998.57 216.39 947.44 239"/>
+      <polygon class="lower-st6" points="1008.78 239 937.85 82.21 988.98 59.6 1059.92 216.39 1008.78 239"/>
+      <polygon class="lower-st6" points="1070.13 239 999.19 82.21 1050.33 59.6 1121.26 216.39 1070.13 239"/>
+      <polygon class="lower-st6" points="1131.47 239 1060.54 82.21 1111.67 59.6 1182.61 216.39 1131.47 239"/>
+      <polygon class="lower-st6" points="1192.82 239 1121.88 82.21 1173.02 59.6 1243.95 216.39 1192.82 239"/>
+      <polygon class="lower-st6" points="1254.16 239 1183.23 82.21 1234.36 59.6 1305.3 216.39 1254.16 239"/>
+      <polygon class="lower-st6" points="1315.51 239 1244.57 82.21 1295.71 59.6 1366.64 216.39 1315.51 239"/>
+      <polygon class="lower-st6" points="1376.85 239 1305.92 82.21 1357.05 59.6 1427.98 216.39 1376.85 239"/>
+      <polygon class="lower-st6" points="1438.19 239 1367.26 82.21 1418.4 59.6 1489.33 216.39 1438.19 239"/>
+      <polygon class="lower-st6" points="1499.54 239 1428.61 82.21 1479.74 59.6 1550.67 216.39 1499.54 239"/>
+      <polygon class="lower-st6" points="1560.88 239 1488.94 82.66 1540.07 60.05 1612.02 216.39 1560.88 239"/>
     </g>
     <g>
-      <rect class="st4 slot" x="553.66" y="18.48" width="35.78" height="100.99" transform="translate(640.52 -502.57) rotate(90)" id="b-1" data-area="b" data-area-name="スタンド" data-slot="1"/>
-      <rect class="st4 slot" x="553.66" y="54.26" width="35.78" height="100.99" transform="translate(676.3 -466.79) rotate(90)" id="b-2" data-area="b" data-area-name="スタンド" data-slot="2"/>
+      <polygon class="lower-st10 pk-slot" points="453.74 237.07 382.81 80.27 433.95 57.66 504.88 214.45 453.74 237.07" id="l-19"/>
+      <polygon class="lower-st10 pk-slot" points="515.09 237.07 444.16 80.27 495.29 57.66 566.22 214.45 515.09 237.07" id="l-18"/>
+      <polygon class="lower-st10 pk-slot" points="576.43 237.07 505.5 80.27 556.64 57.66 627.57 214.45 576.43 237.07" id="l-17"/>
+      <polygon class="lower-st10 pk-slot" points="637.78 237.07 566.85 80.27 617.98 57.66 688.91 214.45 637.78 237.07" id="l-16"/>
+      <polygon class="lower-st10 pk-slot" points="699.12 237.07 628.19 80.27 679.32 57.66 750.26 214.45 699.12 237.07" id="l-15"/>
+      <polygon class="lower-st10 pk-slot" points="760.47 237.07 689.53 80.27 740.67 57.66 811.6 214.45 760.47 237.07" id="l-14"/>
+      <polygon class="lower-st10 pk-slot" points="821.81 237.07 750.88 80.27 802.01 57.66 872.95 214.45 821.81 237.07" id="l-13"/>
+      <polygon class="lower-st10 pk-slot" points="883.16 237.07 812.22 80.27 863.36 57.66 934.29 214.45 883.16 237.07" id="l-12"/>
+      <polygon class="lower-st10 pk-slot" points="944.5 237.07 873.57 80.27 924.7 57.66 995.64 214.45 944.5 237.07" id="l-11"/>
+      <polygon class="lower-st10 pk-slot" points="1005.85 237.07 934.91 80.27 986.05 57.66 1056.98 214.45 1005.85 237.07" id="l-10"/>
+      <polygon class="lower-st10 pk-slot" points="1067.19 237.07 996.26 80.27 1047.39 57.66 1118.33 214.45 1067.19 237.07" id="l-9"/>
+      <polygon class="lower-st10 pk-slot" points="1128.53 237.07 1057.6 80.27 1108.74 57.66 1179.67 214.45 1128.53 237.07" id="l-8"/>
+      <polygon class="lower-st10 pk-slot" points="1189.88 237.07 1118.95 80.27 1170.08 57.66 1241.01 214.45 1189.88 237.07" id="l-7"/>
+      <polygon class="lower-st10 pk-slot" points="1251.22 237.07 1180.29 80.27 1231.43 57.66 1302.36 214.45 1251.22 237.07" id="l-6"/>
+      <polygon class="lower-st10 pk-slot" points="1312.57 237.07 1241.64 80.27 1292.77 57.66 1363.7 214.45 1312.57 237.07" id="l-5"/>
+      <polygon class="lower-st10 pk-slot" points="1373.91 237.07 1302.98 80.27 1354.12 57.66 1425.05 214.45 1373.91 237.07" id="l-4"/>
+      <polygon class="lower-st10 pk-slot" points="1435.26 237.07 1364.33 80.27 1415.46 57.66 1486.39 214.45 1435.26 237.07" id="l-3"/>
+      <polygon class="lower-st10 pk-slot" points="1496.6 237.07 1425.67 80.27 1476.81 57.66 1547.74 214.45 1496.6 237.07" id="l-2"/>
+      <polygon class="lower-st10 pk-slot" points="1557.95 237.07 1487.1 80.24 1538.23 57.63 1609.08 214.45 1557.95 237.07" id="l-1"/>
     </g>
+    <path class="lower-st14" d="M814.75,974.68h-259.42c-14.01,0-25.41,8.41-25.56,18.86l-.26,18.2c-.14,10.17-11.24,18.36-24.88,18.36h-157.37c-13.22,0-23.93-7.99-23.93-17.85v-203.76c0-9.86,10.71-17.85,23.93-17.85h467.48c13.22,0,23.93,7.99,23.93,17.85v148.34c0,9.86-10.71,17.85-23.93,17.85Z"/>
     <g>
-      <polygon class="st4 slot" points="296.86 168.23 267.27 155.58 312.57 54.5 342.16 67.15 296.86 168.23" id="a-1" data-area="a" data-area-name="花壇" data-slot="1"/>
-      <polygon class="st4 slot" points="331.94 169.04 302.35 156.39 347.65 55.31 377.24 67.96 331.94 169.04" id="a-2" data-area="a" data-area-name="花壇" data-slot="2"/>
-      <polygon class="st4 slot" points="367.01 169.85 337.42 157.2 382.72 56.12 412.31 68.77 367.01 169.85" id="a-3" data-area="a" data-area-name="花壇" data-slot="3"/>
-      <polygon class="st4 slot" points="402.09 170.65 372.5 158.01 417.8 56.93 447.39 69.57 402.09 170.65" id="a-4" data-area="a" data-area-name="花壇" data-slot="4"/>
-      <polygon class="st4 slot" points="437.17 171.46 407.58 158.81 452.88 57.73 482.47 70.38 437.17 171.46" id="a-5" data-area="a" data-area-name="花壇" data-slot="5"/>
-      <polygon class="st4 slot" points="472.25 172.27 442.66 159.62 487.95 58.54 517.54 71.19 472.25 172.27" id="a-6" data-area="a" data-area-name="花壇" data-slot="6"/>
+      <rect class="lower-st6" x="851.9" y="794.05" width="60.23" height="126.84"/>
+      <rect class="lower-st6" x="851.9" y="920.9" width="60.23" height="126.84"/>
     </g>
+    <rect class="lower-st6" x="732.95" y="799.18" width="60.53" height="170.75"/>
+    <g>
+      <rect class="lower-st9 pk-slot" x="849.04" y="792.24" width="60.23" height="126.84" id="o-1"/>
+      <rect class="lower-st9 pk-slot" x="849.04" y="919.09" width="60.23" height="126.84" id="o-2"/>
+    </g>
+    <rect class="lower-st9 pk-slot" x="730.27" y="797.33" width="60.53" height="170.75" id="n-1"/>
+    <text class="lower-st1" transform="translate(404.97 909.06)"><tspan x="0" y="0">整 備 工 場</tspan></text>
+    <path class="lower-st14" d="M1594.74,1030.1h-622.14c-6.6,0-12-5.4-12-12l-4.9-215.45c0-6.6,5.4-12,12-12h622.14c6.6,0,12,5.4,12,12l4.9,215.45c0,6.6-5.4,12-12,12Z"/>
+    <rect class="lower-st14" x="547.82" y="984.46" width="290.86" height="45.64" rx="12" ry="12"/>
+    <text class="lower-st1" transform="translate(1164.5294 934.6765)"><tspan x="0" y="0">駐　車　場</tspan></text>
+    <text class="lower-st0" transform="translate(609.1233 1018.5769) scale(1 .9)"><tspan x="0" y="0">駐　車　場</tspan></text>
+    <rect class="lower-st14" x="1611.74" y="57.66" width="55.08" height="129.24" rx="12" ry="12"/>
+    <text class="lower-st2" transform="translate(1637.7168 67.6654) scale(1 .8518)"><tspan x="0" y="0">バス停</tspan></text>
+    <line class="lower-st8" x1="132.44" y1="68.84" x2="132.44" y2="1007.28"/>
+    <line class="lower-st8" x1="1774.66" y1="239" x2="1774.66" y2="1007.28"/>
+    <rect class="lower-st15" x="1681.59" y="57.54" width="115.78" height="148.52"/>
+    <text class="lower-st13" transform="translate(1738.629 72.1476) scale(1 .8518)"><tspan x="0" y="0">出</tspan><tspan x=".09" y="35.83" xml:space="preserve">  </tspan><tspan x="0" y="51.89">入</tspan><tspan x=".09" y="87.72" xml:space="preserve">  </tspan><tspan x="0" y="103.77">口</tspan></text>
     <g>
       <g>
-        <polyline class="st1" points="393.37 292.47 393.37 295.97 389.87 295.97"/>
-        <line class="st7" x1="383.07" y1="295.97" x2="277.75" y2="295.97"/>
-        <polyline class="st1" points="274.36 295.97 270.86 295.97 270.86 292.47"/>
-        <line class="st0" x1="270.86" y1="285.73" x2="270.86" y2="262.17"/>
-        <polyline class="st1" points="270.86 258.8 270.86 255.3 274.36 255.3"/>
-        <line class="st7" x1="281.15" y1="255.3" x2="386.47" y2="255.3"/>
-        <polyline class="st1" points="389.87 255.3 393.37 255.3 393.37 258.8"/>
-        <line class="st0" x1="393.37" y1="265.53" x2="393.37" y2="289.1"/>
+        <line class="lower-st7" x1="1791.07" y1="60.19" x2="1791.07" y2="63.69"/>
+        <line class="lower-st5" x1="1791.07" y1="70.49" x2="1791.07" y2="203.12"/>
+        <line class="lower-st7" x1="1791.07" y1="206.53" x2="1791.07" y2="210.03"/>
       </g>
-      <rect class="st4 slot" x="270.86" y="295.97" width="122.51" height="40.67" id="f-1" data-area="f" data-area-name="五台口" data-slot="1"/>
-      <rect class="st4 slot" x="393.37" y="255.3" width="122.51" height="40.67" id="f-2" data-area="f" data-area-name="五台口" data-slot="2"/>
-      <rect class="st4 slot" x="393.37" y="295.97" width="122.51" height="40.67" id="f-3" data-area="f" data-area-name="五台口" data-slot="3"/>
-      <rect class="st4 slot" x="515.88" y="255.3" width="122.51" height="40.67" id="f-4" data-area="f" data-area-name="五台口" data-slot="4"/>
-      <rect class="st4 slot" x="515.88" y="295.97" width="122.51" height="40.67" id="f-5" data-area="f" data-area-name="五台口" data-slot="5"/>
+      <g>
+        <line class="lower-st7" x1="1687.9" y1="210.03" x2="1687.9" y2="206.53"/>
+        <line class="lower-st5" x1="1687.9" y1="199.72" x2="1687.9" y2="67.09"/>
+        <line class="lower-st7" x1="1687.9" y1="63.69" x2="1687.9" y2="60.19"/>
+      </g>
     </g>
-    <g>
-      <rect class="st4 slot" x="109.93" y="295.97" width="122.51" height="40.67" transform="translate(487.49 145.11) rotate(90)" id="e-1" data-area="e" data-area-name="一番" data-slot="1"/>
-      <rect class="st4 slot" x="150.6" y="295.97" width="122.51" height="40.67" transform="translate(528.16 104.44) rotate(90)" id="e-2" data-area="e" data-area-name="一番" data-slot="2"/>
-    </g>
-    <g>
-      <rect class="st4 slot" x="608.88" y="711.14" width="109.1" height="35" transform="translate(1392.0735 65.2051) rotate(90)" id="k-9" data-area="k" data-area-name="新駐車場" data-slot="9"/>
-      <rect class="st4 slot" x="643.83" y="711.14" width="109.1" height="35" transform="translate(1427.0226 30.2559) rotate(90)" id="k-10" data-area="k" data-area-name="新駐車場" data-slot="10"/>
-      <rect class="st4 slot" x="678.78" y="711.14" width="109.1" height="35" transform="translate(1461.9717 -4.6932) rotate(90)" id="k-11" data-area="k" data-area-name="新駐車場" data-slot="11"/>
-      <rect class="st4 slot" x="713.73" y="711.14" width="109.1" height="35" transform="translate(1496.9208 -39.6423) rotate(90)" id="k-12" data-area="k" data-area-name="新駐車場" data-slot="12"/>
-      <rect class="st4 slot" x="748.68" y="711.14" width="109.1" height="35" transform="translate(1531.8699 -74.5914) rotate(90)" id="k-13" data-area="k" data-area-name="新駐車場" data-slot="13"/>
-      <rect class="st4 slot" x="783.63" y="711.14" width="109.1" height="35" transform="translate(1566.8191 -109.5405) rotate(90)" id="k-14" data-area="k" data-area-name="新駐車場" data-slot="14"/>
-      <rect class="st4 slot" x="818.58" y="711.14" width="109.1" height="35" transform="translate(1601.7682 -144.4897) rotate(90)" id="k-15" data-area="k" data-area-name="新駐車場" data-slot="15"/>
-      <rect class="st4 slot" x="853.53" y="711.14" width="109.1" height="35" transform="translate(1636.7173 -179.4388) rotate(90)" id="k-16" data-area="k" data-area-name="新駐車場" data-slot="16"/>
-      <rect class="st4 slot" x="888.48" y="711.14" width="109.1" height="35" transform="translate(1671.6664 -214.3879) rotate(90)" id="k-17" data-area="k" data-area-name="新駐車場" data-slot="17"/>
-      <rect class="st4 slot" x="935.99" y="711.14" width="109.1" height="35" transform="translate(1507.8498 -386.9176) rotate(78.5402)" id="k-18" data-area="k" data-area-name="新駐車場" data-slot="18"/>
-      <rect class="st4 slot" x="608.86" y="601.57" width="109.1" height="35" transform="translate(1282.4796 -44.335) rotate(90)" id="k-1" data-area="k" data-area-name="新駐車場" data-slot="1"/>
-      <rect class="st4 slot" x="643.81" y="601.57" width="109.1" height="35" transform="translate(1317.4287 -79.2841) rotate(90)" id="k-2" data-area="k" data-area-name="新駐車場" data-slot="2"/>
-      <rect class="st4 slot" x="678.76" y="601.57" width="109.1" height="35" transform="translate(1352.3779 -114.2332) rotate(90)" id="k-3" data-area="k" data-area-name="新駐車場" data-slot="3"/>
-      <rect class="st4 slot" x="713.71" y="601.57" width="109.1" height="35" transform="translate(1387.327 -149.1824) rotate(90)" id="k-4" data-area="k" data-area-name="新駐車場" data-slot="4"/>
-      <rect class="st4 slot" x="748.65" y="601.57" width="109.1" height="35" transform="translate(1422.2761 -184.1315) rotate(90)" id="k-5" data-area="k" data-area-name="新駐車場" data-slot="5"/>
-      <rect class="st4 slot" x="783.6" y="601.57" width="109.1" height="35" transform="translate(1457.2252 -219.0806) rotate(90)" id="k-6" data-area="k" data-area-name="新駐車場" data-slot="6"/>
-      <rect class="st4 slot" x="818.55" y="601.57" width="109.1" height="35" transform="translate(1492.1743 -254.0297) rotate(90)" id="k-7" data-area="k" data-area-name="新駐車場" data-slot="7"/>
-      <rect class="st4 slot" x="853.5" y="601.57" width="109.1" height="35" transform="translate(1527.1235 -288.9788) rotate(90)" id="k-8" data-area="k" data-area-name="新駐車場" data-slot="8"/>
-    </g>
-    <rect class="st4 slot" x="935.91" y="587.07" width="82.68" height="34.79" id="k-19" data-area="k" data-area-name="新駐車場" data-slot="19"/>
-    <rect class="st4 slot" x="935.91" y="620.6" width="82.68" height="34.79" id="k-20" data-area="k" data-area-name="新駐車場" data-slot="20"/>
-    <g>
-      <rect class="st4 slot" x="406.02" y="1441.49" width="46.96" height="100.58" id="o-1" data-area="o" data-area-name="タイヤハウス" data-slot="1"/>
-      <rect class="st4 slot" x="406.02" y="1542.07" width="46.96" height="100.58" id="o-2" data-area="o" data-area-name="タイヤハウス" data-slot="2"/>
-    </g>
-    <g>
-      <rect class="st4 slot" x="297.99" y="364.81" width="41.4" height="120.65" transform="translate(265.08 -103.47) rotate(31.07)" id="g-2" data-area="g" data-area-name="中の島" data-slot="2"/>
-      <rect class="st4 slot" x="346.22" y="364.79" width="41.4" height="120.65" transform="translate(271.99 -128.36) rotate(31.07)" id="g-3" data-area="g" data-area-name="中の島" data-slot="3"/>
-      <rect class="st4 slot" x="394.45" y="364.76" width="41.4" height="120.65" transform="translate(278.89 -153.25) rotate(31.07)" id="g-4" data-area="g" data-area-name="中の島" data-slot="4"/>
-      <rect class="st4 slot" x="442.67" y="364.74" width="41.4" height="120.65" transform="translate(285.8 -178.14) rotate(31.07)" id="g-5" data-area="g" data-area-name="中の島" data-slot="5"/>
-      <rect class="st4 slot" x="490.9" y="364.71" width="41.4" height="120.65" transform="translate(292.7 -203.04) rotate(31.07)" id="g-6" data-area="g" data-area-name="中の島" data-slot="6"/>
-      <rect class="st4 slot" x="539.13" y="364.69" width="41.4" height="120.65" transform="translate(299.6 -227.93) rotate(31.07)" id="g-7" data-area="g" data-area-name="中の島" data-slot="7"/>
-      <rect class="st4 slot" x="587.36" y="364.66" width="41.4" height="120.65" transform="translate(306.51 -252.82) rotate(31.07)" id="g-8" data-area="g" data-area-name="中の島" data-slot="8"/>
-      <rect class="st4 slot" x="635.59" y="364.64" width="41.4" height="120.65" transform="translate(313.41 -277.71) rotate(31.07)" id="g-9" data-area="g" data-area-name="中の島" data-slot="9"/>
-      <rect class="st4 slot" x="683.82" y="364.61" width="41.4" height="120.65" transform="translate(320.32 -302.6) rotate(31.07)" id="g-10" data-area="g" data-area-name="中の島" data-slot="10"/>
-      <rect class="st4 slot" x="227.57" y="415.76" width="89.77" height="31.43" transform="translate(-237.73 442.21) rotate(-58.93)" id="g-1" data-area="g" data-area-name="中の島" data-slot="1"/>
-    </g>
-    <rect class="st4 slot" x="315.94" y="1450.65" width="50.21" height="133.55" id="n-1" data-area="n" data-area-name="整備中" data-slot="1"/>
-    <text class="st14" transform="translate(316.16 231.9)"><tspan x="0" y="0">f</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">五台口</tspan></text>
-    <text class="st10" transform="translate(97.73 490.29)"><tspan x="0" y="0">g</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">中の島</tspan></text>
-    <text class="st14" transform="translate(231.57 535.01)"><tspan x="0" y="0">i</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">洗車機</tspan></text>
-    <text class="st13" transform="translate(645.93 550.22)"><tspan x="0" y="0">k</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">新駐車場　</tspan></text>
-    <text class="st10" transform="translate(323.45 704.24)"><tspan x="0" y="0">j</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">事務所前</tspan></text>
-    <text class="st13" transform="translate(.64 596.68)"><tspan x="0" y="0">ｈ</tspan><tspan class="st9" x="25" y="0">.</tspan><tspan x="43.75" y="0">休憩室前</tspan></text>
-    <text class="st13" transform="translate(34.2 862.52)"><tspan x="0" y="0">ｌ</tspan><tspan class="st9" x="25" y="0">.</tspan><tspan x="43.75" y="0">グリーン</tspan></text>
-    <text class="st10" transform="translate(7.3226 1448.2633)"><tspan x="0" y="0">ｍ</tspan><tspan class="st9" x="25" y="0">.</tspan><tspan x="43.75" y="0">整備</tspan></text>
-    <text class="st13" transform="translate(218.3366 1638.885)"><tspan x="0" y="0">n</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">整備中</tspan></text>
-    <text class="st14" transform="translate(431.4407 1680.7539)"><tspan x="0" y="0">o</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">タイヤハウス</tspan></text>
   </g>
   <g id="_文字" data-name="文字">
-    <polygon class="st8" points="509.1 179.82 248.89 179.82 307.71 48.17 513.97 48.17 509.1 179.82"/>
-    <rect class="st3" x="520.65" y="37.27" width="115.1" height="115.1"/>
-    <rect class="st8" x="675.98" y="37.27" width="122.67" height="143.79"/>
-    <rect class="st3" x="828.64" y="95.68" width="129.09" height="449.04" transform="translate(-28.44 94.58) rotate(-5.97)"/>
-    <rect class="st2" x="262.88" y="239.54" width="399.99" height="100.57"/>
-    <path class="st3" d="M783.83,353.73h-489.87l-85.21,139.83h494.64s79.56-139.83,80.45-139.83Z"/>
-    <path class="st8" d="M22.8,607.47h179.1v121.89H22.8s-.31-122.21,0-121.89Z"/>
-    <path class="st2" d="M232.19,544.4h381.52v49.99H232.19s-1.71-49.99,0-49.99Z"/>
-    <rect class="st3" x="333.46" y="603.78" width="114.67" height="68.56"/>
-    <path class="st8" d="M925.53,558.62h-283.77c1.19,0,0,229.96,0,229.96h387.7l-25.04-116.88h25.04v-113.08s-105.33,1.39-103.94,0Z"/>
-    <polygon class="st8" points="34.2 872.48 931.94 872.48 998.77 1025.81 103.44 1025.81 34.2 872.48"/>
-    <rect class="st3" x="2.5" y="1035.14" width="904.89" height="380.1"/>
-    <rect class="st2" x="398.16" y="1435.14" width="66.56" height="219.56"/>
-    <rect class="st8" x="308.02" y="1440.28" width="69.6" height="152.08"/>
-    <text class="st13" transform="translate(309.28 37.27)"><tspan x="0" y="0">a</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">花壇</tspan></text>
-    <text class="st13" transform="translate(143.33 224.43)"><tspan x="0" y="0">e</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">花壇</tspan></text>
-    <text class="st10" transform="translate(514.51 24.48)"><tspan x="0" y="0">b</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">スタンド</tspan></text>
-    <text class="st13" transform="translate(675.18 21.48)"><tspan x="0" y="0">c</tspan><tspan class="st9" x="12.5" y="0">,</tspan><tspan x="31.25" y="0">小屋</tspan></text>
-    <text class="st10" transform="translate(837.74 87.81) rotate(-5.97)"><tspan x="0" y="0">d</tspan><tspan class="st9" x="12.5" y="0">.</tspan><tspan x="31.25" y="0">ヤナセ</tspan></text>
-    <rect class="st8" x="139.76" y="239.54" width="109.13" height="152.75"/>
-    <text class="st12" transform="translate(7.3225 1071.6886)"><tspan x="0" y="0">１列目</tspan></text>
-    <text class="st12" transform="translate(156.1698 1071.6886)"><tspan x="0" y="0">２列目</tspan></text>
-    <text class="st12" transform="translate(308.0175 1071.6886)"><tspan x="0" y="0">３列目</tspan></text>
-    <text class="st12" transform="translate(454.9446 1071.6886)"><tspan x="0" y="0">４列目</tspan></text>
-    <text class="st12" transform="translate(602.711 1071.6886)"><tspan x="0" y="0">５列目</tspan></text>
-    <text class="st12" transform="translate(752.2651 1071.6886)"><tspan x="0" y="0">６列目</tspan></text>
-    <text class="st10" transform="translate(119.9632 1073.7395)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st10" transform="translate(121.623 1118.2994)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st10" transform="translate(119.9632 1164.9102)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st10" transform="translate(119.9632 1211.522)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st10" transform="translate(119.9632 1258.1328)"><tspan x="0" y="0">５.</tspan></text>
-    <text class="st10" transform="translate(119.9632 1304.7436)"><tspan x="0" y="0">６.</tspan></text>
-    <text class="st10" transform="translate(119.9632 1351.3554)"><tspan x="0" y="0">７.</tspan></text>
-    <text class="st10" transform="translate(119.9632 1397.9662)"><tspan x="0" y="0">８.</tspan></text>
-    <text class="st10" transform="translate(269.5102 1073.7395)"><tspan x="0" y="0">９.</tspan></text>
-    <text class="st10" transform="translate(268.7287 1118.2994)"><tspan x="0" y="0">10.</tspan></text>
-    <text class="st10" transform="translate(267.0689 1164.9102)"><tspan x="0" y="0">11.</tspan></text>
-    <text class="st10" transform="translate(267.0689 1211.522)"><tspan x="0" y="0">12.</tspan></text>
-    <text class="st10" transform="translate(267.0689 1258.1328)"><tspan x="0" y="0">13.</tspan></text>
-    <text class="st10" transform="translate(267.0689 1304.7436)"><tspan x="0" y="0">14.</tspan></text>
-    <text class="st10" transform="translate(267.0689 1351.3554)"><tspan x="0" y="0">15.</tspan></text>
-    <text class="st10" transform="translate(267.0689 1397.9662)"><tspan x="0" y="0">16.</tspan></text>
-    <text class="st10" transform="translate(414.5264 1073.7395)"><tspan x="0" y="0">17.</tspan></text>
-    <text class="st10" transform="translate(415.0144 1118.2994)"><tspan x="0" y="0">18.</tspan></text>
-    <text class="st10" transform="translate(413.3546 1164.9102)"><tspan x="0" y="0">19.</tspan></text>
-    <text class="st10" transform="translate(413.3546 1211.522)"><tspan x="0" y="0">20.</tspan></text>
-    <text class="st10" transform="translate(413.3546 1258.1328)"><tspan x="0" y="0">21.</tspan></text>
-    <text class="st10" transform="translate(413.3546 1304.7436)"><tspan x="0" y="0">22.</tspan></text>
-    <text class="st10" transform="translate(413.3546 1351.3554)"><tspan x="0" y="0">23.</tspan></text>
-    <text class="st10" transform="translate(413.3546 1397.9662)"><tspan x="0" y="0">24.</tspan></text>
-    <text class="st10" transform="translate(562.65 1073.7395)"><tspan x="0" y="0">25.</tspan></text>
-    <text class="st10" transform="translate(564.3098 1118.2994)"><tspan x="0" y="0">26.</tspan></text>
-    <text class="st10" transform="translate(562.65 1164.9102)"><tspan x="0" y="0">27.</tspan></text>
-    <text class="st10" transform="translate(562.65 1211.522)"><tspan x="0" y="0">28.</tspan></text>
-    <text class="st10" transform="translate(562.65 1258.1328)"><tspan x="0" y="0">29.</tspan></text>
-    <text class="st10" transform="translate(562.65 1304.7436)"><tspan x="0" y="0">30.</tspan></text>
-    <text class="st10" transform="translate(562.65 1351.3554)"><tspan x="0" y="0">31.</tspan></text>
-    <text class="st10" transform="translate(562.65 1397.9662)"><tspan x="0" y="0">32.</tspan></text>
-    <text class="st10" transform="translate(707.1284 1397.7707)"><tspan x="0" y="0">40.</tspan></text>
-    <text class="st10" transform="translate(708.7882 1075.2043)"><tspan x="0" y="0">33.</tspan></text>
-    <text class="st10" transform="translate(707.1284 1121.8151)"><tspan x="0" y="0">34.</tspan></text>
-    <text class="st10" transform="translate(707.1284 1168.4269)"><tspan x="0" y="0">35.</tspan></text>
-    <text class="st10" transform="translate(707.1284 1215.0377)"><tspan x="0" y="0">36.</tspan></text>
-    <text class="st10" transform="translate(707.1284 1261.6485)"><tspan x="0" y="0">37.</tspan></text>
-    <text class="st10" transform="translate(707.1284 1308.2603)"><tspan x="0" y="0">38.</tspan></text>
-    <text class="st10" transform="translate(707.1284 1354.8711)"><tspan x="0" y="0">39.</tspan></text>
-    <text class="st10" transform="translate(858.9353 1397.5752)"><tspan x="0" y="0">48.</tspan></text>
-    <text class="st10" transform="translate(860.5952 1075.009)"><tspan x="0" y="0">41.</tspan></text>
-    <text class="st10" transform="translate(858.9353 1121.6198)"><tspan x="0" y="0">42.</tspan></text>
-    <text class="st10" transform="translate(858.9353 1168.2316)"><tspan x="0" y="0">43.</tspan></text>
-    <text class="st10" transform="translate(858.9353 1214.8424)"><tspan x="0" y="0">44.</tspan></text>
-    <text class="st10" transform="translate(858.9353 1261.4532)"><tspan x="0" y="0">45.</tspan></text>
-    <text class="st10" transform="translate(858.9353 1308.065)"><tspan x="0" y="0">46.</tspan></text>
-    <text class="st10" transform="translate(858.9353 1354.6758)"><tspan x="0" y="0">47.</tspan></text>
-    <text class="st11" transform="translate(45.1357 1055.7775) scale(1 6.4538)"><tspan x="0" y="0">→</tspan></text>
-    <text class="st11" transform="translate(193.9377 1055.7775) scale(1 6.4538)"><tspan x="0" y="0">→</tspan></text>
-    <text class="st11" transform="translate(342.7398 1055.7775) scale(1 6.4538)"><tspan x="0" y="0">→</tspan></text>
-    <text class="st11" transform="translate(491.5418 1055.7775) scale(1 6.4538)"><tspan x="0" y="0">→</tspan></text>
-    <text class="st11" transform="translate(640.3438 1055.7775) scale(1 6.4538)"><tspan x="0" y="0">→</tspan></text>
-    <text class="st11" transform="translate(789.1458 1055.7775) scale(1 6.4538)"><tspan x="0" y="0">→</tspan></text>
-    <text class="st14" transform="translate(414.5264 1505.9158)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st14" transform="translate(415.7961 1599.7852)"><tspan x="0" y="0">２.</tspan></text>
-    <rect class="st6" x="12.85" y="1042.35" width="69.89" height="355.42"/>
-    <rect class="st6" x="160.7" y="1042.35" width="69.89" height="355.42"/>
-    <rect class="st6" x="311.2" y="1042.35" width="69.89" height="355.42"/>
-    <rect class="st6" x="458.72" y="1042.35" width="69.89" height="355.42"/>
-    <rect class="st6" x="606.81" y="1042.35" width="69.89" height="355.42"/>
-    <rect class="st6" x="753.84" y="1042.35" width="69.89" height="355.42"/>
-    <text class="st13" transform="translate(83.93 960.55)"><tspan x="0" y="0">19.</tspan></text>
-    <text class="st13" transform="translate(132.11 960.55)"><tspan x="0" y="0">18.</tspan></text>
-    <text class="st13" transform="translate(176.2 960.55)"><tspan x="0" y="0">17.</tspan></text>
-    <text class="st13" transform="translate(222.77 960.55)"><tspan x="0" y="0">16.</tspan></text>
-    <text class="st13" transform="translate(269.51 960.55)"><tspan x="0" y="0">15.</tspan></text>
-    <text class="st13" transform="translate(315.82 960.55)"><tspan x="0" y="0">14.</tspan></text>
-    <text class="st13" transform="translate(359.34 960.55)"><tspan x="0" y="0">13.</tspan></text>
-    <text class="st13" transform="translate(408.63 960.55)"><tspan x="0" y="0">12.</tspan></text>
-    <text class="st13" transform="translate(454.94 960.55)"><tspan x="0" y="0">11.</tspan></text>
-    <text class="st13" transform="translate(501.44 960.55)"><tspan x="0" y="0">10.</tspan></text>
-    <text class="st13" transform="translate(548.44 960.55)"><tspan x="0" y="0">９.</tspan></text>
-    <text class="st13" transform="translate(598.45 960.55)"><tspan x="0" y="0">８.</tspan></text>
-    <text class="st13" transform="translate(641.76 960.55)"><tspan x="0" y="0">７.</tspan></text>
-    <text class="st13" transform="translate(689.45 960.55)"><tspan x="0" y="0">６.</tspan></text>
-    <text class="st13" transform="translate(736.43 960.55)"><tspan x="0" y="0">５.</tspan></text>
-    <text class="st13" transform="translate(780.59 960.55)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st13" transform="translate(825.98 960.55)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st13" transform="translate(871.88 960.55)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(920.16 960.55)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(34.2 683.73)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(74.45 683.73)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(114.7 683.73)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st13" transform="translate(154.94 683.73)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st14" transform="translate(271.95 579.72)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st10" transform="translate(374.44 631.11)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st10" transform="translate(374.44 660.46)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st14" transform="translate(382.44 579.72)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st14" transform="translate(535.55 579.72)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st13" transform="translate(646.16 634.62)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(683.94 634.62)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(718.89 634.62)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st13" transform="translate(753.83 634.62)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st13" transform="translate(789.35 634.62)"><tspan x="0" y="0">５.</tspan></text>
-    <text class="st13" transform="translate(820.65 634.62)"><tspan x="0" y="0">６.</tspan></text>
-    <text class="st13" transform="translate(855.65 634.62)"><tspan x="0" y="0">７.</tspan></text>
-    <text class="st13" transform="translate(893.63 634.62)"><tspan x="0" y="0">８.</tspan></text>
-    <text class="st13" transform="translate(646.16 739.12)"><tspan x="0" y="0">９.</tspan></text>
-    <text class="st13" transform="translate(683.94 739.12)"><tspan x="0" y="0">10.</tspan></text>
-    <text class="st13" transform="translate(718.89 739.12)"><tspan x="0" y="0">11.</tspan></text>
-    <text class="st13" transform="translate(753.83 739.12)"><tspan x="0" y="0">12.</tspan></text>
-    <text class="st13" transform="translate(789.35 739.12)"><tspan x="0" y="0">13.</tspan></text>
-    <text class="st13" transform="translate(820.65 739.12)"><tspan x="0" y="0">14.</tspan></text>
-    <text class="st13" transform="translate(855.65 739.12)"><tspan x="0" y="0">15.</tspan></text>
-    <text class="st13" transform="translate(893.63 739.12)"><tspan x="0" y="0">16.</tspan></text>
-    <text class="st13" transform="translate(963.53 646.54)"><tspan x="0" y="0">20.</tspan></text>
-    <text class="st13" transform="translate(977.25 738.6)"><tspan x="0" y="0">18.</tspan></text>
-    <text class="st13" transform="translate(962.03 613.89)"><tspan x="0" y="0">19.</tspan></text>
-    <text class="st13" transform="translate(927.47 738.8)"><tspan x="0" y="0">17.</tspan></text>
-    <text class="st10" transform="translate(255.85 438.61)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st10" transform="translate(301.88 438.61)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st10" transform="translate(348.33 438.61)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st10" transform="translate(394.84 438.61)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st10" transform="translate(448.26 438.61)"><tspan x="0" y="0">５.</tspan></text>
-    <text class="st10" transform="translate(493.38 438.61)"><tspan x="0" y="0">６.</tspan></text>
-    <text class="st10" transform="translate(542.03 438.61)"><tspan x="0" y="0">７.</tspan></text>
-    <text class="st10" transform="translate(590.36 438.61)"><tspan x="0" y="0">８.</tspan></text>
-    <text class="st10" transform="translate(640.41 438.61)"><tspan x="0" y="0">９.</tspan></text>
-    <text class="st10" transform="translate(685.92 438.61)"><tspan x="0" y="0">10.</tspan></text>
-    <text class="st10" transform="translate(881.53 138.42) rotate(-5.97)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st10" transform="translate(887.73 177.8) rotate(-5.97)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st10" transform="translate(891.34 214.31) rotate(-5.97)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st10" transform="translate(895.38 254.59) rotate(-5.97)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st10" transform="translate(898.38 292.36) rotate(-5.97)"><tspan x="0" y="0">５.</tspan></text>
-    <text class="st10" transform="translate(903.47 330.55) rotate(-5.97)"><tspan x="0" y="0">６.</tspan></text>
-    <text class="st10" transform="translate(908.47 370.63) rotate(-5.97)"><tspan x="0" y="0">７.</tspan></text>
-    <text class="st10" transform="translate(911.34 409.92) rotate(-5.97)"><tspan x="0" y="0">８.</tspan></text>
-    <text class="st10" transform="translate(916.77 448.1) rotate(-5.97)"><tspan x="0" y="0">９.</tspan></text>
-    <text class="st10" transform="translate(921.66 488.29) rotate(-5.97)"><tspan x="0" y="0">10.</tspan></text>
-    <text class="st10" transform="translate(926.94 525.03) rotate(-5.97)"><tspan x="0" y="0">11.</tspan></text>
-    <text class="st13" transform="translate(159 330.55)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(199.24 330.55)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(313.95 325.54)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(439.87 283.85)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(439.87 325.54)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st13" transform="translate(562.46 283.85)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st13" transform="translate(562.46 325.54)"><tspan x="0" y="0">５.</tspan></text>
-    <text class="st13" transform="translate(282.6 122.64)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(321.95 122.64)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(357.55 122.64)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st13" transform="translate(391.37 122.64)"><tspan x="0" y="0">４.</tspan></text>
-    <text class="st13" transform="translate(428.33 122.64)"><tspan x="0" y="0">５.</tspan></text>
-    <text class="st13" transform="translate(462.88 122.64)"><tspan x="0" y="0">６.</tspan></text>
-    <text class="st13" transform="translate(556.34 73.97)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(556.34 115.66)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(686.34 116.79)"><tspan x="0" y="0">１.</tspan></text>
-    <text class="st13" transform="translate(720.81 116.79)"><tspan x="0" y="0">２.</tspan></text>
-    <text class="st13" transform="translate(758.65 116.79)"><tspan x="0" y="0">３.</tspan></text>
-    <text class="st13" transform="translate(328.3738 1529.4622)"><tspan x="0" y="0">１.</tspan></text>
+    <text class="lower-st4" transform="translate(388.75 62.6)"><tspan x="0" y="0">⑲⑱⑰⑯⑮⑭⑬⑫⑪⑩⑨⑧⑦⑥⑤④③②①</tspan></text>
+    <text class="lower-st3" transform="translate(291.9 278.64)"><tspan x="0" y="0">①②③④⑤⑥⑦⑧</tspan></text>
   </g>
-</svg></div>
+</svg>
+<svg class="pk-map" id="pkMap-upper" data-map="upper" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1920 1080">
+  <defs>
+    <style>
+      #pkSvgWrap .upper-st0 {
+        font-size: 32.47px;
+      }
+
+      #pkSvgWrap .upper-st0, #pkSvgWrap .upper-st1, #pkSvgWrap .upper-st2, #pkSvgWrap .upper-st3, #pkSvgWrap .upper-st4, #pkSvgWrap .upper-st5, #pkSvgWrap .upper-st6 {
+        font-family: MS-Gothic, 'MS Gothic';
+      }
+
+      #pkSvgWrap .upper-st0, #pkSvgWrap .upper-st1, #pkSvgWrap .upper-st2, #pkSvgWrap .upper-st3, #pkSvgWrap .upper-st6 {
+        fill: #f2f2f2;
+      }
+
+      #pkSvgWrap .upper-st1 {
+        font-size: 31.32px;
+      }
+
+      #pkSvgWrap .upper-st1, #pkSvgWrap .upper-st7, #pkSvgWrap .upper-st3, #pkSvgWrap .upper-st8 {
+        glyph-orientation-vertical: 0deg;
+        text-orientation: upright;
+        writing-mode: tb;
+      }
+
+      #pkSvgWrap .upper-st9 {
+        stroke-dasharray: 10.73 10.73;
+      }
+
+      #pkSvgWrap .upper-st9, #pkSvgWrap .upper-st10 {
+        stroke: #e5e3da;
+        stroke-width: 5px;
+      }
+
+      #pkSvgWrap .upper-st9, #pkSvgWrap .upper-st10, #pkSvgWrap .upper-st11, #pkSvgWrap .upper-st12, #pkSvgWrap .upper-st13, #pkSvgWrap .upper-st14, #pkSvgWrap .upper-st15 {
+        fill: none;
+      }
+
+      #pkSvgWrap .upper-st9, #pkSvgWrap .upper-st10, #pkSvgWrap .upper-st11, #pkSvgWrap .upper-st12, #pkSvgWrap .upper-st16, #pkSvgWrap .upper-st17, #pkSvgWrap .upper-st18, #pkSvgWrap .upper-st14, #pkSvgWrap .upper-st15 {
+        stroke-miterlimit: 10;
+      }
+
+      #pkSvgWrap .upper-st11, #pkSvgWrap .upper-st12, #pkSvgWrap .upper-st17, #pkSvgWrap .upper-st18, #pkSvgWrap .upper-st15 {
+        stroke-width: .7px;
+      }
+
+      #pkSvgWrap .upper-st11, #pkSvgWrap .upper-st12, #pkSvgWrap .upper-st17, #pkSvgWrap .upper-st15 {
+        stroke: #000;
+      }
+
+      #pkSvgWrap .upper-st19, #pkSvgWrap .upper-st7 {
+        fill: #afa194;
+      }
+
+      #pkSvgWrap .upper-st2 {
+        font-size: 33.35px;
+      }
+
+      #pkSvgWrap .upper-st20, #pkSvgWrap .upper-st17 {
+        fill: #fff;
+      }
+
+      #pkSvgWrap .upper-st12 {
+        stroke-dasharray: 6.85 6.85;
+      }
+
+      #pkSvgWrap .upper-st13 {
+        stroke-linejoin: round;
+        stroke-width: 3px;
+      }
+
+      #pkSvgWrap .upper-st13, #pkSvgWrap .upper-st14 {
+        stroke: #fff;
+      }
+
+      #pkSvgWrap .upper-st16 {
+        fill: #7fd3d1;
+        stroke: #7fd3d1;
+      }
+
+      #pkSvgWrap .upper-st16, #pkSvgWrap .upper-st14 {
+        stroke-width: 2px;
+      }
+
+      #pkSvgWrap .upper-st7 {
+        font-family: HeiseiKakuGoStdN-W5-90ms-RKSJ-H, 'Heisei Kaku Gothic StdN';
+        font-size: 41.92px;
+      }
+
+      #pkSvgWrap .upper-st21 {
+        fill: #e5e3da;
+      }
+
+      #pkSvgWrap .upper-st3 {
+        font-size: 39.15px;
+      }
+
+      #pkSvgWrap .upper-st4 {
+        font-size: 25px;
+      }
+
+      #pkSvgWrap .upper-st4, #pkSvgWrap .upper-st5 {
+        fill: #604a45;
+      }
+
+      #pkSvgWrap .upper-st18 {
+        fill: #7a6a56;
+        stroke: #7a6a56;
+      }
+
+      #pkSvgWrap .upper-st15 {
+        stroke-dasharray: 6.75 6.75;
+      }
+
+      #pkSvgWrap .upper-st5 {
+        font-size: 27px;
+        letter-spacing: 1.02em;
+      }
+
+      #pkSvgWrap .upper-st6 {
+        font-size: 46.69px;
+        opacity: .98;
+      }
+    </style>
+    <path id="path" d="M1395.53,152.96l69.48,567.93"/>
+  </defs>
+  <g id="_レイヤー_1" data-name="レイヤー_1">
+    <g>
+      <rect class="upper-st21" x="420" y="-420" width="1080" height="1920" transform="translate(420 1500) rotate(-90)"/>
+      <rect class="upper-st14" x="85.91" y="41.47" width="1737.57" height="993.64" rx="21.93" ry="21.93"/>
+      <rect class="upper-st14" x="49.07" y="19.37" width="1811.26" height="1035.78"/>
+      <g>
+        <circle class="upper-st14" cx="70.83" cy="41.47" r="11.17"/>
+        <line class="upper-st13" x1="72.72" y1="47.09" x2="68.94" y2="35.85"/>
+        <line class="upper-st13" x1="65.07" y1="43.41" x2="76.59" y2="39.53"/>
+      </g>
+      <g>
+        <circle class="upper-st14" cx="1839.01" cy="41.47" r="11.17"/>
+        <line class="upper-st13" x1="1833.9" y1="44.47" x2="1844.13" y2="38.46"/>
+        <line class="upper-st13" x1="1835.93" y1="36.23" x2="1842.09" y2="46.71"/>
+      </g>
+      <g>
+        <circle class="upper-st14" cx="1839.01" cy="1033.52" r="11.17"/>
+        <line class="upper-st13" x1="1833.82" y1="1030.67" x2="1844.21" y2="1036.37"/>
+        <line class="upper-st13" x1="1841.94" y1="1028.19" x2="1836.09" y2="1038.85"/>
+      </g>
+      <g>
+        <circle class="upper-st14" cx="70.83" cy="1033.52" r="11.17"/>
+        <line class="upper-st13" x1="64.9" y1="1033.52" x2="76.76" y2="1033.52"/>
+        <line class="upper-st13" x1="70.83" y1="1027.44" x2="70.83" y2="1039.6"/>
+      </g>
+    </g>
+    <g>
+      <polygon class="upper-st18" points="1619.92 328.71 1437.88 344.92 1431.55 293.32 1613.59 277.11 1619.92 328.71"/>
+      <polygon class="upper-st18" points="1626.25 380.32 1444.21 396.53 1437.88 344.92 1619.92 328.71 1626.25 380.32"/>
+      <polygon class="upper-st18" points="1632.59 431.92 1450.54 448.13 1444.21 396.53 1626.25 380.32 1632.59 431.92"/>
+      <polygon class="upper-st18" points="1638.92 483.53 1456.87 499.74 1450.54 448.13 1632.59 431.92 1638.92 483.53"/>
+      <polygon class="upper-st18" points="1645.25 535.13 1463.2 551.34 1456.87 499.74 1638.92 483.53 1645.25 535.13"/>
+      <polygon class="upper-st18" points="1651.58 586.74 1469.54 602.95 1463.2 551.34 1645.25 535.13 1651.58 586.74"/>
+      <polygon class="upper-st18" points="1657.91 638.34 1475.87 654.55 1469.54 602.95 1651.58 586.74 1657.91 638.34"/>
+      <polygon class="upper-st18" points="1664.24 689.95 1482.2 706.16 1475.87 654.55 1657.91 638.34 1664.24 689.95"/>
+      <polygon class="upper-st18" points="1600.93 173.9 1418.88 190.11 1412.55 138.5 1594.6 122.29 1600.93 173.9"/>
+      <polygon class="upper-st18" points="1607.26 225.5 1425.22 241.71 1418.88 190.11 1600.93 173.9 1607.26 225.5"/>
+      <polygon class="upper-st18" points="1613.59 277.11 1431.55 293.32 1425.22 241.71 1607.26 225.5 1613.59 277.11"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="191.32" y="803.9" width="63.68" height="145.84"/>
+      <rect class="upper-st18" x="255" y="803.9" width="63.68" height="145.84"/>
+      <rect class="upper-st18" x="318.68" y="803.9" width="63.68" height="145.84"/>
+      <rect class="upper-st18" x="382.36" y="803.9" width="63.68" height="145.84"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="679.34" y="786.56" width="155.59" height="46.41"/>
+      <rect class="upper-st18" x="679.34" y="831.28" width="155.59" height="46.41"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="518.93" y="721.34" width="163.3" height="54.54"/>
+      <rect class="upper-st18" x="689.36" y="721.34" width="163.3" height="54.54"/>
+      <rect class="upper-st18" x="930.95" y="721.34" width="163.3" height="54.54"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="1220.28" y="48.25" width="54.55" height="154.59"/>
+      <rect class="upper-st18" x="1274.84" y="48.25" width="54.55" height="154.59"/>
+      <rect class="upper-st18" x="1329.39" y="48.25" width="54.55" height="154.59"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="1017.25" y="-3.07" width="47.72" height="158.13" transform="translate(1117.1081 -965.116) rotate(90)"/>
+      <rect class="upper-st18" x="1017.25" y="44.65" width="47.72" height="158.13" transform="translate(1164.8312 -917.393) rotate(90)"/>
+    </g>
+    <g>
+      <polygon class="upper-st18" points="610.99 208.4 564.65 191.52 635.59 56.7 681.92 73.57 610.99 208.4"/>
+      <polygon class="upper-st18" points="665.92 209.47 619.58 192.6 690.51 57.77 736.85 74.64 665.92 209.47"/>
+      <polygon class="upper-st18" points="720.84 210.55 674.51 193.68 745.44 58.85 791.78 75.72 720.84 210.55"/>
+      <polygon class="upper-st18" points="775.77 211.63 729.43 194.76 800.37 59.93 846.7 76.8 775.77 211.63"/>
+      <polygon class="upper-st18" points="830.7 212.7 784.36 195.83 855.29 61 901.63 77.88 830.7 212.7"/>
+      <polygon class="upper-st18" points="885.62 213.78 839.29 196.91 910.22 62.08 956.55 78.95 885.62 213.78"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="570.27" y="381.67" width="191.84" height="54.25"/>
+      <rect class="upper-st18" x="762.11" y="327.42" width="191.84" height="54.25"/>
+      <rect class="upper-st18" x="762.11" y="381.67" width="191.84" height="54.25"/>
+      <rect class="upper-st18" x="953.95" y="327.42" width="191.84" height="54.25"/>
+      <rect class="upper-st18" x="953.95" y="381.67" width="191.84" height="54.25"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="332.5" y="376.95" width="163.41" height="63.68" transform="translate(823 -5.41) rotate(90)"/>
+      <rect class="upper-st18" x="396.18" y="376.95" width="163.41" height="63.68" transform="translate(886.69 -69.09) rotate(90)"/>
+    </g>
+    <g>
+      <rect class="upper-st18" x="1112.24" y="928.5" width="145.52" height="54.81" transform="translate(2140.9078 -229.0906) rotate(90)"/>
+      <rect class="upper-st18" x="1166.96" y="928.5" width="145.52" height="54.81" transform="translate(2195.6337 -283.8166) rotate(90)"/>
+      <rect class="upper-st18" x="1221.69" y="928.5" width="145.52" height="54.81" transform="translate(2250.3597 -338.5425) rotate(90)"/>
+      <rect class="upper-st18" x="1276.41" y="928.5" width="145.52" height="54.81" transform="translate(2305.0857 -393.2685) rotate(90)"/>
+      <rect class="upper-st18" x="1331.14" y="928.5" width="145.52" height="54.81" transform="translate(2359.8116 -447.9945) rotate(90)"/>
+      <rect class="upper-st18" x="1385.87" y="928.5" width="145.52" height="54.81" transform="translate(2414.5376 -502.7204) rotate(90)"/>
+      <rect class="upper-st18" x="1440.59" y="928.5" width="145.52" height="54.81" transform="translate(2469.2636 -557.4464) rotate(90)"/>
+      <rect class="upper-st18" x="1495.32" y="928.5" width="145.52" height="54.81" transform="translate(2523.9896 -612.1724) rotate(90)"/>
+      <rect class="upper-st18" x="1550.04" y="928.5" width="145.52" height="54.81" transform="translate(2578.7155 -666.8984) rotate(90)"/>
+      <polygon class="upper-st18" points="1687.31 1031.86 1653.37 889.24 1707.09 879.96 1741.03 1022.58 1687.31 1031.86"/>
+      <rect class="upper-st18" x="1112.19" y="782.35" width="145.52" height="54.81" transform="translate(1994.7171 -375.197) rotate(90)"/>
+      <rect class="upper-st18" x="1166.92" y="782.35" width="145.52" height="54.81" transform="translate(2049.4431 -429.923) rotate(90)"/>
+      <rect class="upper-st18" x="1221.65" y="782.35" width="145.52" height="54.81" transform="translate(2104.169 -484.649) rotate(90)"/>
+      <rect class="upper-st18" x="1276.37" y="782.35" width="145.52" height="54.81" transform="translate(2158.895 -539.3749) rotate(90)"/>
+      <rect class="upper-st18" x="1331.1" y="782.35" width="145.52" height="54.81" transform="translate(2213.621 -594.1009) rotate(90)"/>
+      <rect class="upper-st18" x="1385.82" y="782.35" width="145.52" height="54.81" transform="translate(2268.3469 -648.8269) rotate(90)"/>
+      <rect class="upper-st18" x="1440.55" y="782.35" width="145.52" height="54.81" transform="translate(2323.0729 -703.5529) rotate(90)"/>
+      <rect class="upper-st18" x="1495.28" y="782.35" width="145.52" height="54.81" transform="translate(2377.7989 -758.2788) rotate(90)"/>
+    </g>
+    <rect class="upper-st18" x="1611.67" y="767.07" width="129.46" height="46.41"/>
+    <rect class="upper-st18" x="1611.67" y="811.8" width="129.46" height="46.41"/>
+    <g>
+      <polygon class="upper-st18" points="624.19 634.24 568.66 605.75 666.15 467.9 721.67 496.39 624.19 634.24"/>
+      <polygon class="upper-st18" points="699.71 634.21 644.18 605.72 741.67 467.87 797.19 496.36 699.71 634.21"/>
+      <polygon class="upper-st18" points="775.23 634.18 719.7 605.68 817.19 467.84 872.71 496.33 775.23 634.18"/>
+      <polygon class="upper-st18" points="850.75 634.14 795.22 605.65 892.71 467.8 948.23 496.3 850.75 634.14"/>
+      <polygon class="upper-st18" points="926.27 634.11 870.74 605.62 968.23 467.77 1023.75 496.26 926.27 634.11"/>
+      <polygon class="upper-st18" points="1001.79 634.08 946.26 605.58 1043.75 467.74 1099.27 496.23 1001.79 634.08"/>
+      <polygon class="upper-st18" points="1077.31 634.04 1021.78 605.55 1119.27 467.7 1174.79 496.2 1077.31 634.04"/>
+      <polygon class="upper-st18" points="1152.83 634.01 1097.3 605.52 1194.79 467.67 1250.31 496.16 1152.83 634.01"/>
+      <polygon class="upper-st18" points="1228.35 633.98 1172.82 605.49 1270.31 467.64 1325.83 496.13 1228.35 633.98"/>
+      <polygon class="upper-st18" points="630.13 519.07 557.59 621.64 515.42 600 587.96 497.43 630.13 519.07"/>
+    </g>
+    <g>
+      <polygon class="upper-st17 pk-slot" points="1616.94 325.82 1434.89 342.03 1428.56 290.43 1610.61 274.22 1616.94 325.82" id="d-4"/>
+      <polygon class="upper-st17 pk-slot" points="1623.27 377.43 1441.23 393.64 1434.89 342.03 1616.94 325.82 1623.27 377.43" id="d-5"/>
+      <polygon class="upper-st17 pk-slot" points="1629.6 429.03 1447.56 445.24 1441.23 393.64 1623.27 377.43 1629.6 429.03" id="d-6"/>
+      <polygon class="upper-st17 pk-slot" points="1635.93 480.64 1453.89 496.85 1447.56 445.24 1629.6 429.03 1635.93 480.64" id="d-7"/>
+      <polygon class="upper-st17 pk-slot" points="1642.26 532.24 1460.22 548.45 1453.89 496.85 1635.93 480.64 1642.26 532.24" id="d-8"/>
+      <polygon class="upper-st17 pk-slot" points="1648.6 583.85 1466.55 600.06 1460.22 548.45 1642.26 532.24 1648.6 583.85" id="d-9"/>
+      <polygon class="upper-st17 pk-slot" points="1654.93 635.45 1472.88 651.66 1466.55 600.06 1648.6 583.85 1654.93 635.45" id="d-10"/>
+      <polygon class="upper-st17 pk-slot" points="1661.26 687.06 1479.21 703.27 1472.88 651.66 1654.93 635.45 1661.26 687.06" id="d-11"/>
+      <polygon class="upper-st17 pk-slot" points="1597.95 171.01 1415.9 187.22 1409.57 135.61 1591.61 119.4 1597.95 171.01" id="d-1"/>
+      <polygon class="upper-st17 pk-slot" points="1604.28 222.61 1422.23 238.82 1415.9 187.22 1597.95 171.01 1604.28 222.61" id="d-2"/>
+      <polygon class="upper-st17 pk-slot" points="1610.61 274.22 1428.56 290.43 1422.23 238.82 1604.28 222.61 1610.61 274.22" id="d-3"/>
+    </g>
+    <g>
+      <rect class="upper-st17 pk-slot" x="188.33" y="801.01" width="63.68" height="145.84" id="h-1"/>
+      <rect class="upper-st17 pk-slot" x="252.02" y="801.01" width="63.68" height="145.84" id="h-2"/>
+      <rect class="upper-st17 pk-slot" x="315.7" y="801.01" width="63.68" height="145.84" id="h-3"/>
+      <rect class="upper-st17 pk-slot" x="379.38" y="801.01" width="63.68" height="145.84" id="h-4"/>
+    </g>
+    <g>
+      <rect class="upper-st17 pk-slot" x="676.35" y="783.67" width="155.59" height="46.41" id="j-1"/>
+      <rect class="upper-st17 pk-slot" x="676.35" y="828.39" width="155.59" height="46.41" id="j-2"/>
+    </g>
+    <g>
+      <rect class="upper-st17 pk-slot" x="515.94" y="718.45" width="163.3" height="54.54" id="i-1"/>
+      <rect class="upper-st17 pk-slot" x="686.38" y="718.45" width="163.3" height="54.54" id="i-2"/>
+      <rect class="upper-st17 pk-slot" x="927.97" y="718.45" width="163.3" height="54.54" id="i-3"/>
+    </g>
+    <g>
+      <rect class="upper-st17 pk-slot" x="1217.3" y="45.36" width="54.55" height="154.59" id="c-1"/>
+      <rect class="upper-st17 pk-slot" x="1271.85" y="45.36" width="54.55" height="154.59" id="c-2"/>
+      <rect class="upper-st17 pk-slot" x="1326.41" y="45.36" width="54.55" height="154.59" id="c-3"/>
+    </g>
+    <g>
+      <rect class="upper-st17 pk-slot" x="1014.27" y="-5.96" width="47.72" height="158.13" transform="translate(1111.2341 -965.0219) rotate(90)" id="b-1"/>
+      <rect class="upper-st17 pk-slot" x="1014.27" y="41.76" width="47.72" height="158.13" transform="translate(1158.9571 -917.2989) rotate(90)" id="b-2"/>
+    </g>
+    <g>
+      <polygon class="upper-st17 pk-slot" points="608.01 205.51 561.67 188.63 632.6 53.81 678.94 70.68 608.01 205.51" id="a-1"/>
+      <polygon class="upper-st17 pk-slot" points="662.93 206.58 616.6 189.71 687.53 54.88 733.87 71.75 662.93 206.58" id="a-2"/>
+      <polygon class="upper-st17 pk-slot" points="717.86 207.66 671.52 190.79 742.46 55.96 788.79 72.83 717.86 207.66" id="a-3"/>
+      <polygon class="upper-st17 pk-slot" points="772.79 208.74 726.45 191.87 797.38 57.04 843.72 73.91 772.79 208.74" id="a-4"/>
+      <polygon class="upper-st17 pk-slot" points="827.71 209.81 781.38 192.94 852.31 58.11 898.64 74.99 827.71 209.81" id="a-5"/>
+      <polygon class="upper-st17 pk-slot" points="882.64 210.89 836.3 194.02 907.24 59.19 953.57 76.06 882.64 210.89" id="a-6"/>
+    </g>
+    <rect class="upper-st19" x="516.69" y="45.89" width="51.88" height="120.54" rx="12" ry="12"/>
+    <rect class="upper-st19" x="856.81" y="703.98" width="64.03" height="132.42" rx="12" ry="12"/>
+    <path class="upper-st19" d="M941.04,982.96v-84.78c0-8.8-8.46-16.01-18.79-16.01l-426.49.3c-10.33,0-18.79,7.2-18.79,16.01v52.82c0,8.4-7.99,15.21-17.85,15.21H197.66c-10.33,0-18.79,7.2-18.79,16.01v27.26c0,8.8,8.46,16.01,18.79,16.01h724.6c10.33,0,18.79-7.2,18.79-16.01v-26.82h0Z"/>
+    <g>
+      <g>
+        <polyline class="upper-st11" points="759.12 375.28 759.12 378.78 755.62 378.78"/>
+        <line class="upper-st12" x1="748.78" y1="378.78" x2="574.21" y2="378.78"/>
+        <polyline class="upper-st11" points="570.79 378.78 567.29 378.78 567.29 375.28"/>
+        <line class="upper-st15" x1="567.29" y1="368.53" x2="567.29" y2="331.41"/>
+        <polyline class="upper-st11" points="567.29 328.03 567.29 324.53 570.79 324.53"/>
+        <line class="upper-st12" x1="577.63" y1="324.53" x2="752.2" y2="324.53"/>
+        <polyline class="upper-st11" points="755.62 324.53 759.12 324.53 759.12 328.03"/>
+        <line class="upper-st15" x1="759.12" y1="334.78" x2="759.12" y2="371.91"/>
+      </g>
+      <rect class="upper-st17 pk-slot" x="567.29" y="378.78" width="191.84" height="54.25" id="f-1"/>
+      <rect class="upper-st17 pk-slot" x="759.12" y="324.53" width="191.84" height="54.25" id="f-2"/>
+      <rect class="upper-st17 pk-slot" x="759.12" y="378.78" width="191.84" height="54.25" id="f-3"/>
+      <rect class="upper-st17 pk-slot" x="950.96" y="324.53" width="191.84" height="54.25" id="f-4"/>
+      <rect class="upper-st17 pk-slot" x="950.96" y="378.78" width="191.84" height="54.25" id="f-5"/>
+    </g>
+    <rect class="upper-st19" x="942.73" y="156.55" width="190.79" height="60.47" rx="12" ry="12"/>
+    <g>
+      <rect class="upper-st17 pk-slot" x="329.52" y="374.06" width="163.41" height="63.68" transform="translate(817.13 -5.32) rotate(90)" id="e-1"/>
+      <rect class="upper-st17 pk-slot" x="393.2" y="374.06" width="163.41" height="63.68" transform="translate(880.81 -69) rotate(90)" id="e-2"/>
+    </g>
+    <g>
+      <rect class="upper-st17 pk-slot" x="1109.25" y="925.61" width="145.52" height="54.81" transform="translate(2135.0337 -228.9965) rotate(90)" id="k-9"/>
+      <rect class="upper-st17 pk-slot" x="1163.98" y="925.61" width="145.52" height="54.81" transform="translate(2189.7597 -283.7225) rotate(90)" id="k-10"/>
+      <rect class="upper-st17 pk-slot" x="1218.7" y="925.61" width="145.52" height="54.81" transform="translate(2244.4857 -338.4484) rotate(90)" id="k-11"/>
+      <rect class="upper-st17 pk-slot" x="1273.43" y="925.61" width="145.52" height="54.81" transform="translate(2299.2116 -393.1744) rotate(90)" id="k-12"/>
+      <rect class="upper-st17 pk-slot" x="1328.16" y="925.61" width="145.52" height="54.81" transform="translate(2353.9376 -447.9004) rotate(90)" id="k-13"/>
+      <rect class="upper-st17 pk-slot" x="1382.88" y="925.61" width="145.52" height="54.81" transform="translate(2408.6636 -502.6263) rotate(90)" id="k-14"/>
+      <rect class="upper-st17 pk-slot" x="1437.61" y="925.61" width="145.52" height="54.81" transform="translate(2463.3896 -557.3523) rotate(90)" id="k-15"/>
+      <rect class="upper-st17 pk-slot" x="1492.33" y="925.61" width="145.52" height="54.81" transform="translate(2518.1155 -612.0783) rotate(90)" id="k-16"/>
+      <rect class="upper-st17 pk-slot" x="1547.06" y="925.61" width="145.52" height="54.81" transform="translate(2572.8415 -666.8043) rotate(90)" id="k-17"/>
+      <polygon class="upper-st17 pk-slot" points="1684.33 1028.97 1650.39 886.35 1704.11 877.07 1738.05 1019.69 1684.33 1028.97" id="k-18"/>
+      <rect class="upper-st17 pk-slot" x="1109.21" y="779.46" width="145.52" height="54.81" transform="translate(1988.8431 -375.1029) rotate(90)" id="k-1"/>
+      <rect class="upper-st17 pk-slot" x="1163.94" y="779.46" width="145.52" height="54.81" transform="translate(2043.569 -429.8289) rotate(90)" id="k-2"/>
+      <rect class="upper-st17 pk-slot" x="1218.66" y="779.46" width="145.52" height="54.81" transform="translate(2098.295 -484.5549) rotate(90)" id="k-3"/>
+      <rect class="upper-st17 pk-slot" x="1273.39" y="779.46" width="145.52" height="54.81" transform="translate(2153.021 -539.2808) rotate(90)" id="k-4"/>
+      <rect class="upper-st17 pk-slot" x="1328.11" y="779.46" width="145.52" height="54.81" transform="translate(2207.7469 -594.0068) rotate(90)" id="k-5"/>
+      <rect class="upper-st17 pk-slot" x="1382.84" y="779.46" width="145.52" height="54.81" transform="translate(2262.4729 -648.7328) rotate(90)" id="k-6"/>
+      <rect class="upper-st17 pk-slot" x="1437.57" y="779.46" width="145.52" height="54.81" transform="translate(2317.1989 -703.4587) rotate(90)" id="k-7"/>
+      <rect class="upper-st17 pk-slot" x="1492.29" y="779.46" width="145.52" height="54.81" transform="translate(2371.9249 -758.1847) rotate(90)" id="k-8"/>
+    </g>
+    <rect class="upper-st17 pk-slot" x="1608.68" y="764.18" width="129.46" height="46.41" id="k-19"/>
+    <rect class="upper-st17 pk-slot" x="1608.68" y="808.91" width="129.46" height="46.41" id="k-20"/>
+    <rect class="upper-st19" x="1415.68" y="47.2" width="173.15" height="60.29" rx="12" ry="12"/>
+    <rect class="upper-st19" x="957.44" y="855.32" width="173.82" height="170.46" rx="13.01" ry="13.01"/>
+    <rect class="upper-st19" x="268.16" y="45.36" width="55.08" height="129.24" rx="12" ry="12"/>
+    <text class="upper-st6" transform="translate(586.24 972.26) scale(1.17 1)"><tspan x="0" y="0" xml:space="preserve">営  業  所</tspan></text>
+    <text class="upper-st2" transform="translate(985.63 957.52) scale(1.17 1)"><tspan x="0" y="0">駐車場</tspan></text>
+    <text class="upper-st2" transform="translate(977.18 198.03) scale(1.17 1)"><tspan x="0" y="0">給油所</tspan></text>
+    <text class="upper-st1" transform="translate(888.82 716.83) scale(1 .85)"><tspan x="0" y="0">洗</tspan><tspan x=".8" y="31.32"> </tspan><tspan x="0" y="46.98">車</tspan><tspan x=".8" y="78.29"> </tspan><tspan x="0" y="93.95">機</tspan></text>
+    <text class="upper-st3" transform="translate(294.13 55.36) scale(1 .85)"><tspan x="0" y="0">バス停</tspan></text>
+    <text class="upper-st0" transform="translate(1439.1074 92.5273) scale(.9731 1)"><tspan x="0" y="0">掃除小屋</tspan></text>
+    <text class="upper-st3" transform="translate(542.63 72.81) scale(1 .85)"><tspan x="0" y="0">花壇</tspan></text>
+    <g>
+      <polygon class="upper-st17 pk-slot" points="621.2 631.35 565.68 602.86 663.16 465.01 718.69 493.5 621.2 631.35" id="g-2"/>
+      <polygon class="upper-st17 pk-slot" points="696.72 631.32 641.2 602.83 738.68 464.98 794.21 493.47 696.72 631.32" id="g-3"/>
+      <polygon class="upper-st17 pk-slot" points="772.24 631.29 716.72 602.79 814.2 464.95 869.73 493.44 772.24 631.29" id="g-4"/>
+      <polygon class="upper-st17 pk-slot" points="847.76 631.25 792.24 602.76 889.72 464.91 945.25 493.41 847.76 631.25" id="g-5"/>
+      <polygon class="upper-st17 pk-slot" points="923.28 631.22 867.76 602.73 965.24 464.88 1020.77 493.37 923.28 631.22" id="g-6"/>
+      <polygon class="upper-st17 pk-slot" points="998.8 631.19 943.28 602.69 1040.76 464.85 1096.29 493.34 998.8 631.19" id="g-7"/>
+      <polygon class="upper-st17 pk-slot" points="1074.32 631.15 1018.8 602.66 1116.28 464.81 1171.81 493.31 1074.32 631.15" id="g-8"/>
+      <polygon class="upper-st17 pk-slot" points="1149.84 631.12 1094.32 602.63 1191.8 464.78 1247.33 493.27 1149.84 631.12" id="g-9"/>
+      <polygon class="upper-st17 pk-slot" points="1225.36 631.09 1169.84 602.6 1267.32 464.75 1322.85 493.24 1225.36 631.09" id="g-10"/>
+      <polygon class="upper-st17 pk-slot" points="627.14 516.18 554.6 618.75 512.44 597.11 584.98 494.54 627.14 516.18" id="g-1"/>
+    </g>
+    <line class="upper-st16" x1="127.26" y1="55.52" x2="127.26" y2="1021.7"/>
+    <line class="upper-st16" x1="1701.48" y1="55.52" x2="1810.95" y2="988.6"/>
+    <rect class="upper-st20" x="347.7" y="47.23" width="148.53" height="126.34"/>
+    <text class="upper-st7" transform="translate(420.96 56.41) scale(1 .85)"><tspan x="0" y="0">出入口</tspan></text>
+    <g>
+      <g>
+        <line class="upper-st10" x1="488.14" y1="50.63" x2="488.14" y2="55.63"/>
+        <line class="upper-st9" x1="488.14" y1="66.36" x2="488.14" y2="168.3"/>
+        <line class="upper-st10" x1="488.14" y1="173.66" x2="488.14" y2="178.66"/>
+      </g>
+      <g>
+        <line class="upper-st10" x1="355.79" y1="178.66" x2="355.79" y2="173.66"/>
+        <line class="upper-st9" x1="355.79" y1="162.93" x2="355.79" y2="61"/>
+        <line class="upper-st10" x1="355.79" y1="55.63" x2="355.79" y2="50.63"/>
+      </g>
+    </g>
+  </g>
+  <g id="_文字" data-name="文字">
+    <text class="upper-st8">
+      <textPath startOffset=".23%" xlink:href="#path"><tspan class="upper-st4"><tspan x="0" y="0">①②③④⑤⑥⑦⑧⑨⑩⑪</tspan></tspan>
+      </textPath></text>
+    <text class="upper-st5" transform="translate(1170.8227 1053.1526)"><tspan x="0" y="0">①②③④⑤⑥⑦⑧⑨⑩</tspan></text>
+  </g>
+</svg>
+</div>
   </div>
   <div class="pk-traylabel" id="pkTrayLabel">未配置の号車（タップで選択→枠をタップ / ドラッグでも可）</div>
   <div class="pk-tray" id="pkTray"></div>
@@ -1121,6 +1891,10 @@ window.__start = function(FB){
   /* ===== data helpers ===== */
   function dayTimes(){ if(!state.times[state.activeDate]) state.times[state.activeDate]={}; return state.times[state.activeDate]; }
   function rec(no){ const t=dayTimes(); if(!t[no]) t[no]={r:'',d:'',returned:false}; return t[no]; }
+  // 3段階ステータス: 0=未帰庫 / 1=配置済 / 2=帰庫済。既存データ互換のため returned(boolean) と常に同期させる
+  function stOf(r){ if(!r) return 0; if(typeof r.st==='number') return r.st; return r.returned?2:0; }
+  function setSt(r,v){ r.st=v; r.returned=(v===2); }
+  const ST_LABEL=['未帰庫','配置済','帰庫済'];
   function allBusesFlat(){ const out=[]; state.template.forEach(g=>g.nos.forEach(no=>out.push({busNo:no,cat:g.cat}))); return out; }
   function catOf(no){ for(const g of state.template){ if(g.nos.includes(no))return g.cat; } return ''; }
 
@@ -1240,7 +2014,7 @@ window.__start = function(FB){
     return `<div class="card ${cls} ${isNext?'nextup':''}" data-no="${no}">`+
       `<div class="cell"><span class="clabel">号車</span><span class="numline"><span class="bus-no">${no}</span></span><span class="cat-tag">${cat}</span></div>`+
       colCell(no,'c1',isNext)+colCell(no,'c2',false)+
-      `<div class="card-actions"><button class="status-toggle ${r.returned?'on':''}" data-action="toggle">${r.returned?'帰庫済':'未帰庫'}</button></div>`+
+      `<div class="card-actions"><button class="status-toggle ${stOf(r)===2?'on':(stOf(r)===1?'placed':'')}" data-action="toggle">${ST_LABEL[stOf(r)]}</button></div>`+
     `</div>`;
   }
   function colCell(no,slot,isNext){
@@ -1253,12 +2027,12 @@ window.__start = function(FB){
     if(isNext){ if((state.view==='depart')&&f==='d') badge='<span class="nextbadge">次に出庫</span>'; else if((state.view==='return')&&f==='r') badge='<span class="nextbadge">次に帰庫</span>'; }
     return `<div class="cell cell-time">${badge}<span class="clabel">${lab}</span><span class="numline"><button class="time-btn ${val?'':'empty'}" data-edit="${f}">${val||'--:--'}</button></span><span class="cat-tag">&nbsp;</span></div>`;
   }
-  function rowClass(no){ const r=rec(no); if(r.returned)return 'returned'; const rt=parseT(r.r); if(rt===null)return ''; const diff=rt-nowMin(); if(diff>=0&&diff<=state.settings.thresholdMin)return 'soon'; return ''; }
+  function rowClass(no){ const r=rec(no); const s=stOf(r); if(s===2)return 'returned'; if(s===1)return 'placed'; const rt=parseT(r.r); if(rt===null)return ''; const diff=rt-nowMin(); if(diff>=0&&diff<=state.settings.thresholdMin)return 'soon'; return ''; }
   let editMode=false;
   function bindCards(){
     const c=$('listContainer');
     c.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',e=>{ if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; } if(editMode){ return; } const no=e.target.closest('.card').dataset.no; const f=e.target.dataset.edit; const r=rec(no); openTimePad((f==='r'?'帰庫予定':'翌日出庫')+'　号車 '+no, r[f]||'', (val)=>{ r[f]=val; pushDay(); renderList(); }); }));
-    c.querySelectorAll('[data-action="toggle"]').forEach(btn=>btn.addEventListener('click',e=>{ if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; } const no=e.target.closest('.card').dataset.no; const r=rec(no); r.returned=!r.returned; pushDay(); renderList(); }));
+    c.querySelectorAll('[data-action="toggle"]').forEach(btn=>btn.addEventListener('click',e=>{ if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; } const no=e.target.closest('.card').dataset.no; const r=rec(no); setSt(r,(stOf(r)+1)%3); pushDay(); renderList(); }));
   }
   document.querySelectorAll('#viewSeg button').forEach(b=>b.addEventListener('click',()=>{
     const v=b.dataset.view;
@@ -1647,6 +2421,76 @@ window.__start = function(FB){
   (function(){
   'use strict';
 
+
+  /* 枠ジオメトリ: [中心X, 中心Y, 内接長方形の幅, 同 高さ, 長辺の角度] */
+  const PK_GEOM={"full":{"a-1":[347.5,243.5,110.2,32.2,-65.86],"a-2":[382.5,244.3,110.2,32.2,-65.86],"a-3":[417.6,245.1,110.2,32.2,-65.86],"a-4":[452.7,245.9,110.2,32.2,-65.86],"a-5":[487.8,246.8,110.2,32.2,-65.86],"a-6":[522.9,247.6,110.2,32.2,-65.86],"b-1":[614.3,201.1,101.0,35.8,0.0],"b-2":[614.3,236.9,101.0,35.8,0.0],"c-1":[746.1,238.3,115.9,34.8,90.0],"c-2":[781.0,238.3,115.9,34.8,90.0],"c-3":[815.8,238.3,115.9,34.8,90.0],"d-1":[911.7,261.2,116.9,38.9,-5.97],"d-10":[948.1,609.4,116.9,38.9,-5.97],"d-11":[952.1,648.1,116.9,38.9,-5.97],"d-2":[915.7,299.9,116.9,38.9,-5.97],"d-3":[919.8,338.6,116.9,38.9,-5.97],"d-4":[923.8,377.2,116.9,38.9,-5.97],"d-5":[927.8,415.9,116.9,38.9,-5.97],"d-6":[931.9,454.6,116.9,38.9,-5.97],"d-7":[935.9,493.3,116.9,38.9,-5.97],"d-8":[940.0,532.0,116.9,38.9,-5.97],"d-9":[944.0,570.7,116.9,38.9,-5.97],"e-1":[213.9,448.4,122.5,40.7,90.0],"e-2":[254.6,448.4,122.5,40.7,90.0],"f-1":[374.9,448.5,122.5,40.7,0.0],"f-2":[497.4,407.8,122.5,40.7,0.0],"f-3":[497.4,448.5,122.5,40.7,0.0],"f-4":[619.9,407.8,122.5,40.7,0.0],"f-5":[619.9,448.5,122.5,40.7,0.0],"g-1":[315.2,563.7,89.8,31.4,-58.93],"g-10":[747.2,557.1,120.7,41.4,-58.93],"g-2":[361.4,557.3,120.7,41.4,-58.93],"g-3":[409.6,557.3,120.7,41.4,-58.93],"g-4":[457.8,557.2,120.7,41.4,-58.93],"g-5":[506.1,557.2,120.7,41.4,-58.93],"g-6":[554.3,557.2,120.7,41.4,-58.93],"g-7":[602.5,557.2,120.7,41.4,-58.93],"g-8":[650.7,557.2,120.7,41.4,-58.93],"g-9":[699.0,557.1,120.7,41.4,-58.93],"h-1":[91.9,801.5,109.3,40.7,90.0],"h-2":[132.6,801.5,109.3,40.7,90.0],"h-3":[173.3,801.5,109.3,40.7,90.0],"h-4":[213.9,801.5,109.3,40.7,90.0],"i-1":[333.0,705.4,104.3,40.9,0.0],"i-2":[441.8,705.4,104.3,40.9,0.0],"i-3":[596.1,705.4,104.3,40.9,0.0],"j-1":[432.9,751.2,99.4,34.8,0.0],"j-2":[432.9,784.8,99.4,34.8,0.0],"k-1":[706.2,751.2,109.1,35.0,90.0],"k-10":[741.1,860.8,109.1,35.0,90.0],"k-11":[776.1,860.8,109.1,35.0,90.0],"k-12":[811.0,860.8,109.1,35.0,90.0],"k-13":[846.0,860.8,109.1,35.0,90.0],"k-14":[880.9,860.8,109.1,35.0,90.0],"k-15":[915.9,860.8,109.1,35.0,90.0],"k-16":[950.8,860.8,109.1,35.0,90.0],"k-17":[985.8,860.8,109.1,35.0,90.0],"k-18":[1033.3,860.8,109.1,35.0,78.54],"k-19":[1020.0,736.6,82.7,34.8,0.0],"k-2":[741.1,751.2,109.1,35.0,90.0],"k-20":[1020.0,770.1,82.7,34.8,0.0],"k-3":[776.0,751.2,109.1,35.0,90.0],"k-4":[811.0,751.2,109.1,35.0,90.0],"k-5":[846.0,751.2,109.1,35.0,90.0],"k-6":[880.9,751.2,109.1,35.0,90.0],"k-7":[915.9,751.2,109.1,35.0,90.0],"k-8":[950.8,751.2,109.1,35.0,90.0],"k-9":[706.2,860.8,109.1,35.0,90.0],"l-1":[979.5,1084.7,129.9,42.4,65.29],"l-10":[560.2,1084.6,130.2,42.4,65.66],"l-11":[513.6,1084.6,130.2,42.4,65.66],"l-12":[467.1,1084.6,130.2,42.4,65.66],"l-13":[420.6,1084.6,130.2,42.4,65.66],"l-14":[374.1,1084.6,130.2,42.4,65.66],"l-15":[327.6,1084.6,130.2,42.4,65.66],"l-16":[281.0,1084.6,130.2,42.4,65.66],"l-17":[234.5,1084.6,130.2,42.4,65.66],"l-18":[188.0,1084.6,130.2,42.4,65.66],"l-19":[141.5,1084.6,130.2,42.4,65.66],"l-2":[932.4,1084.6,130.2,42.4,65.66],"l-3":[885.9,1084.6,130.2,42.4,65.66],"l-4":[839.3,1084.6,130.2,42.4,65.66],"l-5":[792.8,1084.6,130.2,42.4,65.66],"l-6":[746.3,1084.6,130.2,42.4,65.66],"l-7":[699.8,1084.6,130.2,42.4,65.66],"l-8":[653.2,1084.6,130.2,42.4,65.66],"l-9":[606.7,1084.6,130.2,42.4,65.66],"m-1":[124.5,1194.8,148.8,46.6,0.0],"m-10":[273.3,1241.4,148.8,46.6,0.0],"m-11":[273.3,1288.0,148.8,46.6,0.0],"m-12":[273.3,1334.6,148.8,46.6,0.0],"m-13":[273.3,1381.2,148.8,46.6,0.0],"m-14":[273.3,1427.9,148.8,46.6,0.0],"m-15":[273.3,1474.5,148.8,46.6,0.0],"m-16":[273.3,1521.1,148.8,46.6,0.0],"m-17":[422.2,1194.8,148.8,46.6,0.0],"m-18":[422.2,1241.4,148.8,46.6,0.0],"m-19":[422.2,1288.0,148.8,46.6,0.0],"m-2":[124.5,1241.4,148.8,46.6,0.0],"m-20":[422.2,1334.6,148.8,46.6,0.0],"m-21":[422.2,1381.2,148.8,46.6,0.0],"m-22":[422.2,1427.9,148.8,46.6,0.0],"m-23":[422.2,1474.5,148.8,46.6,0.0],"m-24":[422.2,1521.1,148.8,46.6,0.0],"m-25":[571.0,1194.8,148.8,46.6,0.0],"m-26":[571.0,1241.4,148.8,46.6,0.0],"m-27":[571.0,1288.0,148.8,46.6,0.0],"m-28":[571.0,1334.6,148.8,46.6,0.0],"m-29":[571.0,1381.2,148.8,46.6,0.0],"m-3":[124.5,1288.0,148.8,46.6,0.0],"m-30":[571.0,1427.9,148.8,46.6,0.0],"m-31":[571.0,1474.5,148.8,46.6,0.0],"m-32":[571.0,1521.1,148.8,46.6,0.0],"m-33":[719.9,1194.8,148.8,46.6,0.0],"m-34":[719.9,1241.4,148.8,46.6,0.0],"m-35":[719.9,1288.0,148.8,46.6,0.0],"m-36":[719.9,1334.6,148.8,46.6,0.0],"m-37":[719.9,1381.2,148.8,46.6,0.0],"m-38":[719.9,1427.9,148.8,46.6,0.0],"m-39":[719.9,1474.5,148.8,46.6,0.0],"m-4":[124.5,1334.6,148.8,46.6,0.0],"m-40":[719.9,1521.1,148.8,46.6,0.0],"m-41":[868.7,1194.8,148.8,46.6,0.0],"m-42":[868.7,1241.4,148.8,46.6,0.0],"m-43":[868.7,1288.0,148.8,46.6,0.0],"m-44":[868.7,1334.6,148.8,46.6,0.0],"m-45":[868.7,1381.2,148.8,46.6,0.0],"m-46":[868.7,1427.9,148.8,46.6,0.0],"m-47":[868.7,1474.5,148.8,46.6,0.0],"m-48":[868.7,1521.1,148.8,46.6,0.0],"m-5":[124.5,1381.2,148.8,46.6,0.0],"m-6":[124.5,1427.9,148.8,46.6,0.0],"m-7":[124.5,1474.5,148.8,46.6,0.0],"m-8":[124.5,1521.1,148.8,46.6,0.0],"m-9":[273.3,1194.8,148.8,46.6,0.0],"n-1":[383.8,1649.6,133.6,50.2,90.0],"o-1":[472.2,1623.9,100.6,47.0,90.0],"o-2":[472.2,1724.5,100.6,47.0,90.0]},"lower":{"l-1":[1548.1,147.3,171.7,55.9,65.69],"l-10":[996.0,147.4,171.6,55.9,65.66],"l-11":[934.6,147.4,171.6,55.9,65.66],"l-12":[873.3,147.4,171.6,55.9,65.66],"l-13":[811.9,147.4,171.6,55.9,65.66],"l-14":[750.6,147.4,171.6,55.9,65.66],"l-15":[689.2,147.4,171.6,55.9,65.66],"l-16":[627.9,147.4,171.6,55.9,65.66],"l-17":[566.5,147.4,171.6,55.9,65.66],"l-18":[505.2,147.4,171.6,55.9,65.66],"l-19":[443.9,147.4,171.6,55.9,65.66],"l-2":[1486.7,147.4,171.6,55.9,65.66],"l-3":[1425.4,147.4,171.6,55.9,65.66],"l-4":[1364.0,147.4,171.6,55.9,65.66],"l-5":[1302.7,147.4,171.6,55.9,65.66],"l-6":[1241.3,147.4,171.6,55.9,65.66],"l-7":[1180.0,147.4,171.6,55.9,65.66],"l-8":[1118.6,147.4,171.6,55.9,65.66],"l-9":[1057.3,147.4,171.6,55.9,65.66],"m-1":[421.5,292.7,196.3,61.5,0.0],"m-10":[617.7,354.2,196.3,61.5,0.0],"m-11":[617.7,415.6,196.3,61.5,0.0],"m-12":[617.7,477.1,196.3,61.5,0.0],"m-13":[617.7,538.6,196.3,61.5,0.0],"m-14":[617.7,600.0,196.3,61.5,0.0],"m-15":[617.7,661.5,196.3,61.5,0.0],"m-16":[617.7,723.0,196.3,61.5,0.0],"m-17":[814.0,292.7,196.3,61.5,0.0],"m-18":[814.0,354.2,196.3,61.5,0.0],"m-19":[814.0,415.6,196.3,61.5,0.0],"m-2":[421.5,354.2,196.3,61.5,0.0],"m-20":[814.0,477.1,196.3,61.5,0.0],"m-21":[814.0,538.6,196.3,61.5,0.0],"m-22":[814.0,600.0,196.3,61.5,0.0],"m-23":[814.0,661.5,196.3,61.5,0.0],"m-24":[814.0,723.0,196.3,61.5,0.0],"m-25":[1010.3,292.7,196.3,61.5,0.0],"m-26":[1010.3,354.2,196.3,61.5,0.0],"m-27":[1010.3,415.6,196.3,61.5,0.0],"m-28":[1010.3,477.1,196.3,61.5,0.0],"m-29":[1010.3,538.6,196.3,61.5,0.0],"m-3":[421.5,415.6,196.3,61.5,0.0],"m-30":[1010.3,600.0,196.3,61.5,0.0],"m-31":[1010.3,661.5,196.3,61.5,0.0],"m-32":[1010.3,723.0,196.3,61.5,0.0],"m-33":[1206.5,292.7,196.3,61.5,0.0],"m-34":[1206.5,354.2,196.3,61.5,0.0],"m-35":[1206.5,415.6,196.3,61.5,0.0],"m-36":[1206.5,477.1,196.3,61.5,0.0],"m-37":[1206.5,538.6,196.3,61.5,0.0],"m-38":[1206.5,600.0,196.3,61.5,0.0],"m-39":[1206.5,661.5,196.3,61.5,0.0],"m-4":[421.5,477.1,196.3,61.5,0.0],"m-40":[1206.5,723.0,196.3,61.5,0.0],"m-41":[1402.8,292.7,196.3,61.5,0.0],"m-42":[1402.8,354.2,196.3,61.5,0.0],"m-43":[1402.8,415.6,196.3,61.5,0.0],"m-44":[1402.8,477.1,196.3,61.5,0.0],"m-45":[1402.8,538.6,196.3,61.5,0.0],"m-46":[1402.8,600.0,196.3,61.5,0.0],"m-47":[1402.8,661.5,196.3,61.5,0.0],"m-48":[1402.8,723.0,196.3,61.5,0.0],"m-5":[421.5,538.6,196.3,61.5,0.0],"m-6":[421.5,600.0,196.3,61.5,0.0],"m-7":[421.5,661.5,196.3,61.5,0.0],"m-8":[421.5,723.0,196.3,61.5,0.0],"m-9":[617.7,292.7,196.3,61.5,0.0],"n-1":[760.5,882.7,170.8,60.5,90.0],"o-1":[879.1,855.7,126.8,60.2,90.0],"o-2":[879.1,982.5,126.8,60.2,90.0]},"upper":{"a-1":[620.3,129.7,145.7,48.9,-62.25],"a-2":[675.2,130.7,145.7,48.9,-62.25],"a-3":[730.2,131.8,145.7,48.9,-62.25],"a-4":[785.1,132.9,145.7,48.9,-62.25],"a-5":[840.0,134.0,145.7,48.9,-62.25],"a-6":[894.9,135.0,145.7,48.9,-62.25],"b-1":[1038.1,73.1,158.1,47.7,0.0],"b-2":[1038.1,120.8,158.1,47.7,0.0],"c-1":[1244.6,122.7,154.6,54.5,90.0],"c-2":[1299.1,122.7,154.6,54.5,90.0],"c-3":[1353.7,122.7,154.6,54.5,90.0],"d-1":[1503.8,153.3,181.0,52.0,-5.09],"d-10":[1560.7,617.8,181.0,52.0,-5.09],"d-11":[1567.1,669.4,181.0,52.0,-5.09],"d-2":[1510.1,204.9,181.0,52.0,-5.09],"d-3":[1516.4,256.5,181.0,52.0,-5.09],"d-4":[1522.8,308.1,181.0,52.0,-5.09],"d-5":[1529.1,359.7,181.0,52.0,-5.09],"d-6":[1535.4,411.3,181.0,52.0,-5.09],"d-7":[1541.7,462.9,181.0,52.0,-5.09],"d-8":[1548.1,514.5,181.0,52.0,-5.09],"d-9":[1554.4,566.1,181.0,52.0,-5.09],"e-1":[411.2,405.9,163.4,63.7,90.0],"e-2":[474.9,405.9,163.4,63.7,90.0],"f-1":[663.2,405.9,191.8,54.2,0.0],"f-2":[855.0,351.6,191.8,54.2,0.0],"f-3":[855.0,405.9,191.8,54.2,0.0],"f-4":[1046.9,351.6,191.8,54.2,0.0],"f-5":[1046.9,405.9,191.8,54.2,0.0],"g-1":[569.8,556.6,119.0,46.9,-54.73],"g-10":[1246.3,547.9,160.0,61.8,-54.73],"g-2":[642.2,548.2,160.0,61.8,-54.73],"g-3":[717.7,548.1,160.0,61.8,-54.73],"g-4":[793.2,548.1,160.1,61.8,-54.73],"g-5":[868.7,548.1,160.0,61.8,-54.73],"g-6":[944.3,548.0,160.0,61.8,-54.73],"g-7":[1019.8,548.0,160.1,61.8,-54.73],"g-8":[1095.3,548.0,160.0,61.8,-54.73],"g-9":[1170.8,548.0,160.0,61.8,-54.73],"h-1":[220.2,873.9,145.8,63.7,90.0],"h-2":[283.9,873.9,145.8,63.7,90.0],"h-3":[347.5,873.9,145.8,63.7,90.0],"h-4":[411.2,873.9,145.8,63.7,90.0],"i-1":[597.6,745.7,163.3,54.5,0.0],"i-2":[768.0,745.7,163.3,54.5,0.0],"i-3":[1009.6,745.7,163.3,54.5,0.0],"j-1":[754.1,806.9,155.6,46.4,0.0],"j-2":[754.1,851.6,155.6,46.4,0.0],"k-1":[1182.0,806.9,145.5,54.8,90.0],"k-10":[1236.7,953.0,145.5,54.8,90.0],"k-11":[1291.5,953.0,145.5,54.8,90.0],"k-12":[1346.2,953.0,145.5,54.8,90.0],"k-13":[1400.9,953.0,145.5,54.8,90.0],"k-14":[1455.7,953.0,145.5,54.8,90.0],"k-15":[1510.4,953.0,145.5,54.8,90.0],"k-16":[1565.1,953.0,145.5,54.8,90.0],"k-17":[1619.8,953.0,145.5,54.8,90.0],"k-18":[1694.2,953.0,143.2,54.4,76.61],"k-19":[1673.4,787.4,129.5,46.4,0.0],"k-2":[1236.7,806.9,145.5,54.8,90.0],"k-20":[1673.4,832.1,129.5,46.4,0.0],"k-3":[1291.4,806.9,145.5,54.8,90.0],"k-4":[1346.2,806.9,145.5,54.8,90.0],"k-5":[1400.9,806.9,145.5,54.8,90.0],"k-6":[1455.6,806.9,145.5,54.8,90.0],"k-7":[1510.3,806.9,145.5,54.8,90.0],"k-8":[1565.1,806.9,145.5,54.8,90.0],"k-9":[1182.0,953.0,145.5,54.8,90.0]}};
+  /* ===== 構内図 数字レイアウト（Pythonの layout_rules.py と同一ロジック） ===== */
+  const PKL = {
+    CHAR_W:0.6021, INK_H:0.7600, INK_ASC:0.7450, SLASH_H:0.8400, SLASH_ASC:0.7450,
+    PAD_X:0.028, PAD_Y:0.10,
+    W_NO_ONLY:0.85, W_TIME_ONLY:0.65, H_TIME_ONLY:0.90, W_ONE_TIME:0.90, NO_DIGIT_FIT:0.75
+  };
+  const PK_MODES=['no_only','no_time','time_only','dep_only','ret_only'];
+  const PK_MODE_LABEL={no_only:'号車',no_time:'号車+時刻',time_only:'出/帰',dep_only:'出庫',ret_only:'帰庫'};
+
+  function pkW(t,fs){ return t.length*PKL.CHAR_W*fs; }
+  function pkItem(text,fs,u,v,align,width,slash){
+    return {text,fs,u,v,align,width,natural:pkW(text,fs),slash:!!slash};
+  }
+  function pkLayout(mode, no, dep, ret, L, S){
+    const uw=L*(1-2*PKL.PAD_X), uh=S*(1-2*PKL.PAD_Y);
+    if(mode==='no_only'||mode==='dep_only'||mode==='ret_only'){
+      const t = mode==='no_only'? no : (mode==='dep_only'? (dep||'--:--') : (ret||'--:--'));
+      if(!t) return [];
+      const fs=Math.min(uh/PKL.INK_H, uw/(t.length*PKL.CHAR_W))*0.80;
+      const wr= mode==='no_only'? PKL.W_NO_ONLY : PKL.W_ONE_TIME;
+      return [pkItem(t,fs,0,0,'center',pkW(t,fs)*wr)];
+    }
+    if(mode==='time_only'){
+      const s=(dep||'--:--')+'/'+(ret||'--:--');
+      const fs=Math.min(uh/PKL.SLASH_H, uw/(s.length*PKL.CHAR_W*0.70))*PKL.H_TIME_ONLY;
+      return [pkItem(s,fs,0,0,'center',pkW(s,fs)*PKL.W_TIME_ONLY,true)];
+    }
+    // no_time: 号車=左(幅75%) / 出庫=右上 / 帰庫=右下
+    const d=dep||'--', r=ret||'--', GAP=L*0.02;
+    let fsNo=Math.min(S*0.771, uh/PKL.INK_H);
+    const tw=Math.max(d.length,r.length)*PKL.CHAR_W;
+    const restRef=Math.max(0, uw - pkW(no,fsNo)*0.80 - GAP);
+    let fsTm=Math.min(S*0.420, uh/(PKL.INK_H*2.35), restRef/tw);
+    if(fsTm < S*0.22){
+      fsTm=Math.min(S*0.26, uh/(PKL.INK_H*2.35));
+      fsNo=Math.min(fsNo, Math.max(0, uw - tw*fsTm - GAP)/(no.length*PKL.CHAR_W*0.80));
+    }
+    return [
+      pkItem(no, fsNo, -L/2+L*PKL.PAD_X, 0, 'left', pkW(no,fsNo)*PKL.NO_DIGIT_FIT),
+      pkItem(d,  fsTm,  L/2-L*PKL.PAD_X, -S*0.225, 'right', pkW(d,fsTm)),
+      pkItem(r,  fsTm,  L/2-L*PKL.PAD_X,  S*0.225, 'right', pkW(r,fsTm)),
+    ];
+  }
+  function pkTextEl(it, cx, cy, ang, color){
+    const asc = it.slash? PKL.SLASH_ASC : PKL.INK_ASC;
+    const ih  = it.slash? PKL.SLASH_H  : PKL.INK_H;
+    const desc= ih-asc;
+    const w=it.width;
+    let u0;
+    if(it.align==='left') u0=it.u; else if(it.align==='right') u0=it.u-w; else u0=it.u-w/2;
+    const baseline = it.v + ih*it.fs/2 - desc*it.fs;
+    const sx = it.natural? (w/it.natural) : 1;
+    let anchor,ux;
+    if(it.align==='left'){anchor='start'; ux=u0;}
+    else if(it.align==='right'){anchor='end'; ux=u0+w;}
+    else {anchor='middle'; ux=u0+w/2;}
+    const el=document.createElementNS('http://www.w3.org/2000/svg','text');
+    el.setAttribute('transform',`translate(${cx.toFixed(2)} ${cy.toFixed(2)}) rotate(${ang.toFixed(2)}) translate(${ux.toFixed(2)} 0) scale(${sx.toFixed(4)} 1)`);
+    el.setAttribute('x','0'); el.setAttribute('y', baseline.toFixed(2));
+    el.setAttribute('font-size', it.fs.toFixed(2));
+    el.setAttribute('text-anchor', anchor);
+    el.setAttribute('class','pk-num');
+    if(color) el.setAttribute('fill', color);
+    el.textContent=it.text;
+    return el;
+  }
+
   const pkRef=(d)=>FB.doc(db,'parking',d);
   const pkTplRef=(i)=>FB.doc(db,'parking_tpl','tpl'+i);
   const lsPk=(d)=>'rb-park-'+d;
@@ -1809,24 +2653,26 @@ window.__start = function(FB){
   /* ---------------- 画面(スワイプ/ドット) ---------------- */
   const SCREENS=[
     {label:'運行'},
-    {label:'構内図', vb:'0 0 1032.56 1684.17'},
-    {label:'構内図 下', vb:'0 842 1032.56 842.17', rotate:true},
-    {label:'構内図 上', vb:'0 0 1032.56 842', rotate:true},
+    {label:'構内図',   map:'full'},
+    {label:'構内図 下', map:'lower', rotate:true},
+    {label:'構内図 上', map:'upper', rotate:true},
   ];
+  const curMap=()=>SCREENS[pk.screen].map;
+  const mapEl=()=>document.getElementById('pkMap-'+curMap());
   function pkGoScreen(i){
     pk.screen=(i+4)%4;
     const s=SCREENS[pk.screen];
     if(pk.screen===0){ $('parkingRoot').style.display='none'; $('appRoot').style.display='block'; $('pkEdgeTab').style.display=''; }
     else{
       $('appRoot').style.display='none'; $('parkingRoot').style.display='flex'; $('pkEdgeTab').style.display='none';
-      const svg=$('pkSvg'); if(svg) svg.setAttribute('viewBox', s.vb);
+      document.querySelectorAll('.pk-map').forEach(m=>m.classList.toggle('on', m.id==='pkMap-'+s.map));
       pk.scale=1; pk.tx=0; pk.ty=0; pkApplyZoom();
       $('pkRotateHint').style.display=s.rotate?'':'none';
       pkRenderAll();
     }
     document.querySelectorAll('.pk-dot').forEach((d,j)=>d.classList.toggle('on', j===pk.screen));
   }
-  (function buildDots(){ const w=$('pkDots'); SCREENS.forEach((s,i)=>{ const d=document.createElement('span'); d.className='pk-dot'+(i===0?'':''); d.title=s.label; d.addEventListener('click',()=>pkGoScreen(i)); w.appendChild(d); }); })();
+  (function buildDots(){ const w=$('pkDots'); SCREENS.forEach((s,i)=>{ const d=document.createElement('span'); d.className='pk-dot'; d.title=s.label; d.addEventListener('click',()=>pkGoScreen(i)); w.appendChild(d); }); })();
 
   // スワイプ（ズーム中・ドラッグ中は無効）
   function attachSwipe(el){
@@ -1853,7 +2699,7 @@ window.__start = function(FB){
       if(e.touches.length===2){
         const [a,b]=e.touches; pd=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
         pmid={x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2};
-      } else if(e.touches.length===1 && pk.scale>1.05 && !e.target.closest('.pcard')){
+      } else if(e.touches.length===1 && pk.scale>1.05 && !(e.target.classList&&e.target.classList.contains('pk-slot'))){
         pan={x:e.touches[0].clientX-pk.tx, y:e.touches[0].clientY-pk.ty};
       }
     },{passive:true});
@@ -1873,22 +2719,8 @@ window.__start = function(FB){
     w.addEventListener('touchend',()=>{ pd=null; pan=null; if(pk.scale<1.02){pk.scale=1;pk.tx=0;pk.ty=0;pkApplyZoom();} },{passive:true});
   })();
 
-  /* ---------------- カード描画 ---------------- */
-  function slotEls(){ const svg=$('pkSvg'); return svg?Array.from(svg.querySelectorAll('.slot[id]')):[]; }
-  function slotGeom(el){
-    const svg=$('pkSvg');
-    const bb=el.getBBox(); const m=el.getCTM(); const rm=svg.getCTM()||svg.createSVGMatrix();
-    // el.getCTM() はビューポート座標系まで。root座標へは inverse(rootCTM)×elCTM
-    const toRoot=rm.inverse().multiply(m);
-    const pt=svg.createSVGPoint(); pt.x=bb.x+bb.width/2; pt.y=bb.y+bb.height/2;
-    const c=pt.matrixTransform(toRoot);
-    // 変換後の短辺目安: 4隅を変換して幅高さを概算
-    const corners=[[bb.x,bb.y],[bb.x+bb.width,bb.y],[bb.x,bb.y+bb.height],[bb.x+bb.width,bb.y+bb.height]].map(([x,y])=>{ const p=svg.createSVGPoint(); p.x=x;p.y=y; return p.matrixTransform(toRoot); });
-    const xs=corners.map(p=>p.x), ys=corners.map(p=>p.y);
-    return {cx:c.x, cy:c.y, w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)};
-  }
-  const geomCache={};
-  function getGeom(id){ if(geomCache[id]) return geomCache[id]; const el=document.getElementById(id); if(!el) return null; const g=slotGeom(el); geomCache[id]=g; return g; }
+  /* ---------------- 枠と数字の描画 ---------------- */
+  function slotEls(){ const m=mapEl(); return m?Array.from(m.querySelectorAll('.pk-slot[id]')):[]; }
 
   function pkStatusOf(slotId){
     const s=pk.slots[slotId]; if(!s) return null;
@@ -1896,56 +2728,46 @@ window.__start = function(FB){
     if(rec && rec.returned) return 'returned';
     return s.st||'auto';
   }
+  function isSoon(no){
+    const rec=(state.times[state.activeDate]||{})[no]; if(!rec||rec.returned) return false;
+    const rt=parseT(rec.r); if(rt==null) return false;
+    const diff=rt-nowMin();
+    return diff>=0 && diff<=state.settings.thresholdMin;
+  }
+
   function pkRenderCards(){
-    const svg=$('pkSvg'); if(!svg) return;
-    let layer=svg.getElementById('pkCards');
-    if(layer) layer.remove();
-    layer=document.createElementNS('http://www.w3.org/2000/svg','g');
-    layer.setAttribute('id','pkCards');
-    svg.appendChild(layer);
+    const m=mapEl(); if(!m) return;
+    const key=curMap(), geom=PK_GEOM[key]||{};
+    // 前回の数字を消し、枠の状態クラスを一旦外す
+    const old=m.querySelector('#pkNums'); if(old) old.remove();
+    m.querySelectorAll('.pk-slot').forEach(el=>{
+      el.classList.remove('pk-auto','pk-confirmed','pk-returned','pk-moved','pk-soon','pk-unlocked');
+    });
+    const layer=document.createElementNS('http://www.w3.org/2000/svg','g');
+    layer.setAttribute('id','pkNums');
+    m.appendChild(layer);
     const day=state.times[state.activeDate]||{};
+    const mode=PK_MODES[pk.disp];
     Object.keys(pk.slots).forEach(slotId=>{
       const s=pk.slots[slotId]; if(!s||!s.no) return;
-      const g=getGeom(slotId); if(!g) return;
+      const g=geom[slotId]; if(!g) return;              // その図に無い枠は描かない
+      const el=m.querySelector('[id="'+slotId+'"]');
       const st=pkStatusOf(slotId);
-      const rec=day[s.no]||{};
-      const short=Math.min(g.w,g.h);
-      const fsNo=Math.max(9, Math.min(22, short*0.5));
-      const fsTm=Math.max(7, Math.min(15, short*0.34));
-      const grp=document.createElementNS('http://www.w3.org/2000/svg','g');
-      grp.setAttribute('class','pcard pc-'+st+((st==='confirmed'||st==='returned')&&!pk.unlocked.has(slotId)?' pc-locked':'')+(pk.unlocked.has(slotId)?' pc-unlocked':''));
-      grp.dataset.slot=slotId; grp.dataset.no=s.no;
-      // 帰庫間近の点滅
-      const rt=parseT(rec.r);
-      if(rt!=null && !rec.returned){
-        const diff=rt-nowMin();
-        if(diff>=0 && diff<=state.settings.thresholdMin){
-          grp.classList.add('pc-soon');
-          if(!pk.blinked.has(s.no)){ grp.classList.add('pc-soonblink'); pk.blinked.add(s.no); }
-        }
+      const soon=isSoon(s.no);
+      const cls=soon?'soon':st;
+      if(el){
+        el.classList.add('pk-'+cls);
+        if(pk.unlocked.has(slotId)) el.classList.add('pk-unlocked');
       }
-      const lines=[];
-      if(pk.disp===0) lines.push({t:s.no, fs:fsNo});
-      else if(pk.disp===1){ lines.push({t:s.no, fs:fsNo}); if(short>26){ lines.push({t:'出'+(rec.d||'--'), fs:fsTm}); lines.push({t:'帰'+(rec.r||'--'), fs:fsTm}); } }
-      else { lines.push({t:'出'+(rec.d||'--'), fs:fsTm}); lines.push({t:'帰'+(rec.r||'--'), fs:fsTm}); }
-      const totalH=lines.reduce((a,l)=>a+l.fs*1.15,0);
-      const cw=Math.min(g.w-2, Math.max(fsNo*2.6, 34)), ch=Math.min(g.h-2, totalH+6);
-      const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      rect.setAttribute('x',g.cx-cw/2); rect.setAttribute('y',g.cy-ch/2);
-      rect.setAttribute('width',cw); rect.setAttribute('height',ch); rect.setAttribute('rx',3);
-      grp.appendChild(rect);
-      let ty=g.cy-totalH/2;
-      lines.forEach(l=>{
-        ty+=l.fs;
-        const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
-        tx.setAttribute('x',g.cx); tx.setAttribute('y',ty-l.fs*0.12);
-        tx.setAttribute('text-anchor','middle'); tx.setAttribute('font-size',l.fs);
-        tx.setAttribute('font-family','ui-monospace,Menlo,monospace');
-        tx.textContent=l.t; grp.appendChild(tx);
-        ty+=l.fs*0.15;
+      const rec=day[s.no]||{};
+      const [cx,cy,L,S,ang]=g;
+      const items=pkLayout(mode, String(s.no), rec.d||'', rec.r||'', L, S);
+      items.forEach(it=>{
+        const t=pkTextEl(it, cx, cy, ang);
+        t.classList.add('t-'+cls);
+        t.dataset.slot=slotId;
+        layer.appendChild(t);
       });
-      layer.appendChild(grp);
-      attachCardEvents(grp);
     });
   }
 
@@ -1976,9 +2798,9 @@ window.__start = function(FB){
 
   function pkRenderMsg(){
     const probs=pkValidateAll();
-    slotEls().forEach(el=>el.classList.remove('slot-warn'));
+    document.querySelectorAll('.pk-slot').forEach(el=>el.classList.remove('pk-warn'));
     const hard=probs.filter(p=>!p.soft);
-    hard.forEach(p=>p.ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add('slot-warn'); }));
+    hard.forEach(p=>p.ids.forEach(id=>{ mapEl()&&mapEl().querySelectorAll('[id="'+id+'"]').forEach(el=>el.classList.add('pk-warn')); }));
     const lines=[...hard.map(p=>'⚠ '+p.msg), ...probs.filter(p=>p.soft).slice(0,2).map(p=>'△ '+p.msg)];
     $('pkMsg').textContent=lines.slice(0,4).join('\n');
     return probs;
@@ -2000,15 +2822,16 @@ window.__start = function(FB){
   }
   function pkRemove(slotId){ delete pk.slots[slotId]; pkPush(); pkRenderAll(); }
 
-  function attachCardEvents(grp){
-    const slotId=grp.dataset.slot;
-    let lp=null, moved=false, down=null, ghost=null;
-    grp.addEventListener('pointerdown',e=>{
+  /* 枠に対する操作: タップで確定 / 長押しでロック解除 / ドラッグで移動 */
+  function attachSlotEvents(el){
+    const slotId=el.id;
+    let lp=null, moved=false, down=null, ghost=null, dragging=false;
+    el.addEventListener('pointerdown',e=>{
       if(userRole==='sub') return;
-      moved=false; down={x:e.clientX,y:e.clientY};
+      moved=false; dragging=false; down={x:e.clientX,y:e.clientY};
       const st=pkStatusOf(slotId);
       const locked=(st==='confirmed'||st==='returned')&&!pk.unlocked.has(slotId);
-      lp=setTimeout(()=>{ // 長押し: ロック解除/再ロック
+      lp=setTimeout(()=>{
         lp=null;
         if(st==='confirmed'||st==='returned'){
           if(pk.unlocked.has(slotId)){ pk.unlocked.delete(slotId); showToast('🔒 '+slotId+' を再ロックしました'); }
@@ -2016,42 +2839,49 @@ window.__start = function(FB){
           pkRenderAll();
         }
       },600);
-      if(!locked){
-        pk.drag={no:grp.dataset.no, from:slotId};
-        grp.setPointerCapture(e.pointerId);
-      }
+      if(occ(slotId) && !locked){ dragging=true; pk.drag={no:pk.slots[slotId].no, from:slotId}; }
       e.preventDefault();
     });
-    grp.addEventListener('pointermove',e=>{
+    el.addEventListener('pointermove',e=>{
       if(!down) return;
       if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8){
         moved=true; if(lp){clearTimeout(lp);lp=null;}
-        if(pk.drag && !ghost){ ghost=mkGhost(pk.drag.no); }
+        if(dragging && pk.drag && !ghost) ghost=mkGhost(pk.drag.no);
         if(ghost){ ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px'; }
       }
     });
-    grp.addEventListener('pointerup',e=>{
+    el.addEventListener('pointerup',e=>{
       if(lp){clearTimeout(lp);lp=null;}
       if(ghost){ ghost.remove(); ghost=null; }
       const wasDrag=pk.drag; pk.drag=null; down=null;
       if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; }
       if(moved && wasDrag){
         const target=findSlotAt(e.clientX,e.clientY);
-        if(target && target!==slotId){ pkRemove(slotId); pkPlace(target, wasDrag.no, 'moved'); }
-        else if(!target){ const tray=document.elementFromPoint(e.clientX,e.clientY); if(tray&&tray.closest('#pkTray')){ pkRemove(slotId); showToast(wasDrag.no+' を未配置に戻しました'); } }
+        if(target && target!==slotId){
+          const tst=pkStatusOf(target);
+          if(tst&&(tst==='confirmed'||tst==='returned')&&!pk.unlocked.has(target)){ showToast('🔒 '+target+' はロック中（長押しで解除）'); return; }
+          pkRemove(slotId); pkPlace(target, wasDrag.no, 'moved');
+        } else if(!target){
+          const tray=document.elementFromPoint(e.clientX,e.clientY);
+          if(tray&&tray.closest('#pkTray')){ pkRemove(slotId); showToast(wasDrag.no+' を未配置に戻しました'); }
+        }
         return;
       }
-      // タップ: 状態トグル
+      // タップ
+      if(!occ(slotId)){
+        if(pk.sel){ pkPlace(slotId, pk.sel, 'moved'); }   // 2タップ配置
+        return;
+      }
       const st=pkStatusOf(slotId);
       if(st==='auto'||st==='moved'){ pk.slots[slotId].st='confirmed'; pkPush(); pkRenderAll(); }
       else if(st==='confirmed'&&pk.unlocked.has(slotId)){ pk.slots[slotId].st='moved'; pk.unlocked.delete(slotId); pkPush(); pkRenderAll(); }
-      else if(st==='confirmed'||st==='returned'){ showToast('🔒 確定/帰庫済みは長押しでロック解除できます'); }
+      else{ showToast('🔒 確定/帰庫済みは長押しでロック解除できます'); }
     });
   }
   function mkGhost(no){ const g=document.createElement('div'); g.className='pk-ghost'; g.textContent=no; document.body.appendChild(g); return g; }
   function findSlotAt(x,y){
     const els=document.elementsFromPoint(x,y);
-    for(const el of els){ if(el.classList&&el.classList.contains('slot')&&el.id) return el.id; }
+    for(const el of els){ if(el.classList&&el.classList.contains('pk-slot')&&el.id) return el.id; }
     return null;
   }
   function attachChipDrag(chip){
@@ -2067,22 +2897,18 @@ window.__start = function(FB){
       if(moved&&wasDrag){ const t=findSlotAt(e.clientX,e.clientY); if(t){ const st=pkStatusOf(t); if(st&&(st==='confirmed'||st==='returned')&&!pk.unlocked.has(t)){ showToast('🔒 '+t+' はロック中（長押しで解除）'); return;} pkPlace(t,wasDrag.no,'moved'); } }
     });
   }
-  // 2タップ: 空き枠タップで選択中の号車を配置
-  document.addEventListener('click',e=>{
-    if(pk.screen===0||!pk.sel) return;
-    if(e.target.closest&&(e.target.closest('.pcard')||e.target.closest('.pk-toolbar')||e.target.closest('.pk-tray'))) return;
-    const slotId=findSlotAt(e.clientX,e.clientY);
-    if(slotId){
-      if(userRole==='sub'){showToast('閲覧のみです');return;}
-      const st=pkStatusOf(slotId);
-      if(st&&(st==='confirmed'||st==='returned')&&!pk.unlocked.has(slotId)){ showToast('🔒 '+slotId+' はロック中（長押しで解除）'); return; }
-      pkPlace(slotId, pk.sel, 'moved');
-    }
-  });
+  // 全ての枠に一度だけイベントを付ける
+  (function bindSlots(){
+    document.querySelectorAll('.pk-map .pk-slot[id]').forEach(attachSlotEvents);
+  })();
 
   /* ---------------- 表示切替 ---------------- */
-  const DISP_LABEL=['表示:号車','表示:号車+時刻','表示:時刻'];
-  $('pkDisp').addEventListener('click',()=>{ pk.disp=(pk.disp+1)%3; $('pkDisp').textContent=DISP_LABEL[pk.disp]; pkRenderAll(); });
+  $('pkDisp').addEventListener('click',()=>{
+    pk.disp=(pk.disp+1)%PK_MODES.length;
+    $('pkDisp').textContent='表示:'+PK_MODE_LABEL[PK_MODES[pk.disp]];
+    pkRenderAll();
+  });
+  $('pkDisp').textContent='表示:'+PK_MODE_LABEL[PK_MODES[0]];
 
   /* ---------------- 一括配置（下書き補助・保護枠に触れない） ---------------- */
   const AREA_PREF={
@@ -2101,7 +2927,7 @@ window.__start = function(FB){
     // 制約の厳しい順: 電気→コミュ→特車→残りは出庫早い順
     const rank=(n)=>({'電気':0,'コミュニティ':1,'特車':2}[pkCarType(n)]??3);
     targets.sort((a,b)=>rank(a)-rank(b)||depMin(a)-depMin(b));
-    const emptySlots=slotEls().map(el=>el.id).filter(id=>!occ(id));
+    const emptySlots=Object.keys(PK_GEOM.full).filter(id=>!occ(id));
     const failures=[];
     let steps=0; const LIMIT=20000;
     const placedNow=[];
