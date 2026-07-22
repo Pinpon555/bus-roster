@@ -232,21 +232,21 @@
   .pk-map.on{display:block;}
   .pk-slot{pointer-events:all; cursor:pointer;}
   /* 枠そのものを状態色で塗る（カードの矩形は描かない） */
-  .pk-slot.pk-auto{fill:#EDEFF1 !important; stroke:#9AA0A6 !important;}
-  .pk-slot.pk-confirmed{fill:#1c2128 !important; stroke:#1c2128 !important;}
-  .pk-slot.pk-returned{fill:#f7dede !important; stroke:#c94f4f !important;}
-  .pk-slot.pk-moved{fill:#DCEBF7 !important; stroke:#2E7DB2 !important;}
-  .pk-slot.pk-soon{fill:#fff7d1 !important; stroke:#d7c26a !important;}
+  /* 状態色: 基本(未確認)は構内図そのままの白地＋黒文字。配置済=緑 / 帰庫済=赤(ロック) / 帰庫間近=黄点滅 */
+  .pk-slot.pk-s1{fill:var(--green-bg) !important; stroke:var(--green-soft) !important; stroke-width:1.6px !important;}
+  .pk-slot.pk-s2{fill:var(--red-bg) !important; stroke:var(--red-soft) !important; stroke-width:1.6px !important;}
+  .pk-slot.pk-soon{fill:#fff7d1 !important; stroke:#d7c26a !important; stroke-width:1.6px !important;}
+  .pk-slot.pk-soon.pk-blink{animation:pkblink .6s steps(1) 8;}
+  @keyframes pkblink{0%,100%{fill:#fff7d1;}50%{fill:#ffffff;}}
   .pk-slot.pk-warn{stroke:#e02b2b !important; stroke-width:3px !important;}
-  .pk-slot.pk-sel{stroke:#d98324 !important; stroke-width:3px !important;}
   .pk-slot.pk-unlocked{stroke-dasharray:5 3;}
+  .pk-slot.pk-target{stroke:#d98324 !important; stroke-width:3px !important;}
+  .pk-slot.pk-dragging{opacity:.55;}
   /* 数字 */
   .pk-num{font-family:var(--mono); font-weight:800; font-variant-numeric:tabular-nums;
-          fill:#111; pointer-events:none; user-select:none;}
-  .pk-num.t-confirmed{fill:#f2f5f7;}
-  .pk-num.t-auto{fill:#5F6368;}
-  .pk-num.t-returned{fill:#8c2b2b;}
-  .pk-num.t-moved{fill:#1F5C86;}
+          fill:#1a1f26; pointer-events:none; user-select:none;}
+  .pk-num.t-s1{fill:var(--forest);}
+  .pk-num.t-s2{fill:var(--wine);}
   .pk-num.t-soon{fill:#1f2d5c;}
   /* 状態カード */
   /* 未配置トレイ */
@@ -261,6 +261,25 @@
   .pk-rotate-hint{font-size:10.5px; color:var(--text-dim); text-align:center; padding:2px 0;}
   /* 運行ボード側のスワイプ発見用タブ */
   .pk-edge-tab{position:fixed; right:0; top:45%; z-index:40; background:var(--now-orange); color:#fff; writing-mode:vertical-rl; padding:10px 4px; border-radius:8px 0 0 8px; font-size:12px; opacity:.85; border:none;}
+  /* ===== 横画面（スマホ横向き）: 図を最大限使うため、表示切替だけ残す ===== */
+  .pk-fab{position:fixed; right:10px; bottom:10px; z-index:60; display:none;
+          background:rgba(28,33,40,.86); color:#fff; border:none; border-radius:20px;
+          padding:9px 14px; font-size:13px; font-weight:700; font-family:var(--mono);
+          box-shadow:0 2px 8px rgba(0,0,0,.3);}
+  .pk-back-mini{position:fixed; left:10px; bottom:10px; z-index:60; display:none;
+          background:rgba(28,33,40,.7); color:#fff; border:none; border-radius:20px;
+          padding:9px 12px; font-size:13px;}
+  body.pk-land .pk-toolbar{display:none;}
+  body.pk-land .pk-dots{position:fixed; left:50%; transform:translateX(-50%); bottom:8px; z-index:60; padding:0;}
+  body.pk-land .pk-rotate-hint{display:none !important;}
+  body.pk-land .pk-traylabel, body.pk-land .pk-tray{display:none !important;}
+  body.pk-land .pk-msg{position:fixed; top:0; left:0; right:0; z-index:55; background:rgba(255,255,255,.9);
+                       padding:2px 10px; font-size:10.5px; line-height:1.35; max-height:2.9em; overflow:hidden;}
+  body.pk-land .pk-msg:empty{display:none;}
+  body.pk-land .pk-fab{display:block;}
+  body.pk-land .pk-back-mini{display:block;}
+  body.pk-land #parkingRoot{height:100vh;}
+  body.pk-land .pk-svgwrap{flex:1;}
   /* テンプレモーダル */
   .ptpl-row{border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:8px; background:#fff;}
   .ptpl-row h4{margin:0 0 4px; font-size:14px;}
@@ -1569,8 +1588,29 @@
 </svg>
 </div>
   </div>
-  <div class="pk-traylabel" id="pkTrayLabel">未配置の号車（タップで選択→枠をタップ / ドラッグでも可）</div>
+  <button class="pk-fab" id="pkFab">表示:号車</button>
+  <button class="pk-back-mini" id="pkBackMini">◀ 運行</button>
+  <div class="pk-traylabel" id="pkTrayLabel">未配置の号車（枠をタップして直接入力するのが早いです）</div>
   <div class="pk-tray" id="pkTray"></div>
+</div>
+
+<!-- 号車 直接入力ポップアップ -->
+<div class="modal-overlay" id="pkNoOverlay">
+  <div class="modal" style="max-width:300px;">
+    <div class="seq-head">
+      <h3 style="margin:0;color:var(--amber);font-size:15px;" id="pkNoTitle">号車を入力</h3>
+      <button class="modal-close" data-close="pkNoOverlay">✕</button>
+    </div>
+    <input id="pkNoInput" type="tel" inputmode="numeric" maxlength="4" placeholder="0000"
+      style="width:100%; font-family:var(--mono); font-size:34px; font-weight:800; text-align:center;
+             letter-spacing:6px; padding:12px 8px; margin:12px 0 8px; border:2px solid var(--line);
+             border-radius:10px; background:#fff; color:#1a1f26;">
+    <div id="pkNoHint" style="font-size:11.5px; color:var(--text-dim); min-height:16px;"></div>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button class="btn primary" id="pkNoOk" style="flex:1;">決定</button>
+      <button class="btn danger" id="pkNoDel" style="flex:0 0 auto;">枠を空ける</button>
+    </div>
+  </div>
 </div>
 
 <!-- テンプレ選択モーダル -->
@@ -2541,91 +2581,114 @@ window.__start = function(FB){
   const mCol=(n)=>Math.ceil(n/8);
   const mRow=(n)=>((n-1)%8)+1;
 
-  /* l-N への入庫可否 (§5 訂正: 入庫も出庫も不可 / 例外マスあり) */
-  function lPlaceBlocked(lNum){
-    const any=(ns)=>ns.some(n=>occ('m-'+n));
-    // 奥列から累積で効く。例外: 特定mマス未配置なら可。
-    if(any([41])            && lNum>=3  && !(lNum===3 && !occ('m-41'))) return 'm6列目配置のためl-'+lNum+'は不可';
-    if(any([33])            && lNum>=6  && !(lNum===6 && !occ('m-33') && !occ('m-34'))) return 'm5列目配置のためl-'+lNum+'は不可';
-    if(any([25,26])         && lNum>=9  && !(lNum===9 && !occ('m-25') && !occ('m-26'))) return 'm4列目(25,26)配置のためl-'+lNum+'は不可';
-    if(any([17,18,19])      && lNum>=12 && !(lNum===12 && !occ('m-17') && !occ('m-18'))) return 'm3列目配置のためl-'+lNum+'は不可';
-    if(any([9,10,11])       && lNum>=15 && !(lNum===15 && !occ('m-9'))) return 'm2列目配置のためl-'+lNum+'は不可';
-    if(any([1,2,3])         && lNum>=19) return 'm1列目配置のためl-19は不可';
-    return null;
-  }
-
   /* 配置チェック: {ng:[絶対NG], warn:[注意]} を返す（置くこと自体は止めない方針） */
   function pkCheckPlace(slotId, no){
     const ng=[], warn=[];
     const area=areaOf(slotId), n=numOf(slotId), t=pkCarType(no);
-    if(occ(slotId)) ng.push(slotId+' には既に '+pk.slots[slotId].no+' が配置済み');
+    if(occ(slotId)) ng.push(jp(slotId)+'には既に'+pk.slots[slotId].no+'があります');
     if(t!=='不明' && PK_ALLOW[area] && !PK_ALLOW[area].includes(t))
-      ng.push(AREA_NAME[area]+'('+area+')に'+t+'は配置できません');
+      ng.push(AREA_NAME[area]+'に'+t+'は置けません');
     // 電気は k-9/k-10 固定
-    if(t==='電気' && !(slotId==='k-9'||slotId==='k-10')) ng.push('電気('+no+')は k-9/k-10 固定です（充電器）');
-    if((slotId==='k-9'||slotId==='k-10') && t!=='電気') warn.push('k-9/k-10 は電気(7303/7304)の固定枠です');
+    if(t==='電気' && !(slotId==='k-9'||slotId==='k-10')) ng.push('電気('+no+')は新駐車場9・10が固定です');
+    if((slotId==='k-9'||slotId==='k-10') && t!=='電気') warn.push('新駐車場9・10は電気の固定枠です');
     // g個別
-    if(slotId==='g-1' && !(t==='コミュニティ' && !COMMU_SPECIAL.has(String(no)))) warn.push('g-1 はコミュニティ(8901/8010以外)用です');
-    if((slotId==='g-9'||slotId==='g-10') && t!=='中型') warn.push('g-9/g-10 は中型のみです');
+    if(slotId==='g-1' && !(t==='コミュニティ' && !COMMU_SPECIAL.has(String(no)))) warn.push('中の島1はコミュニティ用です');
+    if((slotId==='g-9'||slotId==='g-10') && t!=='中型') warn.push('中の島9・10は中型のみです');
     // d-2: 頭66の大型不可 (2026-07-14追加①)
-    if(slotId==='d-2' && t==='大型' && String(no).startsWith('66')) ng.push('d-2 に頭66の大型は配置できません（車長）');
+    if(slotId==='d-2' && t==='大型' && String(no).startsWith('66')) ng.push('ヤナセ2に頭66の大型は置けません');
     // i-1/i-2: 大型/特車は合計1台のみ (追加②)
     if(slotId==='i-1'||slotId==='i-2'){
       const other=slotId==='i-1'?'i-2':'i-1';
       const oNo=occ(other);
       const heavy=(x)=>{const tt=pkCarType(x); return tt==='大型'||tt==='特車';};
-      if(heavy(no) && oNo) ng.push('洗車機1・2は大型/特車なら合計1台のみです');
-      if(oNo && heavy(oNo)) ng.push('洗車機1・2に大型/特車('+oNo+')配置中は2台目を置けません');
+      if(heavy(no) && oNo) ng.push('洗車機は大型・特車なら1台のみです');
+      if(oNo && heavy(oNo)) ng.push('洗車機に'+oNo+'があるため2台目は置けません');
       if(t==='特車') warn.push('洗車機は停めにくいため特車は控えめに');
     }
-    // f→g (§6)
-    if(area==='g' && n>=2 && n<=8){
-      for(let i=1;i<=5;i++) if(occ('f-'+i)){ ng.push('五台口(f)に配置中は g-2〜g-8 に置けません'); break; }
-    }
-    // o vs m22-24 (§6)
-    if(area==='o' && (occ('m-22')||occ('m-23')||occ('m-24'))) ng.push('m-22/23/24 配置中はタイヤハウス(o)に置けません');
-    // k-7/8/19/20 は d-8〜11 が空であること (§6 切り返し)
-    if(['k-7','k-8','k-19','k-20'].includes(slotId)){
-      const used=['d-8','d-9','d-10','d-11'].filter(occ);
-      if(used.length) ng.push(slotId+' を停めるには d-8〜11 が空である必要（'+used.join(',')+' 配置中）');
-    }
+
+
+
     // k 停め順: 17・18→19・20→8/7/6 (§4)
-    if((slotId==='k-19'||slotId==='k-20') && !(occ('k-17')&&occ('k-18'))) warn.push('k-19/20 は k-17・18 を停めた後が推奨です');
-    if(['k-8','k-7','k-6'].includes(slotId) && !(occ('k-19')&&occ('k-20'))) warn.push(slotId+' は k-19・20 を停めた後でないと置けません');
-    // m→l 入庫ブロック (§5 訂正④)
-    if(area==='l'){ const r=lPlaceBlocked(n); if(r) ng.push(r); }
+    if((slotId==='k-19'||slotId==='k-20') && !(occ('k-17')&&occ('k-18'))) warn.push('新駐車場19・20は17・18の後が推奨です');
+    if(['k-8','k-7','k-6'].includes(slotId) && !(occ('k-19')&&occ('k-20'))) warn.push(jp(slotId)+'は新駐車場19・20を停めた後に入れます');
+
     // l-1 は空けておく (§4)
-    if(slotId==='l-1') warn.push('l-1 は朝のトラブル退避用に空けておく運用です');
+    if(slotId==='l-1') warn.push('グリーン1は朝の退避用に空けておきます');
     return {ng,warn};
   }
 
   /* ---------------- 出庫順の検証（§5/§6/§8） ---------------- */
   function depMin(no){ const r=(state.times[state.activeDate]||{})[no]; if(!r) return null; return parseT(r.d); }
+  // 枠IDを人が読む表記へ（a-1 → 花壇1）。記号は出さない。
+  function jp(id){
+    if(!id) return '';
+    const a=id.split('-')[0], n=id.split('-')[1];
+    return (AREA_NAME[a]||a)+n;
+  }
+  /* ===== 出庫の前後関係と枠の順位 =====
+     考え方: 通路の制約は「停める順番／出す順番」の話であり、最終的な配置を禁じるものではない。
+     手前(先に出る)ほど順位が小さく、奥(後から出る)ほど大きい。
+     出庫が早い車を手前へ、遅い車・出庫の無い車を奥へ置けば、出庫の逆転は構造的に起きない。 */
+  const M_ROWS=8;
+  const mId=(c,r)=>'m-'+((c-1)*M_ROWS+r);
+  // グリーン(l)と整備(m)の列の対応。※運用確認により調整可能
+  const L_SPAN={6:[1,3], 5:[4,6], 4:[7,9], 3:[10,12], 2:[13,16], 1:[17,19]};
+
+  function pkExitEdges(){
+    const E=[];
+    for(let r=1;r<=M_ROWS;r++)                      // 整備: 6列目→1列目の順に出る
+      for(let c=6;c>1;c--) E.push([mId(c,r), mId(c-1,r)]);
+    for(let n=1;n<=8;n++) E.push(['k-'+n, 'k-'+(n+8)]);   // 新駐車場 前列→後列
+    E.push(['k-19','k-17'],['k-20','k-18'],['o-1','o-2'],['i-1','i-2']);
+    ['c-1','c-2','c-3'].forEach(c=>{ E.push([c,'d-1']); E.push([c,'d-2']); });
+    ['d-9','d-10','d-11'].forEach(d=>['k-7','k-8','k-15','k-16','k-17','k-18','k-19','k-20']
+      .forEach(k=>E.push([d,k])));
+    for(let i=1;i<=5;i++) for(let g=2;g<=8;g++) E.push(['f-'+i,'g-'+g]);
+    ['m-22','m-23','m-24'].forEach(m=>{ E.push([m,'o-1']); E.push([m,'o-2']); });
+    for(let n=1;n<19;n++) E.push(['l-'+n,'l-'+(n+1)]);    // グリーンは手前から出る
+    // 整備の各列が塞がるとグリーンの奥へ行けない（列の上から埋まるほど手前しか使えない）
+    for(let c=6;c>=1;c--){
+      const [lo,hi]=L_SPAN[c];
+      for(let r=1;r<=M_ROWS;r++){
+        const limit=Math.min(hi, lo+r-1);
+        for(let n=limit;n<=19;n++) E.push([mId(c,r), 'l-'+n]);
+      }
+    }
+    return E;
+  }
+  const PK_EDGES=pkExitEdges();
+  const PK_RANK=(function(){
+    const succ={}, indeg={}, all=Object.keys(PK_GEOM.full);
+    all.forEach(s=>{ succ[s]=[]; indeg[s]=0; });
+    PK_EDGES.forEach(([a,b])=>{ if(succ[a]&&indeg[b]!==undefined){ succ[a].push(b); indeg[b]++; } });
+    const rank={}, q=[];
+    all.forEach(s=>{ if(indeg[s]===0){ rank[s]=0; q.push(s); } });
+    const left=Object.assign({}, indeg);
+    while(q.length){
+      const u=q.shift();
+      for(const v of succ[u]){
+        rank[v]=Math.max(rank[v]||0, (rank[u]||0)+1);
+        if(--left[v]===0) q.push(v);
+      }
+    }
+    all.forEach(s=>{ if(rank[s]===undefined) rank[s]=0; });
+    return rank;
+  })();
+
+  /* 出庫の逆転だけを絶対NGとして検出する（5分未満は推奨レベルの注意） */
   function pkValidateAll(){
     const probs=[];
-    const chk=(frontId, rearId, label)=>{
-      const f=occ(frontId), b=occ(rearId); if(!f||!b) return;
-      const df=depMin(f), dr=depMin(b); if(df==null||dr==null) return;
-      if(dr<df) probs.push({ids:[frontId,rearId], msg:label+'：'+rearId+'('+b+' '+fmtMin(dr)+')が '+frontId+'('+f+' '+fmtMin(df)+')より先の出庫はNG'});
-      else if(dr-df<5) probs.push({ids:[rearId], soft:true, msg:label+'：'+rearId+'と'+frontId+'の出庫間隔が'+(dr-df)+'分（+5分以上推奨）'});
-    };
-    // m: 同じ行で 右(列大)=前, 左(列小)=後ろ
-    for(let row=1;row<=8;row++) for(let col=1;col<=5;col++){
-      const rear='m-'+((col-1)*8+row), front='m-'+(col*8+row);
-      chk(front, rear, '整備(m)');
+    for(const [a,b] of PK_EDGES){
+      const na=occ(a), nb=occ(b);
+      if(!na||!nb) continue;
+      const da=depMin(na), db=depMin(nb);
+      if(da==null||db==null) continue;
+      if(db<da) probs.push({ids:[a,b], msg:jp(b)+'の'+nb+'が'+jp(a)+'の'+na+'より先に出ます'});
+      else if(db-da<5) probs.push({ids:[b], soft:true, msg:jp(b)+'と'+jp(a)+'の出庫間隔が'+(db-da)+'分'});
     }
-    // k: 前列n ↔ 後列n+8 / 19,20 ↔ 17,18
-    for(let n=1;n<=8;n++) chk('k-'+n,'k-'+(n+8),'新駐車場(k)');
-    chk('k-19','k-17','新駐車場(k)'); chk('k-20','k-18','新駐車場(k)');
-    // o, i
-    chk('o-1','o-2','タイヤハウス(o)');
-    chk('i-1','i-2','洗車機(i)');
-    // c→d1/d2
-    ['c-1','c-2','c-3'].forEach(c=>{ chk(c,'d-1','小屋→ヤナセ'); chk(c,'d-2','小屋→ヤナセ'); });
-    // d9/10/11 → k7/8/15-20
-    ['d-9','d-10','d-11'].forEach(dd=>{ ['k-7','k-8','k-15','k-16','k-17','k-18','k-19','k-20'].forEach(kk=>chk(dd,kk,'ヤナセ→新駐車場')); });
     return probs;
   }
+
   function fmtMin(m){ return pad2(Math.floor(m/60))+':'+pad2(m%60); }
 
   /* ---------------- Firestore 同期 ---------------- */
@@ -2662,12 +2725,13 @@ window.__start = function(FB){
   function pkGoScreen(i){
     pk.screen=(i+4)%4;
     const s=SCREENS[pk.screen];
-    if(pk.screen===0){ $('parkingRoot').style.display='none'; $('appRoot').style.display='block'; $('pkEdgeTab').style.display=''; }
+    if(pk.screen===0){ $('parkingRoot').style.display='none'; $('appRoot').style.display='block'; $('pkEdgeTab').style.display=''; document.body.classList.remove('pk-land'); }
     else{
       $('appRoot').style.display='none'; $('parkingRoot').style.display='flex'; $('pkEdgeTab').style.display='none';
       document.querySelectorAll('.pk-map').forEach(m=>m.classList.toggle('on', m.id==='pkMap-'+s.map));
       pk.scale=1; pk.tx=0; pk.ty=0; pkApplyZoom();
       $('pkRotateHint').style.display=s.rotate?'':'none';
+      pkUpdateOrientation();
       pkRenderAll();
     }
     document.querySelectorAll('.pk-dot').forEach((d,j)=>d.classList.toggle('on', j===pk.screen));
@@ -2722,14 +2786,24 @@ window.__start = function(FB){
   /* ---------------- 枠と数字の描画 ---------------- */
   function slotEls(){ const m=mapEl(); return m?Array.from(m.querySelectorAll('.pk-slot[id]')):[]; }
 
+  // 枠の状態は車両運行ボードの3段階と同じものを使う（0=未帰庫/基本 1=配置済 2=帰庫済）
   function pkStatusOf(slotId){
     const s=pk.slots[slotId]; if(!s) return null;
-    const rec=(state.times[state.activeDate]||{})[s.no];
-    if(rec && rec.returned) return 'returned';
-    return s.st||'auto';
+    const t=state.times[state.activeDate]||{};
+    const rec=t[s.no];
+    return rec? stOf(rec) : 0;
   }
+  function pkSetStatus(slotId, v){
+    const s=pk.slots[slotId]; if(!s) return;
+    const t=state.times[state.activeDate]||(state.times[state.activeDate]={});
+    if(!t[s.no]) t[s.no]={r:'',d:'',returned:false};
+    setSt(t[s.no], v);
+    pushDay();                 // 運行ボード側にも即反映
+  }
+  function isLocked(slotId){ return pkStatusOf(slotId)===2 && !pk.unlocked.has(slotId); }
   function isSoon(no){
-    const rec=(state.times[state.activeDate]||{})[no]; if(!rec||rec.returned) return false;
+    const rec=(state.times[state.activeDate]||{})[no]; if(!rec) return false;
+    if(stOf(rec)===2) return false;
     const rt=parseT(rec.r); if(rt==null) return false;
     const diff=rt-nowMin();
     return diff>=0 && diff<=state.settings.thresholdMin;
@@ -2741,7 +2815,7 @@ window.__start = function(FB){
     // 前回の数字を消し、枠の状態クラスを一旦外す
     const old=m.querySelector('#pkNums'); if(old) old.remove();
     m.querySelectorAll('.pk-slot').forEach(el=>{
-      el.classList.remove('pk-auto','pk-confirmed','pk-returned','pk-moved','pk-soon','pk-unlocked');
+      el.classList.remove('pk-s1','pk-s2','pk-soon','pk-blink','pk-unlocked','pk-target');
     });
     const layer=document.createElementNS('http://www.w3.org/2000/svg','g');
     layer.setAttribute('id','pkNums');
@@ -2754,9 +2828,10 @@ window.__start = function(FB){
       const el=m.querySelector('[id="'+slotId+'"]');
       const st=pkStatusOf(slotId);
       const soon=isSoon(s.no);
-      const cls=soon?'soon':st;
+      const cls=soon?'soon':('s'+st);
       if(el){
-        el.classList.add('pk-'+cls);
+        if(soon || st>0) el.classList.add('pk-'+cls);
+        if(soon && !pk.blinked.has(s.no)){ el.classList.add('pk-blink'); pk.blinked.add(s.no); }
         if(pk.unlocked.has(slotId)) el.classList.add('pk-unlocked');
       }
       const rec=day[s.no]||{};
@@ -2764,7 +2839,7 @@ window.__start = function(FB){
       const items=pkLayout(mode, String(s.no), rec.d||'', rec.r||'', L, S);
       items.forEach(it=>{
         const t=pkTextEl(it, cx, cy, ang);
-        t.classList.add('t-'+cls);
+        if(soon || st>0) t.classList.add('t-'+cls);
         t.dataset.slot=slotId;
         layer.appendChild(t);
       });
@@ -2785,12 +2860,12 @@ window.__start = function(FB){
     const list=pkVehicleList().filter(n=>!placed.has(n));
     // 出庫が早い順(時刻を持つもの優先)
     list.sort((a,b)=>{ const da=depMin(a), dbb=depMin(b); if(da==null&&dbb==null) return a.localeCompare(b); if(da==null) return 1; if(dbb==null) return -1; return da-dbb; });
-    $('pkTrayLabel').textContent='未配置の号車 '+list.length+'台（タップで選択→枠をタップ / ドラッグでも可）';
+    $('pkTrayLabel').textContent='未配置 '+list.length+'台　※枠をタップして号車を直接入力できます';
     list.forEach(no=>{
       const rec=day[no]||{};
       const c=document.createElement('div'); c.className='pk-chip'+(pk.sel===no?' sel':''); c.dataset.no=no;
       c.innerHTML=no+'<small>'+(rec.d||'--')+'/'+(rec.r||'--')+'</small>';
-      c.addEventListener('click',()=>{ if(userRole==='sub'){showToast('閲覧のみです（編集は構内21cのみ）');return;} pk.sel=(pk.sel===no?null:no); pkRenderTray(); });
+
       attachChipDrag(c);
       tray.appendChild(c);
     });
@@ -2801,8 +2876,10 @@ window.__start = function(FB){
     document.querySelectorAll('.pk-slot').forEach(el=>el.classList.remove('pk-warn'));
     const hard=probs.filter(p=>!p.soft);
     hard.forEach(p=>p.ids.forEach(id=>{ mapEl()&&mapEl().querySelectorAll('[id="'+id+'"]').forEach(el=>el.classList.add('pk-warn')); }));
-    const lines=[...hard.map(p=>'⚠ '+p.msg), ...probs.filter(p=>p.soft).slice(0,2).map(p=>'△ '+p.msg)];
-    $('pkMsg').textContent=lines.slice(0,4).join('\n');
+    const lines=[...hard.map(p=>'⚠ '+p.msg), ...probs.filter(p=>p.soft).map(p=>'△ '+p.msg)];
+    const shown=lines.slice(0,2);
+    if(lines.length>2) shown[1]=shown[1]+'　ほか'+(lines.length-2)+'件';
+    $('pkMsg').textContent=shown.join('\n');
     return probs;
   }
   function pkRenderAll(){ if(pk.screen===0) return; pkRenderCards(); pkRenderTray(); pkRenderMsg(); }
@@ -2822,61 +2899,115 @@ window.__start = function(FB){
   }
   function pkRemove(slotId){ delete pk.slots[slotId]; pkPush(); pkRenderAll(); }
 
-  /* 枠に対する操作: タップで確定 / 長押しでロック解除 / ドラッグで移動 */
+  /* ===== 枠の操作 =====
+     タップ            : 空き枠→号車入力ポップアップ / 配置済→状態を進める(未帰庫→配置済→帰庫済)
+     長押し(400ms)     : そのままドラッグで移動できる状態に入る（誤操作防止のため即ドラッグはしない）
+     帰庫済(赤)         : ロック。長押しで解除するとドラッグ・状態変更ができる          */
+  const PK_HOLD_MS=400;      // ドラッグ開始までの長押し時間
+  let pkNoTarget=null;
+
+  function openNoInput(slotId){
+    pkNoTarget=slotId;
+    const cur=pk.slots[slotId]&&pk.slots[slotId].no ? String(pk.slots[slotId].no) : '';
+    $('pkNoTitle').textContent=(cur?'号車を変更':'号車を入力');
+    $('pkNoInput').value=cur;
+    $('pkNoHint').textContent='';
+    $('pkNoDel').style.display=cur?'':'none';
+    openModal('pkNoOverlay');
+    setTimeout(()=>{ const el=$('pkNoInput'); el.focus(); el.select(); }, 80);
+  }
+  function commitNoInput(){
+    if(!pkNoTarget) return;
+    const v=$('pkNoInput').value.trim();
+    if(!v){ $('pkNoHint').textContent='号車を入力してください'; return; }
+    if(!/^\d{1,4}$/.test(v)){ $('pkNoHint').textContent='数字のみで入力してください'; return; }
+    const no=v.padStart(4,'0');
+    const known=pkVehicleList().includes(no);
+    if(!known){ $('pkNoHint').textContent='⚠ '+no+' は本日のデータにありません。そのまま配置します'; }
+    pkPlace(pkNoTarget, no, 'fixed');
+    closeModal('pkNoOverlay'); pkNoTarget=null;
+  }
+  $('pkNoOk').addEventListener('click', commitNoInput);
+  $('pkNoInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); commitNoInput(); } });
+  $('pkNoDel').addEventListener('click', ()=>{
+    if(pkNoTarget){ pkRemove(pkNoTarget); showToast(pkNoTarget+' を空けました'); }
+    closeModal('pkNoOverlay'); pkNoTarget=null;
+  });
+
   function attachSlotEvents(el){
     const slotId=el.id;
-    let lp=null, moved=false, down=null, ghost=null, dragging=false;
+    let hold=null, down=null, moved=false, armed=false, ghost=null, pid=null, handled=false;
+    const clear=()=>{ if(hold){clearTimeout(hold); hold=null;} };
     el.addEventListener('pointerdown',e=>{
       if(userRole==='sub') return;
-      moved=false; dragging=false; down={x:e.clientX,y:e.clientY};
-      const st=pkStatusOf(slotId);
-      const locked=(st==='confirmed'||st==='returned')&&!pk.unlocked.has(slotId);
-      lp=setTimeout(()=>{
-        lp=null;
-        if(st==='confirmed'||st==='returned'){
-          if(pk.unlocked.has(slotId)){ pk.unlocked.delete(slotId); showToast('🔒 '+slotId+' を再ロックしました'); }
-          else{ pk.unlocked.add(slotId); showToast('🔓 '+slotId+' のロックを解除（動かせます）',2600); }
-          pkRenderAll();
+      down={x:e.clientX,y:e.clientY}; moved=false; armed=false; handled=false; pid=e.pointerId;
+      hold=setTimeout(()=>{
+        hold=null;
+        if(isLocked(slotId)){                       // 帰庫済はロック解除
+          pk.unlocked.add(slotId); handled=true;    // 指を離した時にタップ扱いしない
+          showToast('🔓 '+jp(slotId)+' のロックを解除しました',2400);
+          if(navigator.vibrate) navigator.vibrate(15);
+          pkRenderAll(); return;
         }
-      },600);
-      if(occ(slotId) && !locked){ dragging=true; pk.drag={no:pk.slots[slotId].no, from:slotId}; }
-      e.preventDefault();
+        if(occ(slotId)){                            // 長押し完了 → ドラッグ可能に
+          armed=true; pk.drag={no:pk.slots[slotId].no, from:slotId};
+          try{ el.setPointerCapture(pid); }catch(_){}   // 指が他の枠へ移っても離した位置を拾えるように
+          el.classList.add('pk-dragging');
+          ghost=mkGhost(pk.slots[slotId].no);
+          ghost.style.left=(down.x)+'px'; ghost.style.top=(down.y)+'px';
+          if(navigator.vibrate) navigator.vibrate(15);
+        }
+      }, PK_HOLD_MS);
     });
     el.addEventListener('pointermove',e=>{
       if(!down) return;
-      if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8){
-        moved=true; if(lp){clearTimeout(lp);lp=null;}
-        if(dragging && pk.drag && !ghost) ghost=mkGhost(pk.drag.no);
-        if(ghost){ ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px'; }
+      const dist=Math.hypot(e.clientX-down.x, e.clientY-down.y);
+      if(dist>8){
+        moved=true;
+        if(!armed) clear();                         // 長押し前に動いたらドラッグしない(画面スライド優先)
+      }
+      if(armed && ghost){
+        ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px';
+        const t=findSlotAt(e.clientX,e.clientY);
+        document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
+        if(t && t!==slotId){ const te=mapEl().querySelector('[id="'+t+'"]'); if(te) te.classList.add('pk-target'); }
       }
     });
     el.addEventListener('pointerup',e=>{
-      if(lp){clearTimeout(lp);lp=null;}
+      clear();
+      if(!down){ return; }        // この枠で押し始めていない指を離しただけ → 何もしない
+      if(handled){ down=null; handled=false; return; }   // 長押しで処理済み
+      const wasArmed=armed, wasDrag=pk.drag;
+      el.classList.remove('pk-dragging');
+      document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
       if(ghost){ ghost.remove(); ghost=null; }
-      const wasDrag=pk.drag; pk.drag=null; down=null;
+      pk.drag=null; down=null; armed=false;
+      try{ if(pid!=null) el.releasePointerCapture(pid); }catch(_){}
       if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; }
-      if(moved && wasDrag){
+
+      if(wasArmed && wasDrag){                       // 長押し後のドラッグ → 移動
         const target=findSlotAt(e.clientX,e.clientY);
         if(target && target!==slotId){
-          const tst=pkStatusOf(target);
-          if(tst&&(tst==='confirmed'||tst==='returned')&&!pk.unlocked.has(target)){ showToast('🔒 '+target+' はロック中（長押しで解除）'); return; }
-          pkRemove(slotId); pkPlace(target, wasDrag.no, 'moved');
-        } else if(!target){
-          const tray=document.elementFromPoint(e.clientX,e.clientY);
-          if(tray&&tray.closest('#pkTray')){ pkRemove(slotId); showToast(wasDrag.no+' を未配置に戻しました'); }
+          if(isLocked(target)){ showToast('🔒 '+target+' は帰庫済です（長押しで解除）'); return; }
+          pkRemove(slotId); pkPlace(target, wasDrag.no, 'fixed');
         }
         return;
       }
-      // タップ
+      if(moved) return;                              // 画面スライド中は何もしない
+
+      // --- タップ ---
       if(!occ(slotId)){
-        if(pk.sel){ pkPlace(slotId, pk.sel, 'moved'); }   // 2タップ配置
-        return;
+        if(pk.sel){ pkPlace(slotId, pk.sel, 'fixed'); return; }   // トレイで選択中ならそれを配置
+        openNoInput(slotId); return;                              // 通常は号車を直接入力
       }
-      const st=pkStatusOf(slotId);
-      if(st==='auto'||st==='moved'){ pk.slots[slotId].st='confirmed'; pkPush(); pkRenderAll(); }
-      else if(st==='confirmed'&&pk.unlocked.has(slotId)){ pk.slots[slotId].st='moved'; pk.unlocked.delete(slotId); pkPush(); pkRenderAll(); }
-      else{ showToast('🔒 確定/帰庫済みは長押しでロック解除できます'); }
+      if(isLocked(slotId)){ showToast('🔒 帰庫済です。長押しでロック解除できます'); return; }
+      const cur=pkStatusOf(slotId);
+      pkSetStatus(slotId, (cur+1)%3);                          // 未帰庫→配置済→帰庫済→未帰庫
+      if((cur+1)%3!==2) pk.unlocked.delete(slotId);
+      pk.slots[slotId].st='fixed';
+      pkPush(); pkRenderAll(); renderList();
     });
+    el.addEventListener('pointercancel',()=>{ clear(); if(ghost){ghost.remove();ghost=null;} pk.drag=null; down=null; armed=false; el.classList.remove('pk-dragging'); });
   }
   function mkGhost(no){ const g=document.createElement('div'); g.className='pk-ghost'; g.textContent=no; document.body.appendChild(g); return g; }
   function findSlotAt(x,y){
@@ -2884,87 +3015,144 @@ window.__start = function(FB){
     for(const el of els){ if(el.classList&&el.classList.contains('pk-slot')&&el.id) return el.id; }
     return null;
   }
+  /* トレイの号車チップ: タップで選択、長押しでドラッグ */
   function attachChipDrag(chip){
-    let ghost=null, down=null, moved=false;
-    chip.addEventListener('pointerdown',e=>{ if(userRole==='sub')return; down={x:e.clientX,y:e.clientY}; moved=false; chip.setPointerCapture(e.pointerId); });
+    let hold=null, down=null, moved=false, armed=false, ghost=null;
+    const clear=()=>{ if(hold){clearTimeout(hold);hold=null;} };
+    chip.addEventListener('pointerdown',e=>{
+      if(userRole==='sub') return;
+      down={x:e.clientX,y:e.clientY}; moved=false; armed=false;
+      hold=setTimeout(()=>{
+        hold=null; armed=true; pk.drag={no:chip.dataset.no};
+        ghost=mkGhost(chip.dataset.no);
+        ghost.style.left=down.x+'px'; ghost.style.top=down.y+'px';
+        if(navigator.vibrate) navigator.vibrate(15);
+      }, PK_HOLD_MS);
+    });
     chip.addEventListener('pointermove',e=>{
-      if(!down)return;
-      if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>10){ moved=true; pk.drag={no:chip.dataset.no}; if(!ghost) ghost=mkGhost(chip.dataset.no); ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px'; }
+      if(!down) return;
+      if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8){ moved=true; if(!armed) clear(); }
+      if(armed && ghost){ ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px'; }
     });
     chip.addEventListener('pointerup',e=>{
-      if(ghost){ghost.remove();ghost=null;}
-      const wasDrag=pk.drag; pk.drag=null; down=null;
-      if(moved&&wasDrag){ const t=findSlotAt(e.clientX,e.clientY); if(t){ const st=pkStatusOf(t); if(st&&(st==='confirmed'||st==='returned')&&!pk.unlocked.has(t)){ showToast('🔒 '+t+' はロック中（長押しで解除）'); return;} pkPlace(t,wasDrag.no,'moved'); } }
+      clear();
+      const wasArmed=armed, wasDrag=pk.drag;
+      if(ghost){ ghost.remove(); ghost=null; }
+      pk.drag=null; down=null; armed=false;
+      if(userRole==='sub'){ showToast('閲覧のみです'); return; }
+      if(wasArmed && wasDrag){
+        const t=findSlotAt(e.clientX,e.clientY);
+        if(t){
+          if(isLocked(t)){ showToast('🔒 '+jp(t)+' は帰庫済です'); return; }
+          pkPlace(t, wasDrag.no, 'fixed');
+        }
+        return;
+      }
+      if(moved) return;
+      pk.sel=(pk.sel===chip.dataset.no? null : chip.dataset.no);   // タップで選択
+      pkRenderTray();
     });
+    chip.addEventListener('pointercancel',()=>{ clear(); if(ghost){ghost.remove();ghost=null;} pk.drag=null; down=null; armed=false; });
   }
-  // 全ての枠に一度だけイベントを付ける
-  (function bindSlots(){
-    document.querySelectorAll('.pk-map .pk-slot[id]').forEach(attachSlotEvents);
-  })();
+
+  (function bindSlots(){ document.querySelectorAll('.pk-map .pk-slot[id]').forEach(attachSlotEvents); })();
 
   /* ---------------- 表示切替 ---------------- */
-  $('pkDisp').addEventListener('click',()=>{
+  function pkCycleDisp(){
     pk.disp=(pk.disp+1)%PK_MODES.length;
-    $('pkDisp').textContent='表示:'+PK_MODE_LABEL[PK_MODES[pk.disp]];
+    const t='表示:'+PK_MODE_LABEL[PK_MODES[pk.disp]];
+    $('pkDisp').textContent=t; $('pkFab').textContent=t;
     pkRenderAll();
-  });
-  $('pkDisp').textContent='表示:'+PK_MODE_LABEL[PK_MODES[0]];
+  }
+  $('pkDisp').addEventListener('click', pkCycleDisp);
+  $('pkFab').addEventListener('click', pkCycleDisp);
+  $('pkBackMini').addEventListener('click', ()=>pkGoScreen(0));
+  (function(){ const t='表示:'+PK_MODE_LABEL[PK_MODES[0]]; $('pkDisp').textContent=t; $('pkFab').textContent=t; })();
+
+  /* 横向き判定: 横向きのときは図を最大化する（メニュー・トレイを隠す） */
+  function pkUpdateOrientation(){
+    const land = window.innerWidth > window.innerHeight;
+    document.body.classList.toggle('pk-land', land && pk.screen!==0);
+  }
+  window.addEventListener('resize', ()=>{ pkUpdateOrientation(); });
+  window.addEventListener('orientationchange', ()=>setTimeout(pkUpdateOrientation,250));
 
   /* ---------------- 一括配置（下書き補助・保護枠に触れない） ---------------- */
-  const AREA_PREF={
-    '電気':['k'],
-    'コミュニティ':['h','j','g','k','o','a','b'],
-    '中型':['c','i','a','g','o','k','m','l','b'],
-    '大型':['g','k','m','l','d'],
-    '特車':['d','l','m','i'],
-    '不明':['l','m'],
-  };
+  /* ===== 一括配置（作り直し）=====
+     ・出庫が早い車から順に、出庫順位の小さい(手前の)空き枠へ入れる
+     ・出庫時刻の無い車(予備車・修理・車検)は最後に、奥の枠から詰める
+     ・確定済み/帰庫済み/手で動かした枠には触れない
+     ・置けない場合は理由を出す（黙って諦めない）                     */
   function pkBulkPlace(){
-    if(userRole==='sub'){showToast('閲覧のみです');return;}
-    const placed=placedNos(); const day=state.times[state.activeDate]||{};
-    const targets=pkVehicleList().filter(n=>!placed.has(n)).filter(n=>depMin(n)!=null); // 特殊表記(ヨ等)は自動対象外
-    if(!targets.length){ showToast('自動配置の対象がありません（未配置は特殊表記のみ）'); return; }
-    // 制約の厳しい順: 電気→コミュ→特車→残りは出庫早い順
-    const rank=(n)=>({'電気':0,'コミュニティ':1,'特車':2}[pkCarType(n)]??3);
-    targets.sort((a,b)=>rank(a)-rank(b)||depMin(a)-depMin(b));
-    const emptySlots=Object.keys(PK_GEOM.full).filter(id=>!occ(id));
-    const failures=[];
-    let steps=0; const LIMIT=20000;
-    const placedNow=[];
-    function candidates(no){
-      const t=pkCarType(no); const pref=AREA_PREF[t]||AREA_PREF['不明'];
-      return emptySlots
-        .filter(id=>!pk.slots[id])
-        .filter(id=>{ const c=pkCheckPlace(id,no); return c.ng.length===0; })
-        .sort((a,b)=>{ const pa=pref.indexOf(areaOf(a)), pb=pref.indexOf(areaOf(b));
-          return (pa<0?99:pa)-(pb<0?99:pb) || numOf(a)-numOf(b); });
-    }
-    function solve(i){
-      if(++steps>LIMIT) return false;
-      if(i>=targets.length) return true;
-      const no=targets[i];
-      const cands=candidates(no);
-      if(!cands.length){ failures.push({no, reason:pkCarType(no)+'が置ける空き枠がありません（制約含む）'}); return solve(i+1); }
-      for(const id of cands.slice(0,6)){
-        pk.slots[id]={no, st:'auto'}; placedNow.push(id);
-        // 出庫順の絶対NGが生じないか軽く検証
-        const bad=pkValidateAll().some(p=>!p.soft&&p.ids.includes(id));
-        if(!bad && solve(i+1)) return true;
-        delete pk.slots[id]; placedNow.pop();
+    if(userRole==='sub'){ showToast('閲覧のみです'); return; }
+    const placed=placedNos();
+    const all=pkVehicleList().filter(n=>!placed.has(n));
+    if(!all.length){ showToast('未配置の号車はありません'); return; }
+
+    // 空き枠を「先に出る順」に並べる。奥用は逆順で使う。
+    const empty=Object.keys(PK_GEOM.full).filter(id=>!occ(id))
+      .sort((a,b)=> (PK_RANK[a]-PK_RANK[b]) || a.localeCompare(b));
+
+    const withTime = all.filter(n=>depMin(n)!=null).sort((x,y)=>depMin(x)-depMin(y));
+    const noTime   = all.filter(n=>depMin(n)==null);
+
+    const used=new Set(), fails=[];
+    function tryPlace(no, list){
+      for(const s of list){
+        if(used.has(s)||occ(s)) continue;
+        const c=pkCheckPlace(s,no);
+        if(c.ng.length) continue;
+        used.add(s); pk.slots[s]={no:String(no), st:'auto'};
+        return true;
       }
-      failures.push({no, reason:'置ける枠はあるが、出庫順の制約を満たす枠がありません'});
-      return solve(i+1);
+      return false;
     }
-    solve(0);
+    // 電気は充電器のk-9/10を最優先で確保
+    ['7303','7304'].forEach(e=>{
+      if(!withTime.includes(e)&&!noTime.includes(e)) return;
+      for(const s of ['k-9','k-10']){
+        if(!used.has(s)&&!occ(s)){ used.add(s); pk.slots[s]={no:e,st:'auto'};
+          const i=withTime.indexOf(e); if(i>=0) withTime.splice(i,1);
+          const j=noTime.indexOf(e); if(j>=0) noTime.splice(j,1);
+          break; }
+      }
+    });
+    // 出庫が早い順 → 手前の枠から
+    for(const no of withTime){
+      if(!tryPlace(no, empty)) fails.push({no, why:pkWhyNot(no, empty, used)});
+    }
+    // 出庫の無い車 → 奥の枠から（他の出庫を邪魔しない位置）
+    const deep=empty.slice().reverse();
+    for(const no of noTime){
+      if(!tryPlace(no, deep)) fails.push({no, why:pkWhyNot(no, deep, used)});
+    }
     pkPush(); pkRenderAll();
-    if(failures.length){
-      const msg=failures.slice(0,3).map(f=>'⚠ '+f.no+'：'+f.reason).join('\n');
-      $('pkMsg').textContent=msg+(failures.length>3?'\n…ほか'+(failures.length-3)+'件':'');
-      showToast('⚠ '+failures.length+'台が自動配置できませんでした。条件の追加が必要かもしれません',4200);
+
+    const n=used.size;
+    if(fails.length){
+      const g={}; fails.forEach(f=>{ g[f.why]=(g[f.why]||0)+1; });
+      const top=Object.entries(g).sort((a,b)=>b[1]-a[1])[0];
+      $('pkMsg').textContent='⚠ '+fails.length+'台が置けません（'+top[0]+'）';
+      showToast('✓ '+n+'台を配置。'+fails.length+'台は置けませんでした',4000);
     } else {
-      showToast('✓ '+placedNow.length+'台を下書き配置しました（タップで確定）',3000);
+      showToast('✓ '+n+'台すべて配置しました（タップで確定）',3200);
     }
   }
+  /* 置けなかった理由を1行でまとめる */
+  function pkWhyNot(no, list, used){
+    const reasons={};
+    let free=0;
+    for(const s of list){
+      if(used.has(s)||occ(s)) continue;
+      free++;
+      const c=pkCheckPlace(s,no);
+      (c.ng.length? c.ng : ['?']).forEach(r=>{ reasons[r]=(reasons[r]||0)+1; });
+    }
+    if(!free) return '空き枠がありません';
+    const e=Object.entries(reasons).sort((a,b)=>b[1]-a[1]);
+    return e.length? e[0][0] : '条件に合う枠がありません';
+  }
+
   $('pkBulk').addEventListener('click',pkBulkPlace);
 
   // 詰み検知→autoのみ自動並べ替え（確定・帰庫・movedは保護）
