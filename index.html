@@ -271,6 +271,10 @@
   .pk-chip.sel{outline:3px solid var(--now-orange);}
   .pk-traylabel{font-size:10px; color:var(--text-dim); padding:4px 12px 0; background:#fff;}
   /* ドラッグゴースト */
+  /* iOSで長押しすると文字が範囲選択されてコピーメニューが出るのを止める */
+  body{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  input,textarea,[contenteditable]{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default;}
+  .pk-map, .pk-map *, .pk-chip, .pk-chip *{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
   .pk-ghost{position:fixed; z-index:999; pointer-events:none; background:#1c2128; color:#fff; font-family:var(--mono); font-size:15px; padding:6px 10px; border-radius:8px; opacity:.9; transform:translate(-50%,-120%);}
   /* 画面3・4の横向き案内 */
   .pk-rotate-hint{font-size:10.5px; color:var(--text-dim); text-align:center; padding:2px 0;}
@@ -3237,9 +3241,11 @@ window.__start = function(FB){
     $('pkMsg').textContent=shown.join('\n');
     return probs;
   }
-  function pkRenderAll(){ if(pk.screen===0) return; pkRenderCards(); pkRenderTray(); pkRenderMsg(); }
+  function pkRenderAll(){ if(pk.screen===0) return;
+    if(pk.drag) return;            // ドラッグ中に作り直すと札が残るので触らない
+    pkRenderCards(); pkRenderTray(); pkRenderMsg(); }
   // 時刻変化(点滅・帰庫済み反映)のため定期再描画
-  setInterval(()=>{ if(pk.screen!==0) pkRenderAll(); }, 30000);
+  setInterval(()=>{ if(pk.screen!==0 && !pk.drag && !(typeof pkAnim!=='undefined'&&pkAnim.running)) pkRenderAll(); }, 30000);
 
   /* ---------------- 配置・移動・確定・保護 ---------------- */
   function pkPlace(slotId,no,st){
@@ -3259,6 +3265,52 @@ window.__start = function(FB){
      長押し(400ms)     : そのままドラッグで移動できる状態に入る（誤操作防止のため即ドラッグはしない）
      帰庫済(赤)         : ロック。長押しで解除するとドラッグ・状態変更ができる          */
   const PK_HOLD_MS=400;      // ドラッグ開始までの長押し時間
+
+  /* ---- ドラッグの共通処理 ----
+     チップや枠の要素は再描画で作り直されるため、要素にpointerupを頼ると
+     「浮いた札(ゴースト)が残って消えない」ことがある。動きと指を離した判定は
+     必ず window で受け取り、後片付けも1箇所に集める。 */
+  let pkGhostEl=null, pkDragCleanup=null;
+  function pkGhostKill(){
+    if(pkGhostEl){ pkGhostEl.remove(); pkGhostEl=null; }
+    document.querySelectorAll('.pk-ghost').forEach(g=>g.remove());   // 取りこぼしも掃除
+  }
+  function pkDragEnd(){
+    pkGhostKill();
+    if(pkDragCleanup){ const f=pkDragCleanup; pkDragCleanup=null; f(); }
+    pk.drag=null;
+    document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
+    document.querySelectorAll('.pk-slot.pk-dragging').forEach(x=>x.classList.remove('pk-dragging'));
+  }
+  function pkBeginDrag(no, startX, startY, onDrop){
+    pkGhostKill();
+    pk.drag={no:String(no)};
+    const g=document.createElement('div'); g.className='pk-ghost'; g.textContent=no;
+    document.body.appendChild(g); pkGhostEl=g;
+    g.style.left=startX+'px'; g.style.top=startY+'px';
+    if(navigator.vibrate) navigator.vibrate(15);
+    const move=(e)=>{
+      if(!pkGhostEl) return;
+      pkGhostEl.style.left=e.clientX+'px'; pkGhostEl.style.top=e.clientY+'px';
+      const t=findSlotAt(e.clientX,e.clientY);
+      document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
+      if(t){ const te=document.querySelector('.pk-map:not([style*="display: none"]) [id="'+t+'"]')||(mapEl()&&mapEl().querySelector('[id="'+t+'"]'));
+             if(te&&te.classList.contains('pk-slot')) te.classList.add('pk-target'); }
+    };
+    const up=(e)=>{ const x=e.clientX,y=e.clientY; pkDragEnd(); if(onDrop) onDrop(x,y); };
+    const cancel=()=>pkDragEnd();
+    window.addEventListener('pointermove',move,{passive:true});
+    window.addEventListener('pointerup',up);
+    window.addEventListener('pointercancel',cancel);
+    window.addEventListener('blur',cancel);
+    pkDragCleanup=()=>{
+      window.removeEventListener('pointermove',move,{passive:true});
+      window.removeEventListener('pointerup',up);
+      window.removeEventListener('pointercancel',cancel);
+      window.removeEventListener('blur',cancel);
+    };
+  }
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) pkDragEnd(); });
   let pkNoTarget=null;
 
   function openNoInput(slotId){
@@ -3294,80 +3346,61 @@ window.__start = function(FB){
 
   function attachSlotEvents(el){
     const slotId=el.id;
-    let hold=null, down=null, moved=false, armed=false, ghost=null, pid=null, handled=false;
+    let hold=null, down=null, moved=false, armed=false, handled=false;
     const clear=()=>{ if(hold){clearTimeout(hold); hold=null;} };
     el.addEventListener('pointerdown',e=>{
       if(userRole==='sub') return;
-      down={x:e.clientX,y:e.clientY}; moved=false; armed=false; handled=false; pid=e.pointerId;
+      down={x:e.clientX,y:e.clientY}; moved=false; armed=false; handled=false;
       hold=setTimeout(()=>{
         hold=null;
         if(isLocked(slotId)){                       // 帰庫済はロック解除
-          pk.unlocked.add(slotId); handled=true;    // 指を離した時にタップ扱いしない
+          pk.unlocked.add(slotId); handled=true;
           showToast('🔓 '+jp(slotId)+' のロックを解除しました',2400);
           if(navigator.vibrate) navigator.vibrate(15);
           pkRenderAll(); return;
         }
-        if(occ(slotId)){                            // 長押し完了 → ドラッグ可能に
-          armed=true; pk.drag={no:pk.slots[slotId].no, from:slotId};
-          try{ el.setPointerCapture(pid); }catch(_){}   // 指が他の枠へ移っても離した位置を拾えるように
+        if(occ(slotId)){                            // 長押し完了 → ドラッグ開始
+          armed=true;
           el.classList.add('pk-dragging');
-          ghost=mkGhost(pk.slots[slotId].no);
-          ghost.style.left=(down.x)+'px'; ghost.style.top=(down.y)+'px';
-          if(navigator.vibrate) navigator.vibrate(15);
+          const from=slotId, no=pk.slots[slotId].no;
+          pkBeginDrag(no, down.x, down.y, (x,y)=>{
+            armed=false; down=null;
+            const target=findSlotAt(x,y);
+            if(target && target!==from){
+              if(isLocked(target)){ showToast('🔒 '+jp(target)+' は帰庫済です（長押しで解除）'); return; }
+              pkRemove(from); pkPlace(target, no, 'fixed');
+            }
+          });
         }
       }, PK_HOLD_MS);
     });
     el.addEventListener('pointermove',e=>{
-      if(!down) return;
-      const dist=Math.hypot(e.clientX-down.x, e.clientY-down.y);
-      if(dist>8){
-        moved=true;
-        if(!armed) clear();                         // 長押し前に動いたらドラッグしない(画面スライド優先)
-      }
-      if(armed && ghost){
-        ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px';
-        const t=findSlotAt(e.clientX,e.clientY);
-        document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
-        if(t && t!==slotId){ const te=mapEl().querySelector('[id="'+t+'"]'); if(te) te.classList.add('pk-target'); }
-      }
+      if(!down||armed) return;
+      if(Math.hypot(e.clientX-down.x, e.clientY-down.y)>8){ moved=true; clear(); }
     });
     el.addEventListener('pointerup',e=>{
       clear();
-      if(!down){ return; }        // この枠で押し始めていない指を離しただけ → 何もしない
-      if(handled){ down=null; handled=false; return; }   // 長押しで処理済み
-      const wasArmed=armed, wasDrag=pk.drag;
-      el.classList.remove('pk-dragging');
-      document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
-      if(ghost){ ghost.remove(); ghost=null; }
-      pk.drag=null; down=null; armed=false;
-      try{ if(pid!=null) el.releasePointerCapture(pid); }catch(_){}
+      if(!down) return;
+      if(armed){ down=null; armed=false; return; }        // ドラッグはwindow側で処理済み
+      if(handled){ down=null; handled=false; return; }
+      const wasMoved=moved; down=null;
       if(userRole==='sub'){ showToast('閲覧のみです（編集は構内21cのみ）'); return; }
-
-      if(wasArmed && wasDrag){                       // 長押し後のドラッグ → 移動
-        const target=findSlotAt(e.clientX,e.clientY);
-        if(target && target!==slotId){
-          if(isLocked(target)){ showToast('🔒 '+target+' は帰庫済です（長押しで解除）'); return; }
-          pkRemove(slotId); pkPlace(target, wasDrag.no, 'fixed');
-        }
-        return;
-      }
-      if(moved) return;                              // 画面スライド中は何もしない
+      if(wasMoved) return;                               // 画面スライド中は何もしない
 
       // --- タップ ---
       if(!occ(slotId)){
-        if(pk.sel){ pkPlace(slotId, pk.sel, 'fixed'); return; }   // トレイで選択中ならそれを配置
-        openNoInput(slotId); return;                              // 通常は号車を直接入力
+        if(pk.sel){ pkPlace(slotId, pk.sel, 'fixed'); return; }
+        openNoInput(slotId); return;
       }
       if(isLocked(slotId)){ showToast('🔒 帰庫済です。長押しでロック解除できます'); return; }
       const cur=pkStatusOf(slotId);
-      pkSetStatus(slotId, (cur+1)%3);                          // 未帰庫→配置済→帰庫済→未帰庫
+      pkSetStatus(slotId, (cur+1)%3);
       if((cur+1)%3!==2) pk.unlocked.delete(slotId);
       pk.slots[slotId].st='fixed';
       pkPush(); pkRenderAll(); renderList();
     });
-    el.addEventListener('pointercancel',()=>{ clear(); if(ghost){ghost.remove();ghost=null;} pk.drag=null; down=null; armed=false; el.classList.remove('pk-dragging'); });
+    el.addEventListener('pointercancel',()=>{ clear(); down=null; armed=false; el.classList.remove('pk-dragging'); pkDragEnd(); });
   }
-  function mkGhost(no){ const g=document.createElement('div'); g.className='pk-ghost'; g.textContent=no; document.body.appendChild(g); return g; }
   function findSlotAt(x,y){
     const els=document.elementsFromPoint(x,y);
     for(const el of els){ if(el.classList&&el.classList.contains('pk-slot')&&el.id) return el.id; }
@@ -3375,42 +3408,39 @@ window.__start = function(FB){
   }
   /* トレイの号車チップ: タップで選択、長押しでドラッグ */
   function attachChipDrag(chip){
-    let hold=null, down=null, moved=false, armed=false, ghost=null;
+    let hold=null, down=null, moved=false, armed=false;
     const clear=()=>{ if(hold){clearTimeout(hold);hold=null;} };
     chip.addEventListener('pointerdown',e=>{
       if(userRole==='sub') return;
       down={x:e.clientX,y:e.clientY}; moved=false; armed=false;
       hold=setTimeout(()=>{
-        hold=null; armed=true; pk.drag={no:chip.dataset.no};
-        ghost=mkGhost(chip.dataset.no);
-        ghost.style.left=down.x+'px'; ghost.style.top=down.y+'px';
-        if(navigator.vibrate) navigator.vibrate(15);
+        hold=null; armed=true;
+        const no=chip.dataset.no;
+        pkBeginDrag(no, down.x, down.y, (x,y)=>{
+          armed=false; down=null;
+          const t=findSlotAt(x,y);
+          if(t){
+            if(isLocked(t)){ showToast('🔒 '+jp(t)+' は帰庫済です'); return; }
+            pkPlace(t, no, 'fixed');
+          }
+        });
       }, PK_HOLD_MS);
     });
     chip.addEventListener('pointermove',e=>{
-      if(!down) return;
-      if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8){ moved=true; if(!armed) clear(); }
-      if(armed && ghost){ ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px'; }
+      if(!down||armed) return;
+      if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>8){ moved=true; clear(); }
     });
     chip.addEventListener('pointerup',e=>{
       clear();
-      const wasArmed=armed, wasDrag=pk.drag;
-      if(ghost){ ghost.remove(); ghost=null; }
-      pk.drag=null; down=null; armed=false;
+      if(!down) return;
+      if(armed){ down=null; armed=false; return; }
+      const wasMoved=moved; down=null;
       if(userRole==='sub'){ showToast('閲覧のみです'); return; }
-      if(wasArmed && wasDrag){
-        const t=findSlotAt(e.clientX,e.clientY);
-        if(t){
-          if(isLocked(t)){ showToast('🔒 '+jp(t)+' は帰庫済です'); return; }
-          pkPlace(t, wasDrag.no, 'fixed');
-        }
-        return;
-      }
-      if(moved) return;
-      pk.sel=(pk.sel===chip.dataset.no? null : chip.dataset.no);   // タップで選択
+      if(wasMoved) return;
+      pk.sel=(pk.sel===chip.dataset.no? null : chip.dataset.no);
       pkRenderTray();
     });
-    chip.addEventListener('pointercancel',()=>{ clear(); if(ghost){ghost.remove();ghost=null;} pk.drag=null; down=null; armed=false; });
+    chip.addEventListener('pointercancel',()=>{ clear(); down=null; armed=false; pkDragEnd(); });
   }
 
   (function bindSlots(){ document.querySelectorAll('.pk-map .pk-slot[id]').forEach(attachSlotEvents); })();
@@ -3445,7 +3475,7 @@ window.__start = function(FB){
      ・全体図では、下の構内へ行く車は左へ抜けて下半分の右端から現れる
      ・合計25秒／スキップあり／渋滞はトムとジェリー調
      ===================================================================== */
-  const PK_ANIM_SEC=25;
+  const PK_ANIM_SEC=20;
   const pkRT=(function(){
     const out={};
     for(const k in PK_RT_RAW){
@@ -3712,8 +3742,9 @@ window.__start = function(FB){
       showToast('✓ '+ids.length+'台を配置。'+res.unplaced.length+'台が置けませんでした',4200);
     }else{
       $('pkMsg').textContent=issues.length?('△ '+issues.join(' / ')):'';
-      showToast('✓ '+ids.length+'台すべて配置しました（🎬 動きを見る で再生できます）',3600);
+      showToast('✓ '+ids.length+'台を配置しました',2400);
     }
+    setTimeout(()=>{ if(ids.length) pkAnimPlay(); }, 350);   // そのまま入庫アニメを再生
   }
   $('pkBulk').addEventListener('click',()=>pkBulkPlace(false));
   $('pkAnimBtn').addEventListener('click',pkAnimPlay);
