@@ -2811,24 +2811,37 @@ window.__start = function(FB){
      ------------------------------------------------------------------ */
   const M_ROW_ORDER=[1,2,3,4,5,7,8,6];         // 列の中の行順。6行目は最後
   const PK_FILL=(function(){
+    const mcol=c=>M_ROW_ORDER.map(r=>mId(c,r));
     let o=[];
     o=o.concat(['d-1','d-2','d-3']);                                   // ヤナセ①（出庫6:30まで）
-    o=o.concat(['k-18','k-17']);                                       // 新駐車場のいちばん奥
-    o=o.concat(['k-16','k-15','k-14','k-13','k-12','k-11','k-10','k-9']); // 後列
-    o=o.concat(['k-19','k-20']);                                       // ポンチョ専用（k-6〜8より先に停める）
-    o=o.concat(['k-6','k-7','k-8']);                                   // 前列（連鎖が厳しいので先に）
-    o=o.concat(['k-1','k-2']);                                         // 前列①
-    o=o.concat(['k-3','k-4','k-5']);                                   // 前列②
-    o=o.concat(['d-8','d-9','d-10','d-11']);                           // ヤナセ②（k-6〜8より手前）
+    o=o.concat(['k-18','k-17','k-16','k-15','k-14','k-13','k-12','k-11','k-10','k-9']); // 後列（奥から）
+    o=o.concat(['k-19','k-20']);                                       // ポンチョ専用
+    o=o.concat(['k-6','k-7','k-8']);                                   // 前列（連鎖が厳しい）
+    o=o.concat(['k-1','k-2','k-3','k-4','k-5']);                       // 前列
+    o=o.concat(['d-8','d-9','d-10','d-11']);                           // ヤナセ②
     o=o.concat(['d-4','d-5','d-6','d-7']);                             // ヤナセ③
-    o=o.concat(['g-2','g-3','g-4','g-5','g-6','g-7','g-8','g-9','g-10','g-1']); // 中の島
-    o=o.concat(['a-1','a-2','a-3','a-4','a-5','a-6']);                 // 花壇
+    o=o.concat(['g-2','g-3','g-4','g-5','g-6','g-7','g-8','g-9','g-10','g-1']);
+    o=o.concat(['a-1','a-2','a-3','a-4']);
+    o=o.concat(['b-1']);                                               // 給油所は小屋より先（駐車の関係）
+    o=o.concat(['a-5','a-6']);
     o=o.concat(['h-1','h-2','h-3','h-4','j-1','j-2','i-2','i-3']);
-    for(let i=19;i>=2;i--) o.push('l-'+i);                             // グリーンは奥から
-    for(let c=1;c<=4;c++) M_ROW_ORDER.forEach(r=>o.push(mId(c,r)));    // 整備1〜4列目
-    o=o.concat(['o-2','o-1','c-3','c-2','c-1','b-1']);
-    for(let c=5;c<=6;c++) M_ROW_ORDER.forEach(r=>o.push(mId(c,r)));    // 整備5・6列目（空きはここ）
-    o.push('b-2');
+    o=o.concat(['o-2','o-1']);                                         // タイヤハウスは整備3列目より先
+    /* ── グリーンと整備は交互に ──
+       l-j に停めるには対応する整備枠がまだ空である必要がある（§9）。
+       グリーンを全部先に埋めるのではなく、グリーンの奥から一区切り停めては
+       もう不要になった整備の列を埋める、を繰り返す。 */
+    o=o.concat(['l-19','l-18','l-17','l-16','l-15']);   // ここまで停めれば m-1〜16 が自由
+    o=o.concat(mcol(1), mcol(2));
+    o=o.concat(['l-14','l-13','l-12']);                 // → m-17〜24 が自由
+    o=o.concat(mcol(3));
+    o=o.concat(['l-11','l-10','l-9']);                  // → m-25〜32 が自由
+    o=o.concat(mcol(4));
+    o=o.concat(['l-8','l-7','l-6']);                    // → m-33〜40 が自由
+    o=o.concat(['c-3','c-2','c-1']);
+    o=o.concat(mcol(5));
+    o=o.concat(['l-5','l-4','l-3']);                    // → m-41〜48 が自由
+    o=o.concat(mcol(6));
+    o=o.concat(['l-2']);
     return o;
   })();
   const PK_FILL_IDX=(function(){ const m={}; PK_FILL.forEach((s,i)=>m[s]=i); return m; })();
@@ -2844,7 +2857,6 @@ window.__start = function(FB){
     if(slot==='c-1')  return {need:['c-2'],tier:1};
     if(slot==='i-3')  return {need:['i-2'],tier:1};
     if(slot==='o-1')  return {need:['o-2'],tier:1};
-    if(slot==='b-2')  return {need:['b-1'],tier:1};
     if(slot==='k-19'||slot==='k-20') return {need:['k-17','k-18'],tier:1};
     if(slot==='k-17') return {need:['k-18'],tier:1};
     if(a==='k'&&n<=8) return {need:['k-'+(n+8)],tier:2};
@@ -2904,6 +2916,9 @@ window.__start = function(FB){
     if(slot==='d-2'&&t==='大型'&&/^66/.test(String(car.no))) return false;
     if((slot==='k-19'||slot==='k-20')&&t!=='コミュニティ') return false; // ポンチョ専用
     if(a==='i'&&car.dep==null) return false;                    // 洗車機に予備車は置かない
+    // 給油所は一括配置では1台だけ。しかも帰庫21:30以降の車。2台目は担当者のみ
+    if(slot==='b-2') return false;
+    if(slot==='b-1'&&(car.ret==null||car.ret<1290)) return false;
     if((slot==='g-9'||slot==='g-10')&&!(t==='中型'||t==='コミュニティ')) return false;
     return true;
   }
@@ -2966,7 +2981,6 @@ window.__start = function(FB){
         if(needGSpare>0&&(slot==='g-2'||slot==='g-3')) v-=200;
         if(spareCnt[a]>=(PK_SPARE_CAP[a]===undefined?2:PK_SPARE_CAP[a])) v+=150;
       } else if(needGSpare>0&&(slot==='g-2'||slot==='g-3')) v+=200;
-      if(a==='l'&&car.type==='特車'&&car.dep!=null) v-=10;
       return v+rnd()*4;
     }
     const pool=input.cars.slice();
@@ -2992,12 +3006,37 @@ window.__start = function(FB){
       return false;
     }
     /* この枠に置ける車を「帰庫の早い順」に並べる（＝奥から詰める）。好みで少し入れ替える */
+    /* 「順番に埋まって見える」ためのまとまり。整備は列ごと、新駐車場は前列/後列、
+       グリーンは特車のところと大型のところ、ヤナセは3グループで見る */
+    function blockOf(sl){
+      const a=areaOf(sl), n=numOf(sl);
+      if(a==='m') return 'm';
+      if(a==='k') return n<=8?'k前':'k奥';
+      if(a==='l') return n>=15?'l奥':'l特';
+      if(a==='d') return 'd';
+      return a;
+    }
+    /* この枠より前に、同じまとまりへ置いた車の帰庫のいちばん遅い時刻 */
+    function prevRetInArea(slot){
+      const a=blockOf(slot), i=PK_FILL_IDX[slot]; let best=null;
+      for(let k=0;k<PK_FILL.length;k++){
+        const sl=PK_FILL[k];
+        if(PK_FILL_IDX[sl]>=i) break;
+        if(blockOf(sl)!==a) continue;
+        const c=assign[sl];
+        if(c&&c.ret!=null&&(best==null||c.ret>best)) best=c.ret;
+      }
+      return best;
+    }
     function candidatesFor(slot){
       const a=areaOf(slot);
       let out=[];
       for(let i=0;i<pool.length;i++){ const c=pool[i]; if(canPlace(slot,c)) out.push(c); }
       if(out.length<2) return out;
       out.sort((x,y)=>(x.ret-y.ret)||(x.no<y.no?-1:1));
+      /* 区分けの中が 1→2→3… の順に埋まって見えるようにする（アニメの見え方） */
+      const mono=()=>{ const p=prevRetInArea(slot);
+        if(p!=null){ const f=out.filter(c=>c.ret>=p); if(f.length) out=f; } };
       const base=out[0].ret;
       /* ── 奥＝出庫が遅い／手前＝出庫が早い を揃える ──
          実配置(7/25)では 新駐車場の後列 k-11〜18 が出庫7:21〜7:55、
@@ -3015,8 +3054,6 @@ window.__start = function(FB){
       const cap=PK_SPARE_CAP[a]===undefined?2:PK_SPARE_CAP[a];
       const pull=(f)=>{ const hit=out.filter(f); if(hit.length&&hit.length<out.length) out=hit.concat(out.filter(c=>hit.indexOf(c)<0)); };
       if(needGSpare>0&&(slot==='g-2'||slot==='g-3')){ pull(c=>c.dep==null); pull(c=>c.dep==null&&c.kikan); }
-      // グリーン：l-2〜14 は特車、l-15〜19 は出庫の遅い大型（のりちゃんの割り振り）
-      if(PK_GREEN_TOKUSHA.indexOf(slot)>=0) pull(c=>c.type==='特車'&&c.ret<=base+120);
       // 奥のブロックは出庫が遅い車（7時台以降・予備）を先に入れる
       if(PK_LATE_BLOCK.indexOf(slot)>=0) pull(c=>c.dep==null||c.dep>=PK_LATE_MIN);
       if(PK_EARLY_BLOCK.indexOf(slot)>=0) pull(c=>c.dep!=null&&c.dep<PK_LATE_MIN);
@@ -3024,9 +3061,8 @@ window.__start = function(FB){
       if(slot==='i-2'||slot==='i-3') pull(c=>c.ret>=1290&&c.dep!=null&&c.dep>=300&&c.dep<=375);
       if(PK_HOKEN.indexOf(slot)>=0&&spareCnt[a]<cap) pull(c=>c.dep==null&&c.ret<=base+150); // L-276 保険スペース
       if(spareCnt[a]>=cap) pull(c=>c.dep!=null);                                   // L-273 一箇所に固めない
-      /* グリーンは奥(l-19)ほど出庫の遅い車。l-19 の出庫が遅いほど整備1列目に
-         遅い車を置けるようになる（整備 m-1 → グリーン l-19 の関係） */
-      if(a==='l') byDepth();
+      if(a==='l') pull(c=>c.type==='特車');                                       // グリーンは特車が基本
+      mono();                                                                     // 最後に「番号順に見える」ようにする
       return out;
     }
 
@@ -3073,6 +3109,23 @@ window.__start = function(FB){
             整備1・2・3・9・10・11・17・18・19／グリーン12〜19／新駐車場11〜18と3〜8／
             ヤナセ4〜6／花壇1〜3／中の島1〜8  ※通常のロジックでは使わない */
     }
+    /* ── グリーンは特車が基本（L-264）──
+       特車をグリーンの奥(l-19)から帰庫の早い順に先に確保する。
+       あとから埋めると、帰庫の遅い大型に奥を取られて特車が入らなくなる。 */
+    function placeTokusha(){
+      const t=pool.filter(c=>c.type==='特車').sort((a,b)=>a.ret-b.ret);
+      if(!t.length) return;
+      /* l-15〜19 は出庫の遅い大型、l-2〜14 が特車（のりちゃんの割り振り） */
+      for(let n=14;n>=2;n--){
+        const sl='l-'+n;
+        if(assign[sl]||blockedSet[sl]||!gateOpen(sl)) continue;
+        const car=t.find(c=>pool.indexOf(c)>=0&&canPlace(sl,c));
+        if(!car) continue;
+        assign[sl]=car; propagate(sl,car); pool.splice(pool.indexOf(car),1);
+        if(car.dep==null) spareCnt['l']++;
+        placed++;
+      }
+    }
     /* 予備車が大量にある日の特例枠（滅多に起きない） */
     function placeSparesOverflow(){
       const spots=['m-1','m-2','m-3','m-9','m-10','m-11','m-17','m-18','m-19',
@@ -3093,6 +3146,7 @@ window.__start = function(FB){
     let placed=0, guard=0;
     if(strategy==='order'){
       placeSpares();
+      placeTokusha();
       /* 予備車などが指定席に収まらないほど多い日（土日など）は、
          本人が挙げた特例枠に先に確保する。通常の日はここは動かない */
       if(pool.filter(c=>c.dep==null).length>6) placeSparesOverflow();
