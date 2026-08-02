@@ -2809,37 +2809,43 @@ window.__start = function(FB){
      第3チャット：整備の6行目(m-6/14/22/30/38/46)は各列の最後に詰める
                   グリーンは極力奥（l-19）から順に詰める
      ------------------------------------------------------------------ */
-  const M_ROW_ORDER=[1,2,3,4,5,7,8,6];         // 列の中の行順。6行目は最後
+  const M_ROW_ORDER=[1,2,3,4,5,6,7,8];        // 列の中は上から素直に。飛ばすと穴になる
+  /* ------------------------------------------------------------------
+     埋める順（＝停める順＝帰庫の早い順に奥から）
+     のりちゃんの手順：
+       ①予備・修理 → 整備の奥・グリーンの奥・新駐車場の後列の奥
+       ②出庫7時以降 → 新駐車場の後列 → 整備1列目 → 2列目 → グリーンの奥 → 中の島
+       ③後列が埋まったら k-19・20  ④前列に6時台5時台を一気に  ⑤d-8〜11
+     グリーンは l-j に停めるとき対応する整備枠が空である必要があるので、
+     グリーンを一区切り停めては、もう不要になった整備の列を埋める。
+     ------------------------------------------------------------------ */
   const PK_FILL=(function(){
     const mcol=c=>M_ROW_ORDER.map(r=>mId(c,r));
     let o=[];
-    o=o.concat(['d-1','d-2','d-3']);                                   // ヤナセ①（出庫6:30まで）
-    o=o.concat(['k-18','k-17','k-16','k-15','k-14','k-13','k-12','k-11','k-10','k-9']); // 後列（奥から）
-    o=o.concat(['k-19','k-20']);                                       // ポンチョ専用
-    o=o.concat(['k-6','k-7','k-8']);                                   // 前列（連鎖が厳しい）
-    o=o.concat(['k-1','k-2','k-3','k-4','k-5']);                       // 前列
-    o=o.concat(['d-8','d-9','d-10','d-11']);                           // ヤナセ②
-    o=o.concat(['d-4','d-5','d-6','d-7']);                             // ヤナセ③
-    o=o.concat(['g-2','g-3','g-4','g-5','g-6','g-7','g-8','g-9','g-10','g-1']);
+    o=o.concat(['d-1','d-2','d-3']);                                   // 出庫6:30までのヤナセ
+    o=o.concat(['k-18','k-17','k-16','k-15','k-14','k-13','k-12','k-11','k-10','k-9']); // ②後列
+    o=o.concat(['l-19','l-18','l-17','l-16','l-15']);                  // ②グリーンの奥
+    o=o.concat(mcol(1));                                               // ②整備1列目
+    o=o.concat(mcol(2));                                               // ②整備2列目
+    o=o.concat(['k-19','k-20']);                                       // ③
+    o=o.concat(['g-2','g-3','g-4','g-5','g-6','g-7','g-8','g-9','g-10','g-1']); // ②の残り＝中の島
+    o=o.concat(['k-6','k-7','k-8']);                                   // ④前列（連鎖が厳しい側）
+    o=o.concat(['k-1','k-2','k-3','k-4','k-5']);                       // ④前列
+    o=o.concat(['d-8','d-9','d-10','d-11']);                           // ⑤
+    o=o.concat(['o-2','o-1']);                                         // 整備3列目より先（m-22〜24→o）
+    o=o.concat(['l-14','l-13','l-12']);
+    o=o.concat(mcol(3));
+    o=o.concat(['d-4','d-5','d-6','d-7']);
     o=o.concat(['a-1','a-2','a-3','a-4']);
-    o=o.concat(['b-1']);                                               // 給油所は小屋より先（駐車の関係）
+    o=o.concat(['b-1']);                                               // 給油所は小屋より先（b→c）
     o=o.concat(['a-5','a-6']);
     o=o.concat(['h-1','h-2','h-3','h-4','j-1','j-2','i-2','i-3']);
-    o=o.concat(['o-2','o-1']);                                         // タイヤハウスは整備3列目より先
-    /* ── グリーンと整備は交互に ──
-       l-j に停めるには対応する整備枠がまだ空である必要がある（§9）。
-       グリーンを全部先に埋めるのではなく、グリーンの奥から一区切り停めては
-       もう不要になった整備の列を埋める、を繰り返す。 */
-    o=o.concat(['l-19','l-18','l-17','l-16','l-15']);   // ここまで停めれば m-1〜16 が自由
-    o=o.concat(mcol(1), mcol(2));
-    o=o.concat(['l-14','l-13','l-12']);                 // → m-17〜24 が自由
-    o=o.concat(mcol(3));
-    o=o.concat(['l-11','l-10','l-9']);                  // → m-25〜32 が自由
+    o=o.concat(['l-11','l-10','l-9']);
     o=o.concat(mcol(4));
-    o=o.concat(['l-8','l-7','l-6']);                    // → m-33〜40 が自由
     o=o.concat(['c-3','c-2','c-1']);
+    o=o.concat(['l-8','l-7','l-6']);
     o=o.concat(mcol(5));
-    o=o.concat(['l-5','l-4','l-3']);                    // → m-41〜48 が自由
+    o=o.concat(['l-5','l-4','l-3']);
     o=o.concat(mcol(6));
     o=o.concat(['l-2']);
     return o;
@@ -2927,6 +2933,8 @@ window.__start = function(FB){
   function pkSolve(input){
     const fixed=input.fixed||{}, blocked=input.blocked||[], relaxTiers=input.relaxTiers||0;
     const strategy=input.strategy||'order';
+    const deadline=input.deadline||(Date.now()+6000);
+    const timeUp=()=>Date.now()>deadline;
     let x=input.seed||1; const rnd=()=>{ x=(x*1103515245+12345)&0x7fffffff; return x/0x7fffffff; };
     const blockedSet={}; blocked.forEach(s=>blockedSet[s]=1);
     const assign={}, lo={},hi={},rlo={},rhi={};
@@ -2960,7 +2968,17 @@ window.__start = function(FB){
       return true;
     }
     const canPlace=(slot,car)=>pkAutoOK(slot,car)&&windowOK(slot,car)&&contextOK(slot,car);
+    /* 同じ列の上に空きが2台分以上あるうちは置かない。
+       あとから穴に入れるのは、隣にバスがいる状態で入れることになり接触の危険がある */
+    function mHoleOK(slot){
+      if(areaOf(slot)!=='m') return true;
+      const n=numOf(slot), c=mCol(n), r=mRow(n);
+      let empty=0;
+      for(let k=1;k<r;k++) if(!assign[mId(c,k)]) empty++;
+      return empty<=1;
+    }
     function gateOpen(slot){
+      if(!mHoleOK(slot)) return false;
       const g=pkGate(slot); if(!g) return true;
       if(relaxTiers>=1&&g.tier===2) return true;
       if(relaxTiers>=2&&g.tier===1) return true;
@@ -3016,8 +3034,15 @@ window.__start = function(FB){
       if(a==='d') return 'd';
       return a;
     }
-    /* この枠より前に、同じまとまりへ置いた車の帰庫のいちばん遅い時刻 */
+    /* この枠より前に、同じまとまりへ置いた車の帰庫のいちばん遅い時刻。
+       整備は行どうしが独立なので「すぐ上の枠」とだけ比べる（列全体で単調にすると詰む） */
     function prevRetInArea(slot){
+      if(areaOf(slot)==='m'){
+        const n=numOf(slot), c=mCol(n), r=mRow(n);
+        for(let k=r-1;k>=1;k--){ const up=assign[mId(c,k)];
+          if(up&&up.ret!=null) return up.ret; }
+        return null;
+      }
       const a=blockOf(slot), i=PK_FILL_IDX[slot]; let best=null;
       for(let k=0;k<PK_FILL.length;k++){
         const sl=PK_FILL[k];
@@ -3036,7 +3061,8 @@ window.__start = function(FB){
       out.sort((x,y)=>(x.ret-y.ret)||(x.no<y.no?-1:1));
       /* 区分けの中が 1→2→3… の順に埋まって見えるようにする（アニメの見え方） */
       const mono=()=>{ const p=prevRetInArea(slot);
-        if(p!=null){ const f=out.filter(c=>c.ret>=p); if(f.length) out=f; } };
+        if(p!=null){ const f=out.filter(c=>c.ret>=p);
+          if(f.length||(a==='m'&&relaxTiers===0)) out=f; } };  // 整備は原則必須（詰まる日だけ緩める）
       const base=out[0].ret;
       /* ── 奥＝出庫が遅い／手前＝出庫が早い を揃える ──
          実配置(7/25)では 新駐車場の後列 k-11〜18 が出庫7:21〜7:55、
@@ -3061,7 +3087,23 @@ window.__start = function(FB){
       if(slot==='i-2'||slot==='i-3') pull(c=>c.ret>=1290&&c.dep!=null&&c.dep>=300&&c.dep<=375);
       if(PK_HOKEN.indexOf(slot)>=0&&spareCnt[a]<cap) pull(c=>c.dep==null&&c.ret<=base+150); // L-276 保険スペース
       if(spareCnt[a]>=cap) pull(c=>c.dep!=null);                                   // L-273 一箇所に固めない
-      if(a==='l') pull(c=>c.type==='特車');                                       // グリーンは特車が基本
+      if(a==='m'){
+        /* 同じ行では 1列目→6列目 の順に出庫が早くなる。
+           奥に出庫の遅い車を置いて、手前の列に早い出庫の車を残す。
+           これをしないと手前の列に置ける車が無くなって穴になる */
+        const lim=out[0].ret+60;
+        const near=out.filter(c=>c.ret<=lim);
+        if(near.length>1){ near.sort((x,y)=>depKey(y)-depKey(x));
+          out=near.concat(out.filter(c=>near.indexOf(c)<0)); }
+      }
+      if(a==='l'){
+        pull(c=>c.type==='特車');                                                 // グリーンは特車が基本
+        // 奥のグリーンほど出庫の遅い車（整備の出庫上限を上げるため）
+        const lim=out[0].ret+90;
+        const near=out.filter(c=>c.ret<=lim);
+        if(near.length>1){ near.sort((x,y)=>depKey(y)-depKey(x));
+          out=near.concat(out.filter(c=>near.indexOf(c)<0)); }
+      }
       mono();                                                                     // 最後に「番号順に見える」ようにする
       return out;
     }
@@ -3072,10 +3114,12 @@ window.__start = function(FB){
        保険スペースに入りきらないことがあるので、そのぶんは整備の「行ごと」
        予備車専用にする（L-282 の「予備でペアにすると制約が消える」の一般形）。
        置き場所は L-276 の保険スペースを優先し、エリアをまたいで分散させる。 */
+    const lockedSlots=new Set();
     function placeSpares(){
       const spares=pool.filter(c=>c.dep==null).sort((a,b)=>a.ret-b.ret);
       if(!spares.length) return;
-      const put=(slot,car)=>{
+      const put=(slot,car,lock)=>{
+        if(lock) lockedSlots.add(slot);
         assign[slot]=car; propagate(slot,car);
         pool.splice(pool.indexOf(car),1);
         spareCnt[areaOf(slot)]++;
@@ -3088,7 +3132,7 @@ window.__start = function(FB){
         if(assign[sl]||blockedSet[sl]||!gateOpen(sl)) continue;
         let car=spares.find(c=>pool.indexOf(c)>=0&&c.kikan&&canPlace(sl,c));
         if(!car) car=spares.find(c=>pool.indexOf(c)>=0&&canPlace(sl,c));
-        if(car) put(sl,car);
+        if(car) put(sl,car,true);
       }
       // ① 予備車の指定席（L-271）：中型＝花壇1〜3／基幹＝中の島2〜3・ヤナセ4〜5／特車＝グリーン2〜4
       const seat={ '中型':['a-1','a-2','a-3'], '大型':['g-2','g-3','d-4','d-5'],
@@ -3112,18 +3156,50 @@ window.__start = function(FB){
     /* ── グリーンは特車が基本（L-264）──
        特車をグリーンの奥(l-19)から帰庫の早い順に先に確保する。
        あとから埋めると、帰庫の遅い大型に奥を取られて特車が入らなくなる。 */
+    /* 置いてみて、残りの車が全部どこかに置けるかを確かめる。ダメなら元に戻す */
+    function tryPut(sl,car){
+      const snap={lo:Object.assign({},lo),hi:Object.assign({},hi),
+                  rlo:Object.assign({},rlo),rhi:Object.assign({},rhi)};
+      const idx=pool.indexOf(car);
+      assign[sl]=car; propagate(sl,car); pool.splice(idx,1);
+      let dead=false, room=0;
+      for(let z=0;z<freeSlots.length;z++) if(!assign[freeSlots[z]]) room++;
+      if(pool.length>room) dead=true;
+      if(!dead) for(let q=0;q<pool.length;q++){ if(!anyOption(pool[q])){ dead=true; break; } }
+      if(dead){
+        pool.splice(idx,0,car); delete assign[sl];
+        Object.assign(lo,snap.lo); Object.assign(hi,snap.hi);
+        Object.assign(rlo,snap.rlo); Object.assign(rhi,snap.rhi);
+        return false;
+      }
+      if(car.dep==null){
+        spareCnt[areaOf(sl)]++;
+        if(areaOf(sl)==='g') needGSpare=Math.max(0,needGSpare-1);
+      }
+      placed++;
+      return true;
+    }
+    /* ── グリーンは特車が基本（L-264）──
+       特車をグリーンの奥(l-19)から帰庫の早い順に確保する。
+       ただしグリーンの車は整備の列ぜんぶの出庫・帰庫を縛るので、
+       入れると他の車が置けなくなる特車は無理に入れず整備へ回す（「どうしてもの時のみ整備へ」）。 */
     function placeTokusha(){
-      const t=pool.filter(c=>c.type==='特車').sort((a,b)=>a.ret-b.ret);
+      /* ★出庫の遅い順に奥(l-19)へ。
+         グリーンの車の出庫時刻が、その手前の整備の列の出庫上限になる
+         （整備が先に出ないとグリーンは出られない）。奥のグリーンほど
+         整備の奥の列を縛るので、奥には出庫の遅い車を置く。
+         帰庫順で入れると整備1列目に出庫の早い車しか置けなくなり、
+         その手前の列がどんどん詰まって「穴」ができる。 */
+      const t=pool.filter(c=>c.type==='特車')
+        .sort((a,b)=>(depKey(b)-depKey(a))||(a.ret-b.ret));
       if(!t.length) return;
-      /* l-15〜19 は出庫の遅い大型、l-2〜14 が特車（のりちゃんの割り振り） */
-      for(let n=14;n>=2;n--){
+      for(let n=19;n>=3;n--){
         const sl='l-'+n;
         if(assign[sl]||blockedSet[sl]||!gateOpen(sl)) continue;
-        const car=t.find(c=>pool.indexOf(c)>=0&&canPlace(sl,c));
-        if(!car) continue;
-        assign[sl]=car; propagate(sl,car); pool.splice(pool.indexOf(car),1);
-        if(car.dep==null) spareCnt['l']++;
-        placed++;
+        for(const car of t){
+          if(pool.indexOf(car)<0||!canPlace(sl,car)) continue;
+          if(tryPut(sl,car)) break;
+        }
       }
     }
     /* 予備車が大量にある日の特例枠（滅多に起きない） */
@@ -3159,6 +3235,7 @@ window.__start = function(FB){
          1台でも置けたら、もう一度はじめから見直す */
       let progress=true, round=0;
       while(pool.length && progress && round++<8){
+      if(timeUp()) break;
       progress=false;
       for(let oi=0; oi<order.length && pool.length; oi++){
         const slot=order[oi];
@@ -3190,6 +3267,7 @@ window.__start = function(FB){
        order戦略では「取りこぼした車だけ」をこれで拾うので、並びは崩れない */
     function mrvPass(){
       while(pool.length&&guard++<400){
+        if(timeUp()) break;
 
       let best=null,bestOpts=null;
       for(let pi=0;pi<pool.length;pi++){
@@ -3219,11 +3297,25 @@ window.__start = function(FB){
     if(strategy==='order'){
       if(pool.filter(c=>c.dep==null).length) placeSparesOverflow();
       if(pool.length) mrvPass();
-    } else { mrvPass(); }
+    } else {
+      /* 予備の作戦は「とにかく全部置く」ためのもの。
+         絶対条件の予備車の指定席（中の島2台など）だけ押さえ、
+         特車のグリーンは縛りが強いので任せる */
+      placeSpares();
+      mrvPass();
+    }
     /* 修復：置けなかった車を1台入れ替えで押し込む */
     function fitsDirect(slot,car,skip){
       if(!pkAutoOK(slot,car)||!contextOK(slot,car,skip)) return false;
+      if(!mHoleOK(slot)) return false;
       { const g=pkGate(slot); if(g&&g.tier===0){ for(let i=0;i<g.need.length;i++) if(!assign[g.need[i]]) return false; } }
+      if(areaOf(slot)==='m'&&car.ret!=null){
+        const n=numOf(slot), c=mCol(n), r=mRow(n);
+        for(let k=r-1;k>=1;k--){ const up=assign[mId(c,k)];
+          if(up&&up!==skip&&up.ret!=null){ if(car.ret<up.ret) return false; break; } }
+        for(let k=r+1;k<=8;k++){ const dn=assign[mId(c,k)];
+          if(dn&&dn!==skip&&dn.ret!=null){ if(car.ret>dn.ret) return false; break; } }
+      }
       const dk=depKey(car), P=PK_CLO.pred[slot], S=PK_CLO.succ[slot];
       for(let i=0;i<P.length;i++){ const c2=assign[P[i]]; if(!c2||c2===skip) continue; if(depKey(c2)>dk) return false; }
       for(let i=0;i<S.length;i++){ const c2=assign[S[i]]; if(!c2||c2===skip) continue; if(dk>depKey(c2)) return false; }
@@ -3235,58 +3327,76 @@ window.__start = function(FB){
       return true;
     }
     const emptyNow=()=>freeSlots.filter(s=>!assign[s]);
+    /* その枠を空けたとき、同じ列の下の枠が「上に2台分以上の空き」にならないか */
+    function mHoleOKRemove(slot){
+      if(areaOf(slot)!=='m') return true;
+      const n=numOf(slot), c=mCol(n), r=mRow(n);
+      let empty=0;
+      for(let k=1;k<=8;k++){
+        const filled=(k!==r)&&!!assign[mId(c,k)];
+        if(filled&&empty>1) return false;
+        if(!filled) empty++;
+      }
+      return true;
+    }
+    /* 玉突きで押し込む：空きが無ければ、入れ替えた相手をさらに別の枠へ動かす。
+       入れる車を先に確定してから次を探す（後回しにすると検査がすり抜ける） */
+    let chainGuard=0;
+    function repairChain(u,depth,used){
+      if(timeUp()) return false;
+      for(const t of emptyNow()){
+        if(used.has(t)) continue;
+        if(fitsDirect(t,u,null)){ assign[t]=u; return true; }
+      }
+      if(depth<=0||chainGuard++>1200) return false;
+      const occ=Object.keys(assign).filter(s=>!fixed[s]&&!used.has(s)&&!lockedSlots.has(s));
+      for(const s3 of occ){
+        const p2=assign[s3];
+        if(!fitsDirect(s3,u,p2)) continue;
+        assign[s3]=u; used.add(s3);
+        if(repairChain(p2,depth-1,used)) return true;
+        assign[s3]=p2; used.delete(s3);
+      }
+      return false;
+    }
     let pass=0;
     while(pool.length&&pass++<3){
+      if(timeUp()) break;
       let moved=false;
       for(let ui=pool.length-1;ui>=0;ui--){
-        const u=pool[ui]; let done=false;
-        const es=emptyNow();
-        for(let e=0;e<es.length&&!done;e++) if(fitsDirect(es[e],u,null)){ assign[es[e]]=u; pool.splice(ui,1); placed++; done=true; moved=true; }
-        if(done) continue;
-        const occSlots=Object.keys(assign).filter(s=>!fixed[s]);
-        for(let oi=0;oi<occSlots.length&&!done;oi++){
-          const s3=occSlots[oi], p2=assign[s3];
-          if(!fitsDirect(s3,u,p2)) continue;
-          assign[s3]=u;
-          const es2=emptyNow();
-          for(let e2=0;e2<es2.length;e2++){ const t=es2[e2]; if(t===s3) continue;
-            if(fitsDirect(t,p2,null)){ assign[t]=p2; pool.splice(ui,1); placed++; done=true; moved=true; break; } }
-          if(!done) assign[s3]=p2;
-        }
+        chainGuard=0;
+        if(repairChain(pool[ui],3,new Set())){ pool.splice(ui,1); placed++; moved=true; }
       }
       if(!moved) break;
     }
     const out={};
     Object.keys(assign).forEach(s=>{ if(!fixed[s]) out[s]=assign[s].no; });
-    return {assign:out, unplaced:pool.map(c=>c.no), placedCount:placed,
+    return {assign:out, unplaced:pool.map(c=>c.no), placedCount:placed, assignObj:assign,
+      lo:lo,hi:hi,rlo:rlo,rhi:rhi,
       dbg:input.debug?{lo,hi,rlo,rhi,assign,canPlace,gateOpen}:null};
   }
 
   /* 何通りか試して、いちばん良い結果を返す */
   function pkSolveBest(input){
-    let best=null; const t0=Date.now(), budget=input.budgetMs||4500, tries=input.tries||4;
-    const run=(strategy,relax,seed)=>{
+    let best=null; const t0=Date.now(), budget=input.budgetMs||9000;
+    const run=(strategy,relax,seed,ms)=>{
+      if(Date.now()-t0>budget) return null;
       const r=pkSolve({cars:input.cars,fixed:input.fixed,blocked:input.blocked,
-                       relaxTiers:relax,seed:seed,strategy:strategy});
+                       relaxTiers:relax,seed:seed,strategy:strategy,
+                       deadline:Math.min(Date.now()+ms, t0+budget)});
       r.relax=relax; r.strategy=strategy;
       if(!best||r.unplaced.length<best.unplaced.length) best=r;
       return r;
     };
-    /* まず「埋める順」で解く。並びが素直で、アニメでも順序どおりに見える */
-    for(let relax=0;relax<=2;relax++){
-      for(let t=1;t<=tries;t++){
-        run('order',relax,t*7919+relax);
-        if(!best.unplaced.length) return best;
-        if(Date.now()-t0>budget) return best;
-      }
-    }
-    /* それでも置けない車が残るときだけ、詰みにくい作戦に切り替える */
-    for(let relax=0;relax<=2;relax++){
-      for(let t=1;t<=2;t++){
-        run('mrv',relax,t*104729+relax);
-        if(!best.unplaced.length) return best;
-        if(Date.now()-t0>budget*1.6) return best;
-      }
+    /* 「埋める順」は並びが素直でアニメでも順序どおりに見えるので、まずこれ。
+       乱数を使わないので、同じ緩和レベルなら何度やっても同じ結果。
+       ダメなら「詰みにくい作戦」に切り替える。緩和レベルごとに交互に試す。 */
+    const plan=[['order',0,3000],['mrv',0,3500],
+                ['order',1,1500],['mrv',1,2500],
+                ['order',2,1000],['mrv',2,2000]];
+    for(const [st,rx,ms] of plan){
+      run(st,rx,rx+1,ms);
+      if(best&&!best.unplaced.length) return best;
     }
     return best;
   }
@@ -4076,7 +4186,7 @@ window.__start = function(FB){
   function pkBulkRun(cars){
     const t0=Date.now();
     let res;
-    try{ res=pkSolveBest({cars, fixed:pkFixedMap(), blocked:PK_RESERVED, tries:5, budgetMs:4000}); }
+    try{ res=pkSolveBest({cars, fixed:pkFixedMap(), blocked:PK_RESERVED, tries:4, budgetMs:9000}); }
     catch(e){ console.error('[一括配置]',e); $('pkMsg').textContent='⚠ 計算に失敗しました'; return; }
     const ids=Object.keys(res.assign);
     ids.forEach(s=>{ pk.slots[s]={no:String(res.assign[s]), st:'auto'}; });
