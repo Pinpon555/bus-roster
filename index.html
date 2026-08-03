@@ -2819,34 +2819,25 @@ window.__start = function(FB){
      グリーンは l-j に停めるとき対応する整備枠が空である必要があるので、
      グリーンを一区切り停めては、もう不要になった整備の列を埋める。
      ------------------------------------------------------------------ */
+  /* 埋める順。整備(m)はここに入れず、あとで「列ごとの出庫の帯」でまとめて計画する */
   const PK_FILL=(function(){
-    const mcol=c=>M_ROW_ORDER.map(r=>mId(c,r));
     let o=[];
     o=o.concat(['d-1','d-2','d-3']);                                   // 出庫6:30までのヤナセ
-    o=o.concat(['k-18','k-17','k-16','k-15','k-14','k-13','k-12','k-11','k-10','k-9']); // ②後列
-    o=o.concat(['l-19','l-18','l-17','l-16','l-15']);                  // ②グリーンの奥
-    o=o.concat(mcol(1));                                               // ②整備1列目
-    o=o.concat(mcol(2));                                               // ②整備2列目
-    o=o.concat(['k-19','k-20']);                                       // ③
-    o=o.concat(['g-2','g-3','g-4','g-5','g-6','g-7','g-8','g-9','g-10','g-1']); // ②の残り＝中の島
-    o=o.concat(['k-6','k-7','k-8']);                                   // ④前列（連鎖が厳しい側）
-    o=o.concat(['k-1','k-2','k-3','k-4','k-5']);                       // ④前列
-    o=o.concat(['d-8','d-9','d-10','d-11']);                           // ⑤
-    o=o.concat(['o-2','o-1']);                                         // 整備3列目より先（m-22〜24→o）
-    o=o.concat(['l-14','l-13','l-12']);
-    o=o.concat(mcol(3));
+    o=o.concat(['k-18','k-17','k-16','k-15','k-14','k-13','k-12','k-11','k-10','k-9']); // 後列
+    o=o.concat(['l-19','l-18','l-17','l-16','l-15']);                  // グリーンの奥
+    o=o.concat(['k-19','k-20']);
+    o=o.concat(['g-2','g-3','g-4','g-5','g-6','g-7','g-8','g-9','g-10','g-1']); // 中の島
+    o=o.concat(['k-6','k-7','k-8']);                                   // 前列（連鎖が厳しい側）
+    o=o.concat(['k-1','k-2','k-3','k-4','k-5']);                       // 前列
+    o=o.concat(['d-8','d-9','d-10','d-11']);
+    o=o.concat(['o-2','o-1']);                                         // タイヤハウスは整備3列目より先
+    o=o.concat(['l-14','l-13','l-12','l-11','l-10','l-9','l-8','l-7','l-6','l-5','l-4','l-3']);
     o=o.concat(['d-4','d-5','d-6','d-7']);
     o=o.concat(['a-1','a-2','a-3','a-4']);
     o=o.concat(['b-1']);                                               // 給油所は小屋より先（b→c）
     o=o.concat(['a-5','a-6']);
     o=o.concat(['h-1','h-2','h-3','h-4','j-1','j-2','i-2','i-3']);
-    o=o.concat(['l-11','l-10','l-9']);
-    o=o.concat(mcol(4));
     o=o.concat(['c-3','c-2','c-1']);
-    o=o.concat(['l-8','l-7','l-6']);
-    o=o.concat(mcol(5));
-    o=o.concat(['l-5','l-4','l-3']);
-    o=o.concat(mcol(6));
     o=o.concat(['l-2']);
     return o;
   })();
@@ -2970,12 +2961,32 @@ window.__start = function(FB){
     const canPlace=(slot,car)=>pkAutoOK(slot,car)&&windowOK(slot,car)&&contextOK(slot,car);
     /* 同じ列の上に空きが2台分以上あるうちは置かない。
        あとから穴に入れるのは、隣にバスがいる状態で入れることになり接触の危険がある */
-    function mHoleOK(slot){
+    /* 穴＝「すでに停まっている枠のあいだ」の空き。列の上のほうがまだ空なのは穴ではない
+       （整備の上4行はグリーンより後に帰る車しか置けないので、下から埋まっていく）。
+       穴は1台分まで。2台分の穴に入れるのは隣にバスがいて接触の危険がある */
+    function mGapOK(slot){
       if(areaOf(slot)!=='m') return true;
       const n=numOf(slot), c=mCol(n), r=mRow(n);
-      let empty=0;
-      for(let k=1;k<r;k++) if(!assign[mId(c,k)]) empty++;
-      return empty<=1;
+      const on=[]; for(let k=1;k<=8;k++) if(k===r||assign[mId(c,k)]) on.push(k);
+      if(on.length<2) return true;
+      let run=0;
+      for(let k=on[0];k<=on[on.length-1];k++){
+        if(on.indexOf(k)>=0) run=0; else { run++; if(run>=2) return false; }
+      }
+      return true;
+    }
+    const mHoleOK=mGapOK;
+    /* 玉突きで枠を空けるとき、その列に2台分の穴ができないか */
+    function mHoleOKRemove(slot){
+      if(areaOf(slot)!=='m') return true;
+      const n=numOf(slot), c=mCol(n), r=mRow(n);
+      const on=[]; for(let k=1;k<=8;k++) if(k!==r&&assign[mId(c,k)]) on.push(k);
+      if(on.length<2) return true;
+      let run=0;
+      for(let k=on[0];k<=on[on.length-1];k++){
+        if(on.indexOf(k)>=0) run=0; else { run++; if(run>=2) return false; }
+      }
+      return true;
     }
     function gateOpen(slot){
       if(!mHoleOK(slot)) return false;
@@ -3097,7 +3108,9 @@ window.__start = function(FB){
           out=near.concat(out.filter(c=>near.indexOf(c)<0)); }
       }
       if(a==='l'){
-        pull(c=>c.type==='特車');                                                 // グリーンは特車が基本
+        /* グリーンは特車が基本（L-264）。置ける特車が残っているうちは大型を入れない */
+        const tk=out.filter(c=>c.type==='特車');
+        if(tk.length) out=tk;
         // 奥のグリーンほど出庫の遅い車（整備の出庫上限を上げるため）
         const lim=out[0].ret+90;
         const near=out.filter(c=>c.ret<=lim);
@@ -3198,7 +3211,79 @@ window.__start = function(FB){
         if(assign[sl]||blockedSet[sl]||!gateOpen(sl)) continue;
         for(const car of t){
           if(pool.indexOf(car)<0||!canPlace(sl,car)) continue;
-          if(tryPut(sl,car)) break;
+          /* 特車はグリーンが基本。整備の帯は planMaintenance が作り直すので、
+             先読みで弾かずにまず入れる（どうしても入らない特車だけ整備へ回る） */
+          assign[sl]=car; propagate(sl,car); pool.splice(pool.indexOf(car),1);
+          lockedSlots.add(sl);           // 玉突きで特車をグリーンから追い出さない
+          if(car.dep==null) spareCnt['l']++;
+          placed++; break;
+        }
+      }
+    }
+    /* ────────────────────────────────────────────────────────────
+       整備は「列ごとの出庫の帯」でまとめて計画する
+       実配置(2026/7/24)の整備はきれいに帯になっていた：
+         1列目 出7:17〜8:33 帰17:56〜19:30   2列目 出7:02〜7:16 帰19:34〜19:57
+         3列目 出6:42〜6:56 帰20:07〜20:33   4列目 出6:09〜6:38 帰20:46〜21:49
+         5列目 出5:22〜6:21 帰21:53〜23:47   6列目 出5:36〜6:02 帰22:47〜23:10
+       同じ行では 6列目→1列目 の順に出るので、1列目ほど出庫が遅く帰庫が早い。
+       1枠ずつ「いま置ける中でいちばん帰庫が早い車」を選ぶと、出庫の早い車を
+       先に使い切って手前の列に置く車が無くなり、壁と穴ができる。
+       そこで残りの車を出庫の遅い順に並べ、8台ずつ列に配ってから置く。
+       ──────────────────────────────────────────────────────────── */
+    function planMaintenance(){
+      const colFree={}; let nFree=0;
+      for(let c=1;c<=6;c++){
+        colFree[c]=[];
+        for(let r=1;r<=8;r++){ const id=mId(c,r); if(!assign[id]&&!blockedSet[id]) colFree[c].push(id); }
+        nFree+=colFree[c].length;
+      }
+      if(!nFree) return;
+      const cars=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0);
+      if(!cars.length) return;
+      /* 奥度＝「出庫が遅い」＋「帰庫が早い」。両方の順位を足して並べる。
+         出庫だけで並べると、遅く帰って遅く出る車（例 1816 出9:20/帰21:54）が
+         1列目に入り、1列目の帰庫の帯が広がって到着順が乱れる */
+      const rk={};
+      cars.slice().sort((a,b)=>depKey(b)-depKey(a)).forEach((c,i)=>rk[c.no]=i);
+      cars.slice().sort((a,b)=>a.ret-b.ret).forEach((c,i)=>rk[c.no]+=i);
+      const order=cars.slice().sort((a,b)=>(rk[a.no]-rk[b.no])||(depKey(b)-depKey(a)));
+      const alloc={}; let idx=0;
+      for(let c=1;c<=6;c++){ alloc[c]=order.slice(idx, idx+colFree[c].length); idx+=alloc[c].length; }
+      for(let c=1;c<=6;c++){
+        let list=alloc[c].filter(x=>pool.indexOf(x)>=0);
+        if(!list.length) continue;
+        /* 同じ行の左どなり（1つ奥の列）が埋まっている行だけ使う。
+           これを守らないと行の方向に穴ができる（m(c,r) は m(c-1,r) が先） */
+        if(c>1) colFree[c]=colFree[c].filter(id=>!!assign[mId(c-1,mRow(numOf(id)))]);
+        if(!colFree[c].length) continue;
+        /* 列は下から詰める。上の4行はグリーンに接していて、グリーンの車より
+           後に帰る車しか置けないので、上ほど帰庫が遅い並びになる。
+           下から詰めれば、停まっている枠のあいだに穴ができない */
+        list.sort((a,b)=>b.ret-a.ret);                 // 帰庫の遅い順＝上から
+        let rows=colFree[c].slice();                   // m(c,1)…m(c,8) の空き
+        if(list.length<rows.length) rows=rows.slice(rows.length-list.length);  // 下に寄せる
+        /* 下の行から順に「下の行より帰庫が遅い中で、いちばん早く帰る車」を選ぶ。
+           上に行くほど帰庫が遅くなり、上4行のグリーンの条件も自然に満たされる。
+           置けない行が出たらその列はそこで止める（上が空くのは穴ではない） */
+        let below=null;
+        for(let k=rows.length-1;k>=0;k--){
+          const sl=rows[k];
+          if(assign[sl]) continue;
+          const ok=x=>pool.indexOf(x)>=0&&(below==null||x.ret>=below);
+          let pick=null;
+          for(const car of list.filter(ok).sort((a,b)=>a.ret-b.ret)){
+            if(canPlace(sl,car)){ pick=car; break; }
+          }
+          if(!pick){
+            const rest=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0&&ok(x)).sort((a,b)=>a.ret-b.ret);
+            for(const car of rest){ if(canPlace(sl,car)){ pick=car; break; } }
+          }
+          if(!pick) break;
+          assign[sl]=pick; propagate(sl,pick);
+          pool.splice(pool.indexOf(pick),1); placed++;
+          list=list.filter(x=>x!==pick);
+          below=pick.ret;
         }
       }
     }
@@ -3262,6 +3347,7 @@ window.__start = function(FB){
         }
       }
       }
+      planMaintenance();
     }
     /* 置ける枠がいちばん少ない車から決める作戦。
        order戦略では「取りこぼした車だけ」をこれで拾うので、並びは崩れない */
