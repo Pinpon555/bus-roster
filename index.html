@@ -2889,6 +2889,12 @@ window.__start = function(FB){
     o.push('g-2','g-3');   // 中の島は基幹の予備2台まで。7時台の受け皿にはしない
     return o;
   })();
+  /* ── 整備の列の帯からはみ出す車の「逃がし先」──
+     整備の1列は8枠。同じ出庫帯の車がちょうど8台とはかぎらない。
+     はみ出す車を無理に整備へ入れると列の並びが崩れるので、
+     中の島4〜8・ヤナセ4〜7 を後回しにしておき、整備を決めたあとで埋める。
+     （中の島は主に大型。連続で帰る車に出庫の遅い車が混ざって並びが悪くなるときの逃がし先） */
+  const PK_ESCAPE=['g-4','g-5','g-6','g-7','g-8','d-4','d-5','d-6','d-7'];
   const PK_LATE_MIN=420;      // 7:00
   /* 手前のブロックは6時台・5時台の車。手順④「前列 k-1〜8 は6時台5時台を一気に」 */
   const PK_EARLY_BLOCK=(function(){
@@ -2902,7 +2908,7 @@ window.__start = function(FB){
   const PK_INF=1e9;
 
   /* 一括配置で置ける枠か（1台と1枠だけで判定できる絶対条件 §6） */
-  function pkAutoOK(slot,car){
+  function pkAutoOK(slot,car,opt){
     const a=areaOf(slot), n=numOf(slot), t=car.type;
     if(t==='不明') return false;
     if(!PK_ALLOW[a]||PK_ALLOW[a].indexOf(t)<0) return false;
@@ -2910,12 +2916,13 @@ window.__start = function(FB){
     if(slot==='k-9'||slot==='k-10') return false;
     if(a==='d'&&t==='特車') return false;                       // 特車はヤナセに置かない
     if(a==='d'&&n<=3){ if(car.dep==null||car.dep>390) return false; }   // 出庫6:30まで
+    if(a==='a'&&n>=4){ if(car.dep==null||car.dep>400) return false; }   // 花壇4〜6は出庫6:40まで
     if(slot==='d-2'&&t==='大型'&&/^66/.test(String(car.no))) return false;
     if((slot==='k-19'||slot==='k-20')&&t!=='コミュニティ') return false; // ポンチョ専用
     if(a==='i'&&car.dep==null) return false;                    // 洗車機に予備車は置かない
     // 給油所は一括配置では1台だけ。しかも帰庫21:30以降の車。2台目は担当者のみ
-    if(slot==='b-2') return false;
     if(slot==='b-1'&&(car.ret==null||car.ret<1290)) return false;
+    if(slot==='b-2'&&!opt) return false;   // 2台目は「他に置き場所が無いとき」だけ（§Q4）
     if((slot==='g-9'||slot==='g-10')&&!(t==='中型'||t==='コミュニティ')) return false;
     return true;
   }
@@ -3314,6 +3321,7 @@ window.__start = function(FB){
       /* ── 枠を「埋める順」に見て、条件に合ううち帰庫がいちばん早い車を置く ──
          こうすると a・b・c… どのエリアも奥から帰庫順に埋まり、
          アニメで見ても順序どおりに入っていく（L-204 / L-205 / L-255） */
+      let holdEscape=true;      // 整備を決めるまで逃がし先は空けておく
       const order=PK_FILL.filter(sl=>!assign[sl]&&!blockedSet[sl]);
       /* 埋める順を1周で打ち切らない。先に来た枠に置ける車がまだ帰っていないと
          その枠が空のままになり、整備の次の列のゲートが開かなくなる。
@@ -3325,6 +3333,7 @@ window.__start = function(FB){
       for(let oi=0; oi<order.length && pool.length; oi++){
         const slot=order[oi];
         if(assign[slot]||!gateOpen(slot)) continue;
+        if(holdEscape&&PK_ESCAPE.indexOf(slot)>=0) continue;
         const cand=candidatesFor(slot);
         if(!cand.length) continue;
         const lim=Math.min(cand.length,7);
@@ -3347,7 +3356,32 @@ window.__start = function(FB){
         }
       }
       }
+      /* ① まず整備の列を帯で決める */
       planMaintenance();
+      /* ② 帯からはみ出した車を、逃がし先（中の島4〜8・ヤナセ4〜7）へ */
+      const fillEscape=()=>{
+        let moved=false;
+        for(const slot of PK_ESCAPE){
+          if(assign[slot]||blockedSet[slot]||!gateOpen(slot)||!pool.length) continue;
+          const cand=candidatesFor(slot);
+          if(!cand.length) continue;
+          const car=cand[0];
+          assign[slot]=car; propagate(slot,car);
+          pool.splice(pool.indexOf(car),1);
+          if(car.dep==null) spareCnt[areaOf(slot)]++;
+          placed++; moved=true;
+        }
+        return moved;
+      };
+      holdEscape=false;
+      for(let t=0;t<4&&pool.length;t++){ if(!fillEscape()) break; }
+      /* ③ それでも残った車をもう一度整備で拾う */
+      for(let t=0;t<4;t++){
+        const before=pool.length;
+        planMaintenance();
+        if(pool.length===before) break;
+      }
+      fillEscape();
     }
     /* 置ける枠がいちばん少ない車から決める作戦。
        order戦略では「取りこぼした車だけ」をこれで拾うので、並びは崩れない */
@@ -4389,7 +4423,8 @@ window.__start = function(FB){
     (function(){
       if(!isFree('j-1')||!isFree('j-2')){ off.push('⑩'); return; }
       const nb=sortRet(nbus()); if(!nb.length) return;
-      const sl={}; if(nb[0]) sl['j-1']=nb[0]; if(nb[1]) sl['j-2']=nb[1];
+      // 事務所前は j-2＝帰庫が早い車、j-1＝帰庫が遅い車
+      const sl={}; if(nb[0]) sl['j-2']=nb[0]; if(nb[1]) sl['j-1']=nb[1];
       Object.values(sl).forEach(n=>used.add(n)); items.push({id:'⑩',slots:sl});
     })();
     /* ⑪ 新駐車場1・2に8901と8010 */
