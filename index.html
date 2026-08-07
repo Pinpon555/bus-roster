@@ -2996,7 +2996,19 @@ window.__start = function(FB){
       if(car.ret!=null&&(car.ret<rlo[slot]||car.ret>rhi[slot])) return false;
       return true;
     }
-    const canPlace=(slot,car)=>pkAutoOK(slot,car)&&windowOK(slot,car)&&contextOK(slot,car);
+    /* ★整備は必ず下から詰める。同じ列の下にまだ空き枠があるうちは上の行に置かない。
+       これを守らないと、途中の行を飛ばして上に車が付き、
+       列の中に穴＝担当者から見て「壁」ができる（実機 7/31・8/6 の指摘） */
+    function mBottomOK(slot){
+      if(areaOf(slot)!=='m') return true;
+      const n=numOf(slot), c=mCol(n), r=mRow(n);
+      for(let k=r+1;k<=8;k++){
+        const id=mId(c,k);
+        if(!assign[id]&&!blockedSet[id]) return false;
+      }
+      return true;
+    }
+    const canPlace=(slot,car)=>pkAutoOK(slot,car)&&windowOK(slot,car)&&contextOK(slot,car)&&mBottomOK(slot);
     /* 同じ列の上に空きが2台分以上あるうちは置かない。
        あとから穴に入れるのは、隣にバスがいる状態で入れることになり接触の危険がある */
     /* 穴＝「すでに停まっている枠のあいだ」の空き。列の上のほうがまだ空なのは穴ではない
@@ -3693,6 +3705,11 @@ window.__start = function(FB){
       if(!gateOpen(slot)) cost+=8;          // 埋める順の開通条件を先取りする
       if(areaOf(slot)==='m'&&car.ret!=null){
         const n=numOf(slot), c=mCol(n), r=mRow(n);
+        /* その列の下にまだ空きがあるのに途中の行へ入れると、
+           下まで届かない横一列＝壁になる。下から詰める */
+        let below=0;
+        for(let k=r+1;k<=8;k++){ const id=mId(c,k); if(!assign[id]&&!blockedSet[id]) below++; }
+        cost+=below*2;
         for(let k=r-1;k>=1;k--){ const v=assign[mId(c,k)]; if(v&&v.ret!=null){ if(car.ret>v.ret) cost+=3; break; } }
         for(let k=r+1;k<=8;k++){ const v=assign[mId(c,k)]; if(v&&v.ret!=null){ if(car.ret<v.ret) cost+=3; break; } }
       }
@@ -3739,6 +3756,8 @@ window.__start = function(FB){
       }
       if(!pool.length) break;
     }
+    /* 外した跡や押し込みで列に穴が残ることがあるので、最後にもう一度詰め直す */
+    tidyMaintenance();
     const out={};
     Object.keys(assign).forEach(s=>{ if(!fixed[s]) out[s]=assign[s].no; });
     return {assign:out, unplaced:pool.map(c=>c.no), rescued:rescued, placedCount:placed, assignObj:assign,
