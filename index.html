@@ -234,7 +234,11 @@
   .pk-dots{display:flex; gap:6px; justify-content:center; padding:6px 0 2px;}
   .pk-dot{width:8px; height:8px; border-radius:50%; background:#c8ced6;}
   .pk-dot.on{background:var(--now-orange);}
-  .pk-msg{min-height:18px; font-size:11.5px; color:#a33; padding:2px 12px 4px; white-space:pre-line;}
+  /* エラーはツールバーのすぐ下に貼り付いて、スクロールしてもボタンの白枠に隠れない。
+     top はツールバーの高さ(--pk-headh)を実測して入れる */
+  .pk-msg{min-height:18px; font-size:11.5px; color:#a33; padding:2px 12px 4px; white-space:pre-line;
+          position:sticky; top:var(--pk-headh,0px); z-index:29; background:#fff;}
+  .pk-msg:empty{display:none;}
   .pk-svgwrap{flex:1; overflow:hidden; position:relative; background:#eef0f3; touch-action:none;}
   .pk-svginner{transform-origin:0 0; will-change:transform; width:100%; height:100%;}
   .pk-map{width:100%; height:100%; display:none;}
@@ -249,13 +253,37 @@
   @keyframes pkblink{0%,100%{fill:#fff7d1;}50%{fill:#ffffff;}}
   .pk-slot.pk-warn{stroke:#e02b2b !important; stroke-width:3px !important;}
   .pk-slot.pk-unlocked{stroke-dasharray:5 3;}
-  .pk-slot.pk-target{stroke:#d98324 !important; stroke-width:3px !important;}
+  /* ドラッグ中、いま指を離すと入る枠。薄いグレーの影＋オレンジの枠線で示す */
+  .pk-slot.pk-target{fill:#8d97a3 !important; fill-opacity:.42 !important;
+                     stroke:#d98324 !important; stroke-width:3.5px !important;}
+  /* 車両検索でみつけた枠：4回光ってから、ソナーのように広がって消える */
+  @keyframes pk-find-blink{ 0%,100%{fill-opacity:1;} 50%{fill-opacity:.12;} }
+  .pk-slot.pk-found{fill:#ffcf5c !important; animation:pk-find-blink .32s ease-in-out 4;}
+  @keyframes pk-sonar{ from{transform:scale(1); opacity:.9;} to{transform:scale(3.6); opacity:0;} }
+  .pk-sonar{fill:none; stroke:#d98324; stroke-width:5; transform-box:fill-box; transform-origin:center;
+            animation:pk-sonar 1.15s ease-out forwards; pointer-events:none;}
+  @keyframes pk-chip-blink{ 0%,100%{opacity:1;} 50%{opacity:.2;} }
+  .pk-chip.pk-found-chip{animation:pk-chip-blink .32s ease-in-out 4;
+            outline:3px solid #d98324; outline-offset:1px; background:#8a5a22;}
   .pk-slot.pk-dragging{opacity:.55;}
   /* 数字 */
   .pk-num.pk-hide{visibility:hidden;}
   .pk-bus{pointer-events:none;}
   .pk-slot.pk-arrive{animation:pkArrive .6s ease-out 1;}
   @keyframes pkArrive{0%{filter:brightness(1.7)}100%{filter:none}}
+  /* 再生バー：画面の下に固定。指でつまんで前後に動かせる。
+     z-index はモーダル(50)より下。上にすると号車入力などのボタンを塞ぐ */
+  .pk-animbar{position:fixed; left:0; right:0; bottom:0; z-index:45;
+              background:rgba(255,255,255,.97); border-top:1px solid var(--line);
+              padding:7px 10px calc(9px + env(safe-area-inset-bottom)); box-shadow:0 -3px 14px rgba(0,0,0,.14);}
+  .pk-animbtns{display:flex; align-items:center; gap:6px; margin-bottom:5px;}
+  .pk-animbtns button{background:#eef1f4; border:1px solid #d4dae0; color:#1a1f26;
+              border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700;}
+  .pk-animbtns button.on{background:#d98324; border-color:#d98324; color:#fff;}
+  .pk-animbtns button.ok{background:#1a1f26; border-color:#1a1f26; color:#fff;}
+  .pk-animtime{font-family:var(--mono); font-size:12px; color:#5b6470; margin-left:4px;}
+  #pkAnimSeek{width:100%; height:26px; accent-color:#d98324; touch-action:none;}
+  body.pk-land .pk-animbar{padding-bottom:6px;}
   .pk-skip{position:fixed; right:12px; bottom:16px; z-index:60; background:#1a1f26; color:#fff;
            border:none; border-radius:18px; padding:7px 14px; font-size:12px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.3);}
   .pk-num{font-family:var(--mono); font-weight:800; font-variant-numeric:tabular-nums;
@@ -269,8 +297,10 @@
            overflow-y:auto; overflow-x:hidden; padding:8px 10px; background:#fff; border-top:1px solid var(--line);
            flex:0 0 auto; min-height:64px; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
   .pk-tray::-webkit-scrollbar{display:none;}
+  /* touch-action:pan-y … 号車の枠そのものを上下にフリックしてもトレイがスクロールする。
+     none にすると枠の上ではスクロールできず、狭い隙間を狙う必要があって使いにくい */
   .pk-chip{position:relative; background:#1c2128; color:#f2f5f7; border-radius:8px; padding:6px 8px;
-           font-family:var(--mono); font-size:15px; text-align:center; user-select:none; touch-action:none;}
+           font-family:var(--mono); font-size:15px; text-align:center; user-select:none; touch-action:pan-y;}
   .pk-chip small{display:block; font-size:9.5px; color:#aeb6c2; text-align:center; letter-spacing:-.2px;}
   .pk-chip.sel{outline:3px solid var(--now-orange);}
   .pk-chip.grp{border-left:4px solid var(--now-orange);}     /* 車種のかたまりの先頭 */
@@ -428,15 +458,29 @@
   <div class="pk-toolbar">
     <button class="btn ghost" id="pkBack" style="color:#1a1f26;">◀ 運行</button>
     <button class="btn primary" id="pkDisp">表示:号車</button>
-    <button class="btn ghost" id="pkTplBtn" style="color:#1a1f26;">📋 テンプレ</button>
+    <button class="btn ghost" id="pkTplBtn" style="color:#1a1f26;">📋 テンプレ／保存</button>
     <button class="btn ghost" id="pkBulk" style="color:#1a1f26;">⚡ 一括配置</button>
     <button class="btn ghost" id="pkAnimBtn" style="color:#1a1f26;">🎬 再生</button>
+    <button class="btn ghost" id="pkFindBtn" style="color:#1a1f26;">🔍 車両検索</button>
     <div class="spacer"></div>
     <button class="btn ghost" id="pkClear" style="color:#a33; font-size:11px;">配置クリア</button>
   </div>
   <div class="pk-dots" id="pkDots"></div>
   <div class="pk-rotate-hint" id="pkRotateHint" style="display:none;">📱 この画面はスマホ横向きがおすすめです</div>
   <button class="pk-skip" id="pkSkip" style="display:none;">スキップ ▶▶</button>
+  <!-- 再生バー：指でスライドして好きなところまで進めたり戻したりできる -->
+  <div class="pk-animbar" id="pkAnimBar" style="display:none;">
+    <div class="pk-animbtns">
+      <button id="pkAnimRev"  title="逆再生">◀◀</button>
+      <button id="pkAnimPause" title="停止">⏸</button>
+      <button id="pkAnimFwd"  title="再生">▶▶</button>
+      <span class="pk-animtime" id="pkAnimTime">0 / 0台</span>
+      <div class="spacer"></div>
+      <button id="pkAnimApply" class="ok">この状態で配置</button>
+      <button id="pkAnimQuit">やめる</button>
+    </div>
+    <input type="range" id="pkAnimSeek" min="0" max="1000" value="0">
+  </div>
   <div class="pk-msg" id="pkMsg"></div>
   <div class="pk-svgwrap" id="pkWrap">
     <div class="pk-svginner" id="pkInner">
@@ -1646,6 +1690,36 @@
   </div>
 </div>
 
+<!-- すでに車が入っている枠へドロップしたときの選択 -->
+<div class="modal-overlay" id="pkSwapOverlay">
+  <div class="modal" style="max-width:320px;">
+    <div class="seq-head">
+      <h3 style="margin:0;color:var(--amber);font-size:15px;">すでに車が入っています</h3>
+      <button class="modal-close" data-close="pkSwapOverlay">✕</button>
+    </div>
+    <p id="pkSwapText" style="font-size:13px; margin:10px 0 12px; line-height:1.6;"></p>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button class="btn primary" id="pkSwapExchange">車両交換（入れ替える）</button>
+      <button class="btn danger"  id="pkSwapDelete">上書きして、元の号車は未配置に戻す</button>
+    </div>
+  </div>
+</div>
+
+<!-- 車両検索（全面図のみ） -->
+<div class="modal-overlay" id="pkFindOverlay">
+  <div class="modal" style="max-width:300px;">
+    <div class="seq-head">
+      <h3 style="margin:0;color:var(--amber);font-size:15px;">車両検索</h3>
+      <button class="modal-close" data-close="pkFindOverlay">✕</button>
+    </div>
+    <input id="pkFindInput" type="tel" inputmode="numeric" maxlength="4" placeholder="0000"
+      style="width:100%; font-family:var(--mono); font-size:34px; font-weight:800; text-align:center;
+             letter-spacing:6px; padding:12px 8px; margin:12px 0 4px; border:2px solid var(--line);
+             border-radius:10px; background:#fff; color:#1a1f26;">
+    <div style="font-size:11.5px; color:var(--text-dim);">4桁を入れるとすぐ探します</div>
+  </div>
+</div>
+
 <!-- テンプレ選択モーダル -->
 <div class="modal-overlay" id="pkTplOverlay">
   <div class="modal">
@@ -1655,7 +1729,7 @@
     </div>
     <p style="font-size:11px;color:var(--text-dim);margin:6px 0 10px;">登録・編集はメイン（構内21c）のみ。適用は空き枠にだけ入ります（配置済み・保護枠は上書きしません）。</p>
     <div class="ptpl-row" style="border-color:var(--amber);">
-      <h4>基本テンプレ1（自動計算）</h4>
+      <h4>基本／コミュニティ・洗車機・枠外・ヤナセ特車など</h4>
       <div class="cnt">本日の出庫・帰庫から21〜23枠を計算して配置します</div>
       <div class="ptpl-btns"><button class="btn ghost" id="pkBase1" style="color:#1a1f26;">▶ 適用</button></div>
     </div>
@@ -3865,6 +3939,7 @@ window.__start = function(FB){
       document.querySelectorAll('.pk-map').forEach(m=>m.classList.toggle('on', m.id==='pkMap-'+s.map));
       pk.scale=1; pk.tx=0; pk.ty=0; pkApplyZoom();
       $('pkRotateHint').style.display=s.rotate?'':'none';
+      $('pkFindBtn').style.display=(s.map==='full')?'':'none';   // 車両検索は全面図のみ
       pkUpdateOrientation();
       pkRenderAll();
     }
@@ -3889,7 +3964,25 @@ window.__start = function(FB){
   $('pkEdgeTab').addEventListener('click',()=>pkGoScreen(1));
   $('pkBack').addEventListener('click',()=>pkGoScreen(0));
 
-  /* ---------------- ピンチズーム＋パン ---------------- */
+  /* ---------------- ピンチズーム＋パン ----------------
+     図の外まで動かせると「関係ない余白」が延々と出てくるので、
+     図が画面から離れないところまでで止める（少しだけ余白を許す） */
+  const PK_PAN_MARGIN=24;                     // 端に持たせる余白(px)
+  function pkClampPan(){
+    const wrap=$('pkWrap'), svg=mapEl();
+    if(!wrap||!svg) return;
+    const W=wrap.clientWidth, H=wrap.clientHeight;
+    const r=svg.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
+    /* いまの拡大率での図の実寸（transform を外した素の大きさ × scale） */
+    const bw=(r.width /pk.scale)*pk.scale, bh=(r.height/pk.scale)*pk.scale;
+    const ox=r.left-wr.left-pk.tx, oy=r.top-wr.top-pk.ty;   // 図の素の位置
+    const minX=Math.min(PK_PAN_MARGIN-ox, W-PK_PAN_MARGIN-ox-bw);
+    const maxX=Math.max(PK_PAN_MARGIN-ox, W-PK_PAN_MARGIN-ox-bw);
+    const minY=Math.min(PK_PAN_MARGIN-oy, H-PK_PAN_MARGIN-oy-bh);
+    const maxY=Math.max(PK_PAN_MARGIN-oy, H-PK_PAN_MARGIN-oy-bh);
+    pk.tx=Math.max(minX,Math.min(maxX,pk.tx));
+    pk.ty=Math.max(minY,Math.min(maxY,pk.ty));
+  }
   function pkApplyZoom(){ $('pkInner').style.transform='translate('+pk.tx+'px,'+pk.ty+'px) scale('+pk.scale+')'; }
   (function(){
     const w=$('pkWrap'); let pd=null, pmid=null, pan=null;
@@ -3908,13 +4001,16 @@ window.__start = function(FB){
         const ns=Math.min(5, Math.max(1, pk.scale*d/pd)); pd=d;
         const mid={x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2};
         pk.tx=mid.x-(pmid.x-pk.tx)*(ns/pk.scale); pk.ty=mid.y-(pmid.y-pk.ty)*(ns/pk.scale);
-        pmid=mid; pk.scale=ns; pkApplyZoom();
+        pmid=mid; pk.scale=ns; pkClampPan(); pkApplyZoom();
       } else if(pan && e.touches.length===1){
         e.preventDefault();
-        pk.tx=e.touches[0].clientX-pan.x; pk.ty=e.touches[0].clientY-pan.y; pkApplyZoom();
+        pk.tx=e.touches[0].clientX-pan.x; pk.ty=e.touches[0].clientY-pan.y;
+        pkClampPan(); pkApplyZoom();
       }
     },{passive:false});
-    w.addEventListener('touchend',()=>{ pd=null; pan=null; if(pk.scale<1.02){pk.scale=1;pk.tx=0;pk.ty=0;pkApplyZoom();} },{passive:true});
+    w.addEventListener('touchend',()=>{ pd=null; pan=null;
+      if(pk.scale<1.02){pk.scale=1;pk.tx=0;pk.ty=0;} else pkClampPan();
+      pkApplyZoom(); },{passive:true});
   })();
 
   /* ---------------- 枠と数字の描画 ---------------- */
@@ -4049,6 +4145,10 @@ window.__start = function(FB){
   /* 縦画面で図の下に空きが出るので、図は必要な高さだけ使い、残りをトレイに回す */
   function pkFitStage(){
     const wrap=$('pkWrap'); if(!wrap) return;
+    /* ツールバーは2段になることがあるので高さを実測して、エラーの貼り付き位置に渡す */
+    const tb=document.querySelector('.pk-toolbar');
+    const hh=(tb && !document.body.classList.contains('pk-land')) ? tb.offsetHeight : 0;
+    document.documentElement.style.setProperty('--pk-headh', hh+'px');
     if(document.body.classList.contains('pk-land')){ wrap.style.flex=''; wrap.style.height=''; return; }
     const svg=mapEl();
     if(!svg){ wrap.style.flex=''; wrap.style.height=''; return; }
@@ -4066,7 +4166,7 @@ window.__start = function(FB){
     const trayTop=tray.getBoundingClientRect().top;
     tray.style.height=Math.max(64, Math.round(window.innerHeight-trayTop-2))+'px';
   }
-  window.addEventListener('resize', ()=>{ if(pk.screen!==0) pkFitStage(); });
+  /* 画面サイズ変更時の立て直しは pkRelayout にまとめた（下の「横向き判定」を参照） */
 
   function pkRenderMsg(){
     const probs=pkValidateAll();
@@ -4099,22 +4199,23 @@ window.__start = function(FB){
   function pkRemove(slotId){ delete pk.slots[slotId]; pkPush(); pkRenderAll(); }
 
   /* ===== 枠の操作 =====
-     タップ            : 空き枠→号車入力ポップアップ / 配置済→状態を進める(未帰庫→配置済→帰庫済)
-     長押し(400ms)     : そのままドラッグで移動できる状態に入る（誤操作防止のため即ドラッグはしない）
-     帰庫済(赤)         : ロック。長押しで解除するとドラッグ・状態変更ができる          */
-  const PK_HOLD_MS=400;      // ドラッグ開始までの長押し時間
+     タップ            : 空き枠→号車入力 / 配置済→号車の変更・削除（構内図では色は変えない）
+     長押し(300ms)     : そのままドラッグで移動できる状態に入る（誤操作防止のため即ドラッグはしない）
+     帰庫済(赤)         : ロック。長押しで解除するとドラッグ・変更ができる
+     ※枠の色は車両運行ボードの状態がそのまま出る。構内図側からは変えない          */
+  const PK_HOLD_MS=300;      // ドラッグ開始までの長押し時間（反応を良くするため短め）
 
   /* ---- ドラッグの共通処理 ----
      チップや枠の要素は再描画で作り直されるため、要素にpointerupを頼ると
      「浮いた札(ゴースト)が残って消えない」ことがある。動きと指を離した判定は
      必ず window で受け取り、後片付けも1箇所に集める。 */
-  let pkGhostEl=null, pkDragCleanup=null;
+  let pkGhostEl=null, pkDragCleanup=null, pkDragOver=null;
   function pkGhostKill(){
     if(pkGhostEl){ pkGhostEl.remove(); pkGhostEl=null; }
     document.querySelectorAll('.pk-ghost').forEach(g=>g.remove());   // 取りこぼしも掃除
   }
   function pkDragEnd(){
-    pkGhostKill();
+    pkGhostKill(); pkDragOver=null;
     if(pkDragCleanup){ const f=pkDragCleanup; pkDragCleanup=null; f(); }
     pk.drag=null;
     document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
@@ -4130,10 +4231,18 @@ window.__start = function(FB){
     const move=(e)=>{
       if(!pkGhostEl) return;
       pkGhostEl.style.left=e.clientX+'px'; pkGhostEl.style.top=e.clientY+'px';
+      /* いま指がある枠を1つだけ光らせる。枠から枠へ移ると影も追って切り替わる */
       const t=findSlotAt(e.clientX,e.clientY);
+      if(t===pkDragOver) return;                       // 同じ枠の上なら描き直さない
+      pkDragOver=t;
       document.querySelectorAll('.pk-slot.pk-target').forEach(x=>x.classList.remove('pk-target'));
-      if(t){ const te=document.querySelector('.pk-map:not([style*="display: none"]) [id="'+t+'"]')||(mapEl()&&mapEl().querySelector('[id="'+t+'"]'));
-             if(te&&te.classList.contains('pk-slot')) te.classList.add('pk-target'); }
+      if(t){
+        const m=mapEl(), te=m&&m.querySelector('[id="'+t+'"]');
+        if(te&&te.classList.contains('pk-slot')){
+          te.classList.add('pk-target');
+          if(navigator.vibrate) navigator.vibrate(8);   // 枠が変わった手応え
+        }
+      }
     };
     const up=(e)=>{ const x=e.clientX,y=e.clientY; pkDragEnd(); if(onDrop) onDrop(x,y); };
     const cancel=()=>pkDragEnd();
@@ -4206,7 +4315,7 @@ window.__start = function(FB){
             const target=findSlotAt(x,y);
             if(target && target!==from){
               if(isLocked(target)){ showToast('🔒 '+jp(target)+' は帰庫済です（長押しで解除）'); return; }
-              pkRemove(from); pkPlace(target, no, 'fixed');
+              pkDropOnto(from, no, target);
             }
           });
         }
@@ -4231,14 +4340,40 @@ window.__start = function(FB){
         openNoInput(slotId); return;
       }
       if(isLocked(slotId)){ showToast('🔒 帰庫済です。長押しでロック解除できます'); return; }
-      const cur=pkStatusOf(slotId);
-      pkSetStatus(slotId, (cur+1)%3);
-      if((cur+1)%3!==2) pk.unlocked.delete(slotId);
-      pk.slots[slotId].st='fixed';
-      pkPush(); pkRenderAll(); renderList();
+      /* 配置済みの枠は「号車の変更・削除」。枠の色は車両運行ボードの状態がそのまま出るので、
+         構内図側からは変えない（ボードで変えた色は構内図にそのまま反映される） */
+      openNoInput(slotId);
     });
     el.addEventListener('pointercancel',()=>{ clear(); down=null; armed=false; el.classList.remove('pk-dragging'); pkDragEnd(); });
   }
+  /* 車が入っている枠へ落としたとき、どう扱うかを選んでもらう。
+     交換＝2台の場所を入れ替える／上書き＝元から居た号車は未配置（トレイ）に戻す */
+  let pkSwapCtx=null;
+  function pkDropOnto(from, no, target){
+    const cur=pk.slots[target] && pk.slots[target].no;
+    if(!cur){ if(from) pkRemove(from); pkPlace(target, no, 'fixed'); return; }
+    pkSwapCtx={from, no:String(no), target, cur:String(cur)};
+    $('pkSwapText').textContent=jp(target)+' には '+cur+' が入っています。'+no+' をどうしますか？';
+    $('pkSwapExchange').style.display = from ? '' : 'none';   // トレイから落としたときは交換先が無い
+    openModal('pkSwapOverlay');
+  }
+  $('pkSwapExchange').addEventListener('click',()=>{
+    const c=pkSwapCtx; closeModal('pkSwapOverlay'); pkSwapCtx=null;
+    if(!c||!c.from) return;
+    delete pk.slots[c.from]; delete pk.slots[c.target];
+    pk.slots[c.target]={no:c.no, st:'fixed'};
+    pk.slots[c.from]  ={no:c.cur, st:'fixed'};
+    pk.sel=null; pkPush(); pkRenderAll();
+    showToast('↔ '+c.no+' と '+c.cur+' を入れ替えました');
+  });
+  $('pkSwapDelete').addEventListener('click',()=>{
+    const c=pkSwapCtx; closeModal('pkSwapOverlay'); pkSwapCtx=null;
+    if(!c) return;
+    if(c.from) pkRemove(c.from);
+    pkPlace(c.target, c.no, 'fixed');           // 元の号車は枠から消える＝未配置に戻る
+    showToast(c.cur+' を未配置に戻しました');
+  });
+
   function findSlotAt(x,y){
     const els=document.elementsFromPoint(x,y);
     for(const el of els){ if(el.classList&&el.classList.contains('pk-slot')&&el.id) return el.id; }
@@ -4259,7 +4394,7 @@ window.__start = function(FB){
           const t=findSlotAt(x,y);
           if(t){
             if(isLocked(t)){ showToast('🔒 '+jp(t)+' は帰庫済です'); return; }
-            pkPlace(t, no, 'fixed');
+            pkDropOnto(null, no, t);
           }
         });
       }, PK_HOLD_MS);
@@ -4283,6 +4418,65 @@ window.__start = function(FB){
 
   (function bindSlots(){ document.querySelectorAll('.pk-map .pk-slot[id]').forEach(attachSlotEvents); })();
 
+  /* ---------------- 車両検索（全面図のみ） ----------------
+     4桁を入れた時点ですぐ閉じて探す。決定を押す必要はない。
+     配置済みならその枠を、未配置ならトレイの号車を、4回光らせてから
+     ソナーのように広がる輪を出す。 */
+  function pkFindShowSlot(slotId){
+    const m=mapEl(); if(!m) return false;
+    const el=m.querySelector('[id="'+slotId+'"]'); if(!el) return false;
+    el.classList.add('pk-found');
+    setTimeout(()=>el.classList.remove('pk-found'), 1400);
+    try{
+      const b=el.getBBox(), NS='http://www.w3.org/2000/svg';
+      for(let i=0;i<3;i++){
+        const r=document.createElementNS(NS,'rect');
+        r.setAttribute('x',b.x); r.setAttribute('y',b.y);
+        r.setAttribute('width',b.width); r.setAttribute('height',b.height);
+        r.setAttribute('rx',Math.min(b.width,b.height)*0.25);
+        r.setAttribute('class','pk-sonar');
+        r.style.animationDelay=(1.15+i*0.34)+'s';       // 4回光ったあとに続けて出す
+        m.appendChild(r);
+        setTimeout(()=>r.remove(), 3200);
+      }
+    }catch(e){}
+    el.scrollIntoView&&el.scrollIntoView({block:'center',behavior:'smooth'});
+    return true;
+  }
+  function pkFindShowChip(no){
+    const c=$('pkTray')&&$('pkTray').querySelector('.pk-chip[data-no="'+no+'"]');
+    if(!c) return false;
+    c.classList.add('pk-found-chip');
+    c.scrollIntoView({block:'center',behavior:'smooth'});
+    setTimeout(()=>c.classList.remove('pk-found-chip'), 1500);
+    return true;
+  }
+  function pkFindGo(no){
+    closeModal('pkFindOverlay');
+    const slotId=Object.keys(pk.slots).find(id=>pk.slots[id]&&String(pk.slots[id].no)===no);
+    if(slotId){
+      if(pkFindShowSlot(slotId)) showToast('📍 '+no+' … '+jp(slotId),2600);
+      return;
+    }
+    if(pk.excluded.has(no)){ showToast(no+' は本日の対象外です',2800); return; }
+    if(pkFindShowChip(no)){ showToast('📍 '+no+' は未配置です',2600); return; }
+    showToast(no+' は見つかりませんでした',2600);
+  }
+  $('pkFindBtn').addEventListener('click',()=>{
+    $('pkFindInput').value='';
+    openModal('pkFindOverlay');
+    setTimeout(()=>{ const el=$('pkFindInput'); el.focus(); }, 80);
+  });
+  $('pkFindInput').addEventListener('input',e=>{
+    const v=e.target.value.replace(/\D/g,'');
+    e.target.value=v;
+    if(v.length===4) pkFindGo(v);            // 4桁そろったら確定なしで実行
+  });
+  $('pkFindInput').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault();
+      const v=$('pkFindInput').value.replace(/\D/g,''); if(v) pkFindGo(v.padStart(4,'0')); }
+  });
+
   /* ---------------- 表示切替 ---------------- */
   function pkCycleDisp(){
     pk.disp=(pk.disp+1)%PK_MODES.length;
@@ -4300,8 +4494,20 @@ window.__start = function(FB){
     const land = window.innerWidth > window.innerHeight;
     document.body.classList.toggle('pk-land', land && pk.screen!==0);
   }
-  window.addEventListener('resize', ()=>{ pkUpdateOrientation(); });
-  window.addEventListener('orientationchange', ()=>setTimeout(pkUpdateOrientation,250));
+  /* 画面のサイズが変わったときは、必ず この順番 で立て直す。
+     以前は「向きの判定」と「高さの計算」が別々のリスナーで、
+     高さを先に計算してしまい、横向きにした直後だけ図がズレて出ていた。
+     拡大の位置も持ち越すとズレるので、等倍に戻す。 */
+  let pkResizeT=null;
+  function pkRelayout(){
+    pkUpdateOrientation();
+    pk.scale=1; pk.tx=0; pk.ty=0; pkApplyZoom();
+    if(pk.screen!==0){ pkFitStage(); pkRenderAll(); }
+  }
+  function pkRelayoutSoon(){ clearTimeout(pkResizeT); pkResizeT=setTimeout(pkRelayout,60); }
+  window.addEventListener('resize', pkRelayoutSoon);
+  window.addEventListener('orientationchange', ()=>setTimeout(pkRelayout,300));
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', pkRelayoutSoon);
 
   /* --- 経路データ：移動指示図の赤い矢印を骨格化して作成（上図・下図は座標そのまま、全体図は1.02056倍） --- */
   const PK_RT_RAW={"full":["653,202;637,214;214,274;212,226;193,240;190,288;189,265;548,399;535,414;807,729;310,1406;295,337;701,661;657,652;618,652;571,655;523,659;475,662;427,665;380,668;328,668;277,668;199,657;139,630;228,1475;252,1466;681,1453;724,1450;763,1440;806,1421;849,1403;891,1384;934,1366;991,1332;1020,1299;808,1276;1064,1125;467,1557;412,759;432,770;550,453;1054,1222;1035,1283;746,262;591,700;560,684;489,1218;355,1425;732,693;738,720;944,620;964,622;762,277;343,510;770,353;237,1180;803,370;830,398;841,422;851,477;864,510;350,300;680,417;374,1564;381,1509;410,1479;513,1231;501,1462;475,1493;467,1523;209,1347;231,1352;433,696;476,512;451,531;165,720;116,662;99,632;622,422;224,1242;391,477;902,314;920,322;903,342;94,706;295,1371;282,1331;269,1292;243,1251;231,369;766,675;104,582;104,560;114,521;124,482;138,441;153,400;168,358;183,317;1074,1147;694,1228;206,376;314,1211;883,1275;923,1269;962,1264;1018,1248;1038,1237;255,330;232,308;628,1454;576,1454;524,1454;718,1518;740,1512;472,1591;488,1558;483,1239;908,527;930,531;748,352;647,488;634,525;666,508;972,761;456,293;472,272;304,1189;1073,1088;560,1170;674,222;689,265;665,318;630,349;381,340;327,344;770,438;720,424;759,504;427,344;473,346;519,349;564,352;792,701;725,662;844,1227;802,1226;760,1226;718,1226;713,1246;459,1414;406,1364;381,1329;356,1293;336,1253;368,313;951,765;797,1496;852,1466;898,1425;662,455;412,696;649,234;425,317;170,661;230,682;320,689;366,692;578,1191;598,1212;630,1229;657,1234;392,1572;378,1591;417,454;457,434;505,418;474,535;448,1466;343,1478;298,1478;174,743;188,711;781,1274;760,396;800,1204;778,1185;498,701;272,1220;298,1262;310,1295;320,1342;330,1388;744,746;912,761;873,747;394,1435;434,1444;505,487;329,1418;333,537;1018,820;997,807;951,803;914,790;754,530;774,518;765,484;782,472;813,515;820,541;820,564;803,601;760,630;722,638;670,636;567,634;522,636;477,638;432,640;361,638;308,631;263,617;227,596;199,566;182,532;172,491;169,448;180,381;688,352;248,1487;117,702;904,626;881,610;872,562;1058,1173;1059,1200;948,740;592,1247;217,394;267,1370;838,718;115,608;506,464;450,470;579,1232;215,1166;804,755;329,320;813,343;855,332;243,1228;1035,836;888,1226;930,1225;972,1224;1013,1218;643,1431;606,1410;558,1366;516,1302;211,317;374,762;346,755;312,736;274,698;1070,1066;1048,1075;1051,1143;887,524;559,715;952,1321;884,1337;836,1344;788,1351;727,1351;684,1338;652,1318;620,1287;226,148;1069,1066;56,240","1,130,162|0,130,162|3,4,5,6,98,108,109,261|2,4,5,6,279|2,3,5,6,279|2,3,4,6,98,109,261|2,3,4,5,98,109,261,279|8,40,141,142,176|7,40,141,142,176,243|90,143,193,195,241,247|47,85,191,192,199,240|61,108,109,135,248|13,48,49,90,144,213,214,215|12,14,144,214,215|13,15,44,45,215,216|14,16,44,45,216,217,270|15,17,45,216,217,218|16,18,72,187,217,218,219|17,19,72,161,167,218,219|18,20,72,161,166,167,219,220|19,21,166,167,220,221,264,265|20,165,166,221,222,265|23,164,165,182,223|22,76,77,91,164,242|25,230|24,180,230|27,110,257|26,28,113,114|27,29,157|28,30,158|29,31,158,159,273|30,32,159,272,273|31,33,159,271,272|32,34,42,271|33,42,105,106,107|145,146,147,183|99,128,235,266,267,268|68,69,115,116|39,72,161,262,263|38,262|7,8,176,198,243|42,106,107,235,236,256|33,34,41,106,107,256|52,131|14,15,45,270|14,15,16,44,216,217,270|66,117|10,179,192,196,199|12,49,90,143,144,193,213,214|12,48,90,143,144,193|51,232,233|50,232|43|80,200|56,120,184,249|79,127,188,246,251|54,57,58,120,184,249,250|56,58,184,249|56,57,59|58,60,208,209,269|59,118,119,209,210,211,234,269|11,134,135,155,248|78,137,160,229|64,172,173|63,65,172,179|64,68,178,179,196,197|46,117,245|68,69,112,150,178,197|37,65,67,69,112,116,178,197|37,67,68,115,116,178|71,240|70,85,86,240|17,18,19,38,161,167,187,219|74,177,198,243,244|73,177,198,244|164,181,182,231|23,77,84,164,231,242|23,76,91,242|62,160|55,87,88,188,251|53,174,244|82,83,250|81,83,250|81,82,250|76,231|10,71,86,191,192,199,240|71,85,87,190,191,240|79,86,88,189,190,251|79,87,188,189,251|97,101,108,109,228,239,261|9,12,48,49,143,144,213,214|23,77,92,93,242|91,93,242|91,92,94,225,226|93,95,226,227|94,96,226,227|95,97,101,227,228,239|89,96,98,101,228,239,261,281|2,5,6,97,101,109,228,261,281|36,128,235,236,268|147,148,149,170,171|89,96,97,98,108,228,239,261|127,154,188,189|104,145,253,254,272|103,105,253,254,255,271|34,104,106,254,255,256,271|34,41,42,105,107,236,255,256|34,41,42,106,235,236,255,256|2,11,89,101,109,261|2,5,6,11,89,98,108,261|26,111,257,258|110,112,258|67,68,111|27,114|27,113,157|37,69,116|37,68,69,115|46,66|60,119,234,269|60,118,234,269|54,56,184,229,249|122,123,160|121,123|121,122,160|156,194,202,203,204,237|126,139,140,163|125,163|55,102,188|36,99,266,267,268,280|168,169,245|0,1,131,162|43,130,132,162|131,133,229|132,142,229|61,135,139,155,163,248|11,61,134,155,248|137,138,184,207,208|62,136,160,184|136,205,206,207,208,209|125,134,140,155,163|125,139,141,163|7,8,140,142|7,8,133,141|9,48,49,90,193,241,247|12,13,48,49,90,213,214,215|35,103,146,185,253|35,145,147,183,185,186|35,100,146,148,149,183,185,186|100,147,149,171|100,147,148,171|67,178,196,197|152|151,153,191|152,154,189,190,191|102,153,189,190|61,134,135,139,163,248|124,194,202,203,204,237|28,114,158|29,30,157,159|30,31,32,158|62,78,121,123,137|18,19,38,72,167,219|0,1,130,131|125,126,134,139,140,155|22,23,75,76,165,182,231|21,22,164,182,265|19,20,21,167,220,221,264,265|18,19,20,72,161,166,220,263,264|129,169,170,238,245|129,168,170,171,238,245|100,168,169,171,238,245,278|100,148,149,169,170,238,278|63,64,173|63,172|80,175,244|174,176,243,244|7,8,40,175,198,243|73,74,198,244|65,67,68,69,150,196,197|47,64,65,180,196,199|25,179,199,230|75,182,231|22,75,164,165,181|35,146,147|54,56,57,120,136,137|145,146,147,186|146,147,185|17,72,270|55,79,88,102,127,189,251|87,88,102,153,154,188,190,251|86,87,153,154,189,191|10,85,86,152,153,190,192,240|10,47,85,191,199,240|9,48,49,143,247|124,156,195,203,204,237|9,194,204,241,247|47,65,150,178,179,197,199|65,67,68,150,178,196|40,73,74,176,177,243,244|10,47,85,179,180,192,196|53|202,203,252|124,156,201,203,252|124,156,194,201,202,204,237|124,156,194,195,203,237|138,206,207,208,209,210|138,205,207,208,209,210,211|136,138,205,206,208,209|59,136,138,205,206,207,209|59,60,138,205,206,207,208,210,211|60,205,206,209,211,212,234,269|60,206,209,210,212,234|210,211,213|12,48,90,144,212,214|12,13,48,90,144,213,215|12,13,14,144,214|14,15,16,45,217|15,16,17,45,216,218|16,17,18,217,219|17,18,19,72,161,218|19,20,166,167,221|20,21,166,220,222|21,221,223|22,222,224|223,225|93,224,226|93,94,95,225,227|94,95,96,226,228|89,96,97,98,101,227,239|62,120,132,133|24,25,180|75,76,84,164,181|50,51,233|50,232,234|60,118,119,210,211,233,269|36,41,99,107,236,256,268|41,99,106,107,235,256,268|124,156,194,203,204|168,169,170,171,245,278|89,96,97,101,228|10,70,71,85,86,191,192|9,143,195,247|23,76,77,91,92|8,40,73,175,176,198,244|73,74,80,174,175,177,198,243|66,129,168,169,170,238,278|55,251|9,143,193,195,241|11,61,134,135,155|54,56,57,120,250|56,81,82,83,249|55,79,87,88,188,189,246|201,202|103,104,145,254|103,104,105,253,255|104,105,106,107,254,256|41,42,105,106,107,235,236,255|26,110,258|110,111,257,259|258||2,5,6,89,97,98,101,108,109,281|38,39,263,264|38,167,262,264|20,166,167,262,263,265|20,21,165,166,264|36,128,267,280|36,128,266,268,280|36,99,128,235,236,267|59,60,118,119,210,234|15,44,45,187|32,33,104,105|31,32,103,273|30,31,272,274|273,275|274,276|275,277|276,278|170,171,238,245,277|3,4,6|128,266,267|97,98,261","a-1:61;a-2:61;a-3:126;a-4:126;a-5:126;a-6:126;b-1:1;b-2:1;c-1:43;c-2:43;c-3:52;d-1:81;d-10:50;d-11:50;d-2:81;d-3:82;d-4:83;d-5:83;d-6:118;d-7:119;d-8:119;d-9:119;e-1:227;e-2:239;f-1:80;f-2:176;f-3:243;f-4:78;f-5:78;g-1:200;g-10:205;g-2:200;g-3:74;g-4:74;g-5:177;g-6:216;g-7:122;g-8:122;g-9:123;h-1:84;h-2:181;h-3:181;h-4:181;i-1:166;i-2:72;i-3:44;j-1:39;j-2:39;k-1:193;k-10:193;k-11:247;k-12:247;k-13:204;k-14:204;k-15:203;k-16:203;k-17:201;k-18:252;k-19:124;k-2:193;k-20:202;k-3:247;k-4:247;k-5:195;k-6:195;k-7:194;k-8:237;k-9:193;l-1:268;l-10:129;l-11:129;l-12:129;l-13:46;l-14:127;l-15:127;l-16:55;l-17:246;l-18:246;l-19:246;l-2:268;l-3:253;l-4:186;l-5:186;l-6:186;l-7:186;l-8:129;l-9:129;m-1:246;m-10:188;m-11:87;m-12:86;m-13:240;m-14:10;m-15:25;m-16:230;m-17:46;m-18:117;m-19:152;m-2:79;m-20:151;m-21:151;m-22:197;m-23:65;m-24:64;m-25:168;m-26:245;m-27:238;m-28:259;m-29:259;m-3:70;m-30:111;m-31:111;m-32:111;m-33:148;m-34:149;m-35:149;m-36:275;m-37:275;m-38:27;m-39:27;m-4:70;m-40:113;m-41:253;m-42:253;m-43:103;m-44:272;m-45:31;m-46:159;m-47:158;m-48:158;m-5:70;m-6:24;m-7:24;m-8:24;m-9:188;o-1:115;o-2:115","leftOut:281,low:280,up:279",966],"upper":["705,820;476,279;499,280;546,270;594,260;640,256;685,252;1437,182;854,378;1238,169;1305,167;689,805;1361,230;1312,247;1004,362;1053,355;1102,348;1152,347;1201,346;1644,906;739,817;1292,130;979,743;1309,147;1288,247;962,755;1153,452;1209,395;1271,362;975,378;1384,765;1591,862;224,772;213,749;1497,659;1530,660;1502,687;1227,136;561,203;536,216;1344,679;1622,861;419,197;416,176;1083,387;1122,374;787,737;287,752;1634,887;842,499;405,341;749,742;1481,260;1447,278;1445,252;251,551;284,587;346,623;420,649;461,657;502,665;545,668;588,670;632,673;675,676;717,676;758,676;800,676;842,676;886,675;930,673;974,672;1019,671;1063,670;1107,668;1151,667;1210,816;1216,838;1245,806;1631,814;1303,379;652,505;1325,433;412,154;244,528;251,497;280,433;304,392;328,352;351,311;375,270;437,248;395,247;352,247;310,246;766,757;726,202;744,212;865,357;1079,407;1055,405;248,745;1417,209;1276,216;1392,350;481,710;527,720;574,731;620,741;672,741;724,741;1600,884;1063,116;1057,91;1035,109;439,271;838,392;727,768;1167,472;1135,480;1204,664;1256,660;906,748;865,746;823,744;1296,665;621,539;665,523;224,702;223,660;229,603;402,298;1529,812;1472,787;1443,760;1413,717;1393,697;1371,684;1385,744;526,250;870,409;922,394;1221,762;1211,728;1195,703;1612,806;1281,162;1222,471;1207,512;1251,492;1093,262;1138,267;1182,272;1230,270;1298,337;1293,295;555,225;575,218;873,467;903,436;820,427;771,444;722,462;687,483;952,366;910,373;1573,872;1570,809;767,180;1047,264;1001,265;956,267;911,264;866,262;821,260;776,257;731,254;394,142;398,211;1339,455;1351,499;1353,529;1347,566;1334,595;1315,621;1289,642;637,815;592,799;556,772;519,745;742,188;418,122;365,114;364,173;419,236;768,216;1389,311;1370,279;1348,261;1098,123;1127,135;1144,150;1157,175;1156,201;1143,227;1128,242;1255,155;860,522;826,537;1464,658;1437,648;1416,629;1400,573;1398,529;1396,484;1395,440;1393,395;951,725;1401,185;373,209;307,767;1479,451;1508,449;694,842;1404,236;1370,706;423,695;367,680;311,652;266,607;253,579;1243,458;1273,434;1242,348;242,643;264,680;286,718;1421,420;1447,444;728,228;421,74","11,20,117,186,223|2,91,115,139|1,3,91,115,139|2,4,38,39,139,156,157|3,5,38,139,156,157|4,6|5,96,176,239|102,218,224|98,116,140,141,160,165|10,21,37,103,146,206|9,21,23,103,146,206|0,20,109,117,186,223|13,102,197,198,218,224|12,24,103,155,197,198|15,29,100,164|14,16,44,99,100|15,17,44,45,99|16,18,45|17,27,233|31,41,48,111|0,11,95,117,223|9,10,23,37,146,206|25,217|10,21,146,206|13,103,153,155,198|22,122,217|118,119|18,233|80,154,233|14,141,164,165|134,135,136,138,225|19,41,48,79,111,145,166,167|33,47,101|32,101,128|35,36,209,210|34,36,209|34,35,209|9,21,146,206|3,4,39,139,156,157|3,38,139,156,157|125,136,137,184,185,225|19,31,48,79,111,145,166|43,83,91,92,177,178,193,194,219|42,83,177,178,191,193,194,219|15,16,45,99,100|16,17,44,99|51,66,67,95,110,117,124|32,101,220,236|19,31,41,111,166|158,207,208|89,131|46,66,95,110,117|53,54|52,54,196,224|52,53,102,224|56,84,85,130,229,230|55,130,229,230,234|227,228|59,226,227|58,60,105,226|59,61,105,106|60,62,106,107|61,63,107|62,64,108|63,65,109|64,66,110|46,51,65,67|46,66,68|67,69|68,70|69,71,217|70,72,217|71,73|72,74|73,75|74,120,144|77,78,142|76,78|76,77,142|31,41,145,167|28,82,154,232,233|126,127,163|80,179,215,232|42,43,177,178,191,192,193,219|55,85,230|55,84|87|86,88|87,89|50,88,90,93,131|89,91,92,93,94,115,131,178,194,219|1,2,42,90,92,115,131,178,194|42,90,91,93,115,131,178,194,219|89,90,92,94,178,194,219|90,93|20,46,51,110,117,124|6,97,168,176,190,195,239|96,168,175,176,190,195,239|8,116,140,141,165|15,16,44,45,100|14,15,44,99|32,33,47,128,220,235,236|7,12,54,218,224|9,10,13,24,146,206|196,216|59,60,106,189,226|60,61,105,107,188,189|61,62,106,108,188,189|63,107,109,187|11,64,108,110,117|46,51,65,95,109,117|19,31,41,48,166|113,114,199,200|112,114,199|112,113,199|1,2,90,91,92,131,194|8,98,140,160|0,11,20,46,51,95,109,110|26,119,147,148|26,118|75,121,143,144|120,125,185|25,123|122,124|46,95,123|40,121,184,185|81,127|81,126,163|33,101,129,234,235,236|128,130,229,234,235|55,56,129,229,230,234|50,89,90,91,92,115,194|133,167|132,134|30,133,135,138|30,134,136,137,138,225|30,40,135,137,138,210,225|40,135,136,138,225|30,134,135,136,137,225|1,2,3,4,38,39,156,157|8,98,116,141,158,159,160,165|8,29,98,140,159,164,165|76,78,143,144|120,142,144|75,120,142,143|31,41,79,167|9,10,21,23,37,103,206|118,148,149,231,232|118,147,149,231|147,148,231,232|151,169,204,205|150,152,203,204,205|151,153,204,205|24,152,155|28,80,155,233|13,24,153,154,198|3,4,38,39,139,157|3,4,38,39,139,156|49,140,159,160,207|140,141,158,165|8,116,140,158,161|160,162|161,163|81,127,162|14,29,141,165|8,29,98,140,141,159,164|31,41,48,111,167|31,79,132,145,166|96,97,190,195,239|150,170|169,171|170,172|171,173|172,174|173,175,195|97,174,176,195,239|6,96,97,175,190,195,239|42,43,83,178,191,192,193,240|42,43,83,90,91,92,93,177,193,194,219|82,180,214,215,232|179,181,182,213,214|180,182,183,212,213,214|180,181,183,184,212,213|181,182,184,185,212|40,125,182,183,185|40,121,125,183,184|0,11,187,223|108,186,188|106,107,187,189|105,106,107,188|96,97,168,176,195,239|43,83,177,192,240|83,177,191,193,240|42,43,83,177,178,192,219|42,43,90,91,92,93,115,131,178,219|96,97,168,174,175,176,190,239|53,104,197,198|12,13,196,198,224|12,13,24,155,196,197,224|112,113,114,200,201|112,199,201,202|199,200,202,203|200,201,203,204|151,201,202,204,205|150,151,152,202,203,205|150,151,152,203,204|9,10,21,23,37,103,146|49,158,208|49,207|34,35,36,210,211|34,136,209,211|209,210,212|181,182,183,211,213|180,181,182,212,214|179,180,181,213,215,237,238|82,179,214,216,237,238|104,215,237|22,25,70,71|7,12,102,224|42,43,83,90,92,93,178,193,194|47,101,236|222,237,238|221,238|0,11,20,186|7,12,53,54,102,197,198,218|30,40,135,136,137,138|58,59,105,227|57,58,226,228|57,227,229,234,235|55,56,129,130,228,230,234|55,56,84,130,229,234|147,148,149,232|80,82,147,149,179,231|18,27,28,80,154|56,128,129,130,228,229,230,235|101,128,129,228,234,236|47,101,128,220,235|214,215,216,221,238|214,215,221,222,237|6,96,97,168,175,176,190,195|177,191,192","a-1:38;a-2:96;a-3:190;a-4:168;a-5:168;a-6:173;b-1:113;b-2:114;c-1:37;c-2:21;c-3:23;d-1:7;d-10:35;d-11:35;d-2:52;d-3:52;d-4:52;d-5:222;d-6:222;d-7:222;d-8:222;d-9:35;e-1:50;e-2:50;f-1:163;f-2:98;f-3:140;f-4:15;f-5:100;g-1:126;g-10:148;g-2:126;g-3:127;g-4:208;g-5:207;g-6:207;g-7:72;g-8:119;g-9:148;h-1:32;h-2:220;h-3:220;h-4:220;i-1:108;i-2:95;i-3:22;j-1:20;j-2:20;k-1:76;k-10:77;k-11:77;k-12:77;k-13:133;k-14:166;k-15:166;k-16:111;k-17:19;k-18:19;k-19:79;k-2:78;k-20:79;k-3:78;k-4:30;k-5:30;k-6:133;k-7:132;k-8:167;k-9:77","up:240",0],"lower":["882,895;865,875;1708,211;1717,233;1733,160;1758,298;1681,300;1718,184;575,337;651,597;626,591;890,858;1742,178;1705,281;1705,259;631,611;1733,272;1739,246;875,301;898,299;547,324;687,267;710,280;874,275;996,680;877,797;872,756;868,714;879,685;900,667;1022,287;997,290;1111,687;1064,692;608,356;662,401;691,432;720,462;749,493;778,524;807,554;836,585;891,629;952,668;694,608;735,620;776,632;818,643;859,654;1731,207;1720,333;1725,374;1730,415;1728,458;1727,500;1703,568;1666,614;1630,636;1577,653;1538,660;1498,666;1458,672;1419,679;1352,684;983,270;1306,665;1270,641;1234,609;1198,578;1162,546;1129,513;1096,480;1059,434;1029,385;1011,344;1294,692;1244,696;1184,696;674,296;1704,167;569,360;970,652;933,610;909,576;886,541;862,506;838,472;812,441;786,410;760,379;734,348;1066,653;1020,620;981,580;940,524;914,475;892,416;879,359;660,571;582,307;1748,120","1,11|0,11|3,4,7,12,14,16,17,49,79|2,7,12,13,14,16,17,49,79|2,7,12,49,79,100|13,14,16,17,50|13,14,16,50|2,3,4,12,17,49,79|20,34,80,99|10,15,44,98|9,15,98|0,1,25|2,3,4,7,17,49,79,100|3,5,6,14,16,17,50|2,3,5,6,13,16,17,49|9,10,44,98|2,3,5,6,13,14,17,49,50|2,3,5,7,12,13,14,16,49|19,23,97|18,23,97|8,34,80,99|22,78|21,78,90|18,19|33,43,81,92|11,26|25,27|26,28,29,48|27,29,42,48|27,28,42,43,48,82|31,64,74|30,64,74|33,77,91|24,32,91|8,20,35,80,99|34,36|35,37|36,38|37,39|38,40|39,41|40,47,84|28,29,48,82,83|24,29,81,82|9,15,45,98|44,46|45,47|41,46,48|27,28,29,42,47|2,3,4,7,12,14,16,17,79|5,6,13,16,51|50,52|51,53|52,54|53,55|54,56|55,57|56,58|57,59|58,60|59,61|60,62|61,63|62,65,75|30,31|63,66,75,76|65,67,75,76|66,68|67,69|68,70|69,71|70,72|71,73|72,74|30,31,73|63,65,66,76|65,66,75,77|32,76|21,22|2,3,4,7,12,49,100|8,20,34,99|24,43,82,92|29,42,43,81,83,93|42,82,84,94|41,83,85,94|84,86,95|85,87|86,88|87,89|88,90|22,89|32,33,92|24,81,91,93|82,92,94|83,84,93,95|85,94,96|95,97|18,19,96|9,10,15,44|8,20,34,80|4,12,79","l-1:14;l-10:64;l-11:64;l-12:23;l-13:23;l-14:21;l-15:21;l-16:21;l-17:99;l-18:99;l-19:20;l-2:14;l-3:2;l-4:2;l-5:30;l-6:30;l-7:30;l-8:30;l-9:64;m-1:20;m-10:34;m-11:35;m-12:36;m-13:10;m-14:10;m-15:15;m-16:15;m-17:18;m-18:89;m-19:87;m-2:20;m-20:86;m-21:40;m-22:41;m-23:47;m-24:27;m-25:30;m-26:74;m-27:73;m-28:72;m-29:93;m-3:20;m-30:92;m-31:24;m-32:24;m-33:30;m-34:71;m-35:70;m-36:69;m-37:68;m-38:68;m-39:77;m-4:80;m-40:77;m-41:6;m-42:6;m-43:67;m-44:62;m-45:62;m-46:62;m-47:62;m-48:62;m-5:10;m-6:10;m-7:15;m-8:15;m-9:99;o-1:11;o-2:0","up:100",0]};
@@ -4392,7 +4598,9 @@ window.__start = function(FB){
     g.appendChild(mk(L*0.22,-W*0.34,L*0.24,W*0.34,'#7ea6c8',W*0.08));
     return g;
   }
-  const pkAnim={running:false, raf:0, buses:[], layer:null, t0:0, map:'full'};
+  /* time … いま何秒目か。speed … +1で再生 / -1で逆再生 / 0で停止。
+     時間を直接動かせるので、スライドで前後に自由に行き来できる */
+  const pkAnim={running:false, raf:0, buses:[], layer:null, last:0, time:0, speed:1, map:'full'};
   function pkAnimStop(){
     pkAnim.running=false;
     if(pkAnim.raf) cancelAnimationFrame(pkAnim.raf);
@@ -4400,8 +4608,60 @@ window.__start = function(FB){
     pkAnim.layer=null; pkAnim.buses=[];
     pk.animHide.clear();
     const b=$('pkSkip'); if(b) b.style.display='none';
+    const bar=$('pkAnimBar'); if(bar) bar.style.display='none';
     pkRenderAll();
   }
+  function pkAnimSetSpeed(v){
+    pkAnim.speed=v;
+    $('pkAnimRev').classList.toggle('on', v<0);
+    $('pkAnimPause').classList.toggle('on', v===0);
+    $('pkAnimFwd').classList.toggle('on', v>0);
+  }
+  /* いまの時刻で「もう着いた車」を数え直す。逆再生でも正しく戻るように、
+     毎回ゼロから作り直す（着いた印を足し引きする方式だと巻き戻せない） */
+  function pkAnimSyncArrived(){
+    const before=pk.animHide.size;
+    const hide=new Set();
+    for(const b of pkAnim.buses){
+      if(pkAnim.time < b.start+b.pause+b.dur) hide.add(b.id);
+    }
+    pk.animHide=hide;
+    const total=pkAnimTotal(), n=pkAnim.buses.length;
+    $('pkAnimTime').textContent=(n-hide.size)+' / '+n+'台';
+    $('pkAnimSeek').value=Math.round(1000*Math.max(0,Math.min(1, pkAnim.time/total)));
+    if(before!==hide.size) pkRenderCards();      // 表示・非表示が変わったときだけ描き直す
+  }
+  function pkAnimTotal(){
+    let t=PK_ANIM_SEC;
+    for(const b of pkAnim.buses) t=Math.max(t, b.start+b.pause+b.dur);
+    return t+0.4;
+  }
+  /* 止めたところで確定する。着いた車はそのまま、まだ着いていない車は未配置に戻す。
+     手で置いた車（自動配置でない車）はアニメの対象外なので、そのまま残る */
+  function pkAnimApplyHere(){
+    const rest=Array.from(pk.animHide);
+    rest.forEach(id=>{ delete pk.slots[id]; });
+    pk.animHide.clear();
+    pkAnim.running=false;
+    if(pkAnim.raf) cancelAnimationFrame(pkAnim.raf);
+    if(pkAnim.layer) pkAnim.layer.remove();
+    pkAnim.layer=null; pkAnim.buses=[];
+    $('pkSkip').style.display='none';
+    $('pkAnimBar').style.display='none';
+    pkPush(); pkRenderAll();
+    showToast('ここまでの'+(rest.length?'配置を残しました。残り'+rest.length+'台は未配置です':'配置を残しました'),3200);
+  }
+  $('pkAnimRev').addEventListener('click',()=>pkAnimSetSpeed(-1));
+  $('pkAnimPause').addEventListener('click',()=>pkAnimSetSpeed(0));
+  $('pkAnimFwd').addEventListener('click',()=>pkAnimSetSpeed(1));
+  $('pkAnimApply').addEventListener('click', pkAnimApplyHere);
+  $('pkAnimQuit').addEventListener('click', pkAnimStop);
+  $('pkAnimSeek').addEventListener('input',e=>{
+    if(!pkAnim.running) return;
+    pkAnimSetSpeed(0);                                   // つまんだら止めて、その位置へ
+    pkAnim.time=pkAnimTotal()*(+e.target.value/1000);
+    pkAnimSyncArrived();
+  });
   function pkAnimPlay(){
     if(pkAnim.running){ pkAnimStop(); return; }
     if(pk.screen===0) pkGoScreen(1);
@@ -4433,13 +4693,24 @@ window.__start = function(FB){
       id, route:routes[i], start:endWindow*Math.pow(i/Math.max(1,N),0.72),
       pause:pauseOf(i), dur:durOf(i), legLen:routes[i].legs.map(pkLegLen),
       el:null, done:false, sz, seed:((i*2654435761)%1000)/1000 }));
-    pkAnim.t0=performance.now(); pkAnim.running=true;
+    pkAnim.time=0; pkAnim.last=performance.now(); pkAnim.running=true;
+    pkAnimSetSpeed(1);
     const sk=$('pkSkip'); if(sk) sk.style.display='';
+    $('pkAnimBar').style.display='';
+    pkAnimSyncArrived();
     pkAnimFrame();
   }
   function pkAnimFrame(){
     if(!pkAnim.running) return;
-    const now=(performance.now()-pkAnim.t0)/1000;
+    const nowMs=performance.now();
+    const dt=Math.min(0.06,(nowMs-pkAnim.last)/1000);   // タブ復帰で飛ばないよう上限
+    pkAnim.last=nowMs;
+    const total=pkAnimTotal();
+    pkAnim.time=Math.max(0, Math.min(total, pkAnim.time + dt*pkAnim.speed));
+    if(pkAnim.speed>0 && pkAnim.time>=total) pkAnimSetSpeed(0);   // 最後まで来たら止めて待つ
+    if(pkAnim.speed<0 && pkAnim.time<=0)     pkAnimSetSpeed(0);
+    pkAnimSyncArrived();
+    const now=pkAnim.time;
     const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
     const unit=pkAnim.buses.length?pkAnim.buses[0].sz.W:34;
     let queue=0;
@@ -4452,6 +4723,7 @@ window.__start = function(FB){
         if(b.el){ b.el.remove(); b.el=null; }
         continue;
       }
+      b.done=false;                       // 巻き戻したらまた走らせる
       if(!b.el){ b.el=pkBusEl(b.sz); pkAnim.layer.appendChild(b.el); }
       let x,y,a,sx=1,sy=1,op=1;
       if(t<b.pause){                            // 出入口で一旦停止＝ここで渋滞する
@@ -4485,13 +4757,10 @@ window.__start = function(FB){
       b.el.setAttribute('opacity',op);
       b.el.setAttribute('transform','translate('+x.toFixed(1)+' '+y.toFixed(1)+') rotate('+a.toFixed(1)+') scale('+sx.toFixed(3)+' '+sy.toFixed(3)+')');
     }
-    if(now>PK_ANIM_SEC+0.4){ pkAnimStop(); return; }
     pkAnim.raf=requestAnimationFrame(pkAnimFrame);
   }
   function pkAnimArrive(slotId){
-    pk.animHide.delete(slotId);
     const m=mapEl(); if(!m) return;
-    m.querySelectorAll('#pkNums [data-slot="'+slotId+'"]').forEach(el=>el.classList.remove('pk-hide'));
     const el=m.querySelector('[id="'+slotId+'"]');
     if(el){ el.classList.add('pk-arrive'); setTimeout(()=>el.classList.remove('pk-arrive'),650); }
   }
@@ -4747,7 +5016,7 @@ window.__start = function(FB){
     if(off.length)     notes.push('手入力のため無効：'+off.join('・'));
     if(dropped.length) notes.push('時刻が合わないため外しました：'+dropped.join('、'));
     $('pkMsg').textContent=notes.join('　');
-    showToast('✓ 基本テンプレ1で '+n+'台を配置しました'+(notes.length?'（一部は除外）':''),3600);
+    showToast('✓ 基本で '+n+'台を配置しました'+(notes.length?'（一部は除外）':''),3600);
   }
 
 
