@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- ホーム画面に追加して開くと、SafariのURLバーが出ない全画面になる -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="B.T.S.">
 <title>Bus Time Scheduler</title>
 <style>
   :root{
@@ -229,8 +234,15 @@
 
   /* ===== 駐車場ボード (Parking) ===== */
   .pkroot{display:none; flex-direction:column; min-height:100vh; background:var(--bg);}
-  .pk-toolbar{display:flex; gap:6px; align-items:center; padding:8px 10px; flex-wrap:wrap; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:30;}
-  .pk-toolbar .btn{font-size:12px; padding:7px 10px;}
+  /* ボタンは4列×2段に固定。段が増えると図が小さくなるので、
+     文字を詰めてでも2段に収める（横向きでは丸ごと隠す） */
+  .pk-toolbar{display:grid; grid-template-columns:repeat(4,1fr); gap:4px; align-items:stretch;
+              padding:6px 6px; background:#fff; border-bottom:1px solid var(--line);
+              position:sticky; top:0; z-index:30;}
+  .pk-toolbar .btn{font-size:11px; padding:6px 1px; white-space:nowrap; overflow:hidden;
+                   text-overflow:clip; letter-spacing:-.06em; min-width:0; justify-content:center;}
+  .pk-toolbar .spacer{display:none;}
+  /* ※ボタンの寸法は上の 4列×2段 のルールにまとめた（ここの古い指定は削除） */
   .pk-dots{display:flex; gap:6px; justify-content:center; padding:6px 0 2px;}
   .pk-dot{width:8px; height:8px; border-radius:50%; background:#c8ced6;}
   .pk-dot.on{background:var(--now-orange);}
@@ -258,13 +270,13 @@
                      stroke:#d98324 !important; stroke-width:3.5px !important;}
   /* 車両検索でみつけた枠：4回光ってから、ソナーのように広がって消える */
   @keyframes pk-find-blink{ 0%,100%{fill-opacity:1;} 50%{fill-opacity:.12;} }
-  .pk-slot.pk-found{fill:#ffcf5c !important; animation:pk-find-blink .32s ease-in-out 4;}
-  @keyframes pk-sonar{ from{transform:scale(1); opacity:.9;} to{transform:scale(3.6); opacity:0;} }
-  .pk-sonar{fill:none; stroke:#d98324; stroke-width:5; transform-box:fill-box; transform-origin:center;
+  .pk-slot.pk-found{fill:#e03131 !important; animation:pk-find-blink .32s ease-in-out 4;}
+  @keyframes pk-sonar{ from{transform:scale(1); opacity:.95;} to{transform:scale(3); opacity:0;} }
+  .pk-sonar{fill:none; stroke:#e03131; stroke-width:5; transform-box:fill-box; transform-origin:center;
             animation:pk-sonar 1.15s ease-out forwards; pointer-events:none;}
   @keyframes pk-chip-blink{ 0%,100%{opacity:1;} 50%{opacity:.2;} }
   .pk-chip.pk-found-chip{animation:pk-chip-blink .32s ease-in-out 4;
-            outline:3px solid #d98324; outline-offset:1px; background:#8a5a22;}
+            outline:3px solid #e03131; outline-offset:1px; background:#8f1d1d;}
   .pk-slot.pk-dragging{opacity:.55;}
   /* 数字 */
   .pk-num.pk-hide{visibility:hidden;}
@@ -276,13 +288,16 @@
   .pk-animbar{position:fixed; left:0; right:0; bottom:0; z-index:45;
               background:rgba(255,255,255,.97); border-top:1px solid var(--line);
               padding:7px 10px calc(9px + env(safe-area-inset-bottom)); box-shadow:0 -3px 14px rgba(0,0,0,.14);}
-  .pk-animbtns{display:flex; align-items:center; gap:6px; margin-bottom:5px;}
+  .pk-animbtns{display:flex; align-items:stretch; gap:4px; margin-top:2px; flex-wrap:nowrap;}
+  /* 指で押す的が小さくならないよう、送り戻しのボタンは最低幅をそろえる */
   .pk-animbtns button{background:#eef1f4; border:1px solid #d4dae0; color:#1a1f26;
-              border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700;}
+              border-radius:8px; padding:6px 6px; font-size:12px; font-weight:700;
+              white-space:nowrap; flex:0 0 auto; min-width:38px; line-height:1.5;}
   .pk-animbtns button.on{background:#d98324; border-color:#d98324; color:#fff;}
   .pk-animbtns button.ok{background:#1a1f26; border-color:#1a1f26; color:#fff;}
-  .pk-animtime{font-family:var(--mono); font-size:12px; color:#5b6470; margin-left:4px;}
-  #pkAnimSeek{width:100%; height:26px; accent-color:#d98324; touch-action:none;}
+  .pk-animtime{font-family:var(--mono); font-size:11px; color:#5b6470; margin:0 2px; white-space:nowrap;}
+  /* スライダーはボタンより上。下端に置くとスキップの丸ボタンに隠れる */
+  #pkAnimSeek{width:100%; height:24px; margin:0; accent-color:#d98324; touch-action:none; display:block;}
   body.pk-land .pk-animbar{padding-bottom:6px;}
   .pk-skip{position:fixed; right:12px; bottom:16px; z-index:60; background:#1a1f26; color:#fff;
            border:none; border-radius:18px; padding:7px 14px; font-size:12px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.3);}
@@ -457,29 +472,29 @@
 <div class="pkroot" id="parkingRoot">
   <div class="pk-toolbar">
     <button class="btn ghost" id="pkBack" style="color:#1a1f26;">◀ 運行</button>
-    <button class="btn primary" id="pkDisp">表示:号車</button>
-    <button class="btn ghost" id="pkTplBtn" style="color:#1a1f26;">📋 テンプレ／保存</button>
-    <button class="btn ghost" id="pkBulk" style="color:#1a1f26;">⚡ 一括配置</button>
-    <button class="btn ghost" id="pkAnimBtn" style="color:#1a1f26;">🎬 再生</button>
-    <button class="btn ghost" id="pkFindBtn" style="color:#1a1f26;">🔍 車両検索</button>
-    <div class="spacer"></div>
-    <button class="btn ghost" id="pkClear" style="color:#a33; font-size:11px;">配置クリア</button>
+    <button class="btn primary" id="pkDisp">号車</button>
+    <button class="btn ghost" id="pkTplBtn" style="color:#1a1f26;">テンプレ／保存</button>
+    <button class="btn ghost" id="pkBulk" style="color:#1a1f26;">一括配置</button>
+    <button class="btn ghost" id="pkAnimBtn" style="color:#1a1f26;">再生</button>
+    <button class="btn ghost" id="pkFindBtn" style="color:#1a1f26;">車両検索</button>
+    <button class="btn ghost" id="pkClear" style="color:#a33;">配置クリア</button>
   </div>
   <div class="pk-dots" id="pkDots"></div>
   <div class="pk-rotate-hint" id="pkRotateHint" style="display:none;">📱 この画面はスマホ横向きがおすすめです</div>
   <button class="pk-skip" id="pkSkip" style="display:none;">スキップ ▶▶</button>
   <!-- 再生バー：指でスライドして好きなところまで進めたり戻したりできる -->
   <div class="pk-animbar" id="pkAnimBar" style="display:none;">
+    <input type="range" id="pkAnimSeek" min="0" max="1000" value="0">
     <div class="pk-animbtns">
       <button id="pkAnimRev"  title="逆再生">◀◀</button>
       <button id="pkAnimPause" title="停止">⏸</button>
       <button id="pkAnimFwd"  title="再生">▶▶</button>
+      <button id="pkAnimEnd"  title="最後まで">▶|</button>
       <span class="pk-animtime" id="pkAnimTime">0 / 0台</span>
-      <div class="spacer"></div>
-      <button id="pkAnimApply" class="ok">この状態で配置</button>
-      <button id="pkAnimQuit">やめる</button>
+      <div class="spacer" style="flex:1;"></div>
+      <button id="pkAnimApply" class="ok">ここで確定</button>
+      <button id="pkAnimQuit">閉じる</button>
     </div>
-    <input type="range" id="pkAnimSeek" min="0" max="1000" value="0">
   </div>
   <div class="pk-msg" id="pkMsg"></div>
   <div class="pk-svgwrap" id="pkWrap">
@@ -3453,6 +3468,11 @@ window.__start = function(FB){
       for(let c=1;c<=6;c++){ alloc[c]=order.slice(idx, idx+colFree[c].length); idx+=alloc[c].length; }
       for(let c=1;c<=6;c++){
         let list=alloc[c].filter(x=>pool.indexOf(x)>=0);
+        /* ★この列に割り当てた車が残っていなくても、
+           手前の列に入れなかった車ならここに入ることがある。
+           列を丸ごと飛ばすと、5・6列目が空のまま車が余り、
+           最後の砦が行の途中に押し込んで壁と穴になる（実機8/23の不具合） */
+        if(!list.length) list=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0&&x.ret!=null);
         if(!list.length) continue;
         /* 同じ行の左どなり（1つ奥の列）が埋まっている行だけ使う。
            これを守らないと行の方向に穴ができる（m(c,r) は m(c-1,r) が先） */
@@ -3784,17 +3804,31 @@ window.__start = function(FB){
         let below=0;
         for(let k=r+1;k<=8;k++){ const id=mId(c,k); if(!assign[id]&&!blockedSet[id]) below++; }
         cost+=below*2;
-        for(let k=r-1;k>=1;k--){ const v=assign[mId(c,k)]; if(v&&v.ret!=null){ if(car.ret>v.ret) cost+=3; break; } }
-        for(let k=r+1;k<=8;k++){ const v=assign[mId(c,k)]; if(v&&v.ret!=null){ if(car.ret<v.ret) cost+=3; break; } }
+        /* 列の上下の順を崩すのは、担当者からいちばん目につく崩れ方なので重く見る */
+        for(let k=r-1;k>=1;k--){ const v=assign[mId(c,k)]; if(v&&v.ret!=null){ if(car.ret>v.ret) cost+=12; break; } }
+        for(let k=r+1;k<=8;k++){ const v=assign[mId(c,k)]; if(v&&v.ret!=null){ if(car.ret<v.ret) cost+=12; break; } }
       }
       if(ESCAPE_SET.has(slot)) cost-=2;     // 中の島・ヤナセの逃がし先
       else if(ESCAPE2.has(slot)) cost-=1;   // グリーン・新駐車場も受け皿として使う
       return cost;
     }
+    /* 整備に穴を作るか。strict のあいだは、下にまだ空きがある行に入れない＋
+       同じ列の上下の帰庫の順（上ほど遅い）も崩さない */
+    let rescueStrict=true;
+    function mOrderOK(slot,car){
+      if(areaOf(slot)!=='m'||car.ret==null) return true;
+      const n=numOf(slot), c=mCol(n), r=mRow(n);
+      for(let k=r-1;k>=1;k--){ const v=assign[mId(c,k)];
+        if(v&&v.ret!=null){ if(car.ret>v.ret) return false; break; } }
+      for(let k=r+1;k<=8;k++){ const v=assign[mId(c,k)];
+        if(v&&v.ret!=null){ if(car.ret<v.ret) return false; break; } }
+      return true;
+    }
     function rescueBest(car,used){
       let best=null,bestCost=Infinity;
       for(const t of freeSlots){
         if(assign[t]||(used&&used.has(t))) continue;
+        if(rescueStrict&&areaOf(t)==='m'&&(!mBottomOK(t)||!mOrderOK(t,car))) continue;
         if(!fitsHard(t,car,null)) continue;
         const cst=rescueCost(t,car);
         if(cst<bestCost){ bestCost=cst; best=t; }
@@ -3821,15 +3855,22 @@ window.__start = function(FB){
     }
     const rescued=[];
     /* ①まず1台も動かさずに置ける車を全部置く ②それでも残った車だけ玉突きにする。
-       先に玉突きを許すと、直接置ける車のために他の車を動かしてしまう */
-    for(let d=0;d<=3;d++){
-      for(let ui=pool.length-1;ui>=0;ui--){
-        const car=pool[ui];
-        rescueGuard=0;
-        if(rescueChain(car,d,new Set())){ pool.splice(ui,1); placed++; rescued.push(car.no); }
+       先に玉突きを許すと、直接置ける車のために他の車を動かしてしまう。
+       さらに ③整備に穴を作らない範囲で全部やってから、
+       それでも余ったときだけ穴を許す（順番を崩すのは本当の最後） */
+    for(const strict of [true,false]){
+      rescueStrict=strict;
+      for(let d=0;d<=3;d++){
+        for(let ui=pool.length-1;ui>=0;ui--){
+          const car=pool[ui];
+          rescueGuard=0;
+          if(rescueChain(car,d,new Set())){ pool.splice(ui,1); placed++; rescued.push(car.no); }
+        }
+        if(!pool.length) break;
       }
       if(!pool.length) break;
     }
+    rescueStrict=true;
     /* 外した跡や押し込みで列に穴が残ることがあるので、最後にもう一度詰め直す */
     tidyMaintenance();
     const out={};
@@ -4480,14 +4521,15 @@ window.__start = function(FB){
   /* ---------------- 表示切替 ---------------- */
   function pkCycleDisp(){
     pk.disp=(pk.disp+1)%PK_MODES.length;
-    const t='表示:'+PK_MODE_LABEL[PK_MODES[pk.disp]];
-    $('pkDisp').textContent=t; $('pkFab').textContent=t;
+    /* ツールバーは幅が狭いので「表示:」は付けない。横向きのFABだけ付ける */
+    const t=PK_MODE_LABEL[PK_MODES[pk.disp]];
+    $('pkDisp').textContent=t; $('pkFab').textContent='表示:'+t;
     pkRenderAll();
   }
   $('pkDisp').addEventListener('click', pkCycleDisp);
   $('pkFab').addEventListener('click', pkCycleDisp);
   $('pkBackMini').addEventListener('click', ()=>pkGoScreen(0));
-  (function(){ const t='表示:'+PK_MODE_LABEL[PK_MODES[0]]; $('pkDisp').textContent=t; $('pkFab').textContent=t; })();
+  (function(){ const t=PK_MODE_LABEL[PK_MODES[0]]; $('pkDisp').textContent=t; $('pkFab').textContent='表示:'+t; })();
 
   /* 横向き判定: 横向きのときは図を最大化する（メニュー・トレイを隠す） */
   function pkUpdateOrientation(){
@@ -4654,6 +4696,10 @@ window.__start = function(FB){
   $('pkAnimRev').addEventListener('click',()=>pkAnimSetSpeed(-1));
   $('pkAnimPause').addEventListener('click',()=>pkAnimSetSpeed(0));
   $('pkAnimFwd').addEventListener('click',()=>pkAnimSetSpeed(1));
+  $('pkAnimEnd').addEventListener('click',()=>{
+    if(!pkAnim.running) return;
+    pkAnim.time=pkAnimTotal(); pkAnimSetSpeed(0); pkAnimSyncArrived();
+  });
   $('pkAnimApply').addEventListener('click', pkAnimApplyHere);
   $('pkAnimQuit').addEventListener('click', pkAnimStop);
   $('pkAnimSeek').addEventListener('input',e=>{
@@ -4695,7 +4741,9 @@ window.__start = function(FB){
       el:null, done:false, sz, seed:((i*2654435761)%1000)/1000 }));
     pkAnim.time=0; pkAnim.last=performance.now(); pkAnim.running=true;
     pkAnimSetSpeed(1);
-    const sk=$('pkSkip'); if(sk) sk.style.display='';
+    /* フローティングのスキップはスライダーに重なるので出さない。
+       バーの ▶| （最後まで）が同じ役割 */
+    const sk=$('pkSkip'); if(sk) sk.style.display='none';
     $('pkAnimBar').style.display='';
     pkAnimSyncArrived();
     pkAnimFrame();
