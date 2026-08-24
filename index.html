@@ -285,17 +285,22 @@
   @keyframes pkArrive{0%{filter:brightness(1.7)}100%{filter:none}}
   /* 再生バー：画面の下に固定。指でつまんで前後に動かせる。
      z-index はモーダル(50)より下。上にすると号車入力などのボタンを塞ぐ */
-  .pk-animbar{position:fixed; left:0; right:0; bottom:0; z-index:45;
+  .pk-animbar{position:fixed; left:0; right:0; bottom:0; z-index:45; overflow:hidden;
               background:rgba(255,255,255,.97); border-top:1px solid var(--line);
-              padding:7px 10px calc(9px + env(safe-area-inset-bottom)); box-shadow:0 -3px 14px rgba(0,0,0,.14);}
-  .pk-animbtns{display:flex; align-items:stretch; gap:4px; margin-top:2px; flex-wrap:nowrap;}
+              padding:7px 7px calc(9px + env(safe-area-inset-bottom)); box-shadow:0 -3px 14px rgba(0,0,0,.14);}
+  .pk-animbtns{display:flex; align-items:stretch; gap:3px; margin-top:2px; flex-wrap:nowrap;
+               justify-content:flex-start;}
   /* 指で押す的が小さくならないよう、送り戻しのボタンは最低幅をそろえる */
   .pk-animbtns button{background:#eef1f4; border:1px solid #d4dae0; color:#1a1f26;
-              border-radius:8px; padding:6px 6px; font-size:12px; font-weight:700;
-              white-space:nowrap; flex:0 0 auto; min-width:38px; line-height:1.5;}
+              border-radius:8px; padding:6px 5px; font-size:11.5px; font-weight:700;
+              white-space:nowrap; flex:0 0 auto; min-width:33px; line-height:1.5;}
+  /* 右の2つは幅が足りなければ文字だけ詰める。画面外へは絶対に出さない */
+  .pk-animbtns button#pkAnimApply, .pk-animbtns button#pkAnimQuit{flex:0 1 auto; min-width:0; overflow:hidden;}
   .pk-animbtns button.on{background:#d98324; border-color:#d98324; color:#fff;}
   .pk-animbtns button.ok{background:#1a1f26; border-color:#1a1f26; color:#fff;}
-  .pk-animtime{font-family:var(--mono); font-size:11px; color:#5b6470; margin:0 2px; white-space:nowrap;}
+  /* 幅が足りないときは、まず台数表示から縮める（ボタンは押せる大きさを保つ） */
+  .pk-animtime{font-family:var(--mono); font-size:10.5px; color:#5b6470; margin:0 1px;
+               white-space:nowrap; flex:0 1 auto; overflow:hidden; min-width:0;}
   /* スライダーはボタンより上。下端に置くとスキップの丸ボタンに隠れる */
   #pkAnimSeek{width:100%; height:24px; margin:0; accent-color:#d98324; touch-action:none; display:block;}
   body.pk-land .pk-animbar{padding-bottom:6px;}
@@ -421,6 +426,8 @@
     <div class="main-session-row">
       <div class="main-session-bar" id="mainSessionBar">現在のメイン：確認中…</div>
       <div class="day-tabs" id="dayTabs"></div>
+      <!-- 修正は「本日」の横。号車を下までスライドしたあとでも、すぐ押せる位置 -->
+      <button class="btn ghost" id="btnEdit" style="color:#f2f5f7; flex-shrink:0; padding:8px 12px; font-size:12px;">✎ 修正</button>
     </div>
   </div>
 
@@ -442,22 +449,20 @@
 
   <div class="toolbar">
     <button class="btn primary" id="btnInput">＋ 入力モード</button>
-    <button class="btn ghost" id="btnEdit" style="color:#1a1f26;">✎ 修正</button>
-    <div class="spacer"></div>
-    <button class="btn ghost ico-only" id="btnEndMain" title="メインを終了" style="display:none; font-size:11px; color:#1a1f26;">メイン終了</button>
     <button class="btn icon-only ghost" id="btnTemplate" title="号車テンプレート">📋</button>
     <button class="btn icon-only ghost" id="btnSettings">⚙️</button>
+    <div class="spacer"></div>
+    <button class="btn ghost ico-only" id="btnEndMain" title="メインを終了" style="display:none; font-size:11px; color:#1a1f26;">メイン終了</button>
   </div>
 
   <div class="legend">
-    <span><span class="sw next-sw"></span>次に帰庫</span>
+    <span><span class="sw next-sw"></span>配置済</span>
     <span><span class="sw yellow-sw"></span>帰庫間近</span>
     <span><span class="sw red-sw"></span>帰庫済</span>
     <span id="windowNote" style="color:var(--text-dim);"></span>
   </div>
 
   <div class="list-wrap">
-    <div class="col-head" id="colHead"><div>号車</div><div id="chCol1">帰庫予定</div><div id="chCol2">翌日出庫</div><div></div></div>
     <div id="listContainer"></div>
   </div>
 
@@ -490,7 +495,7 @@
       <button id="pkAnimPause" title="停止">⏸</button>
       <button id="pkAnimFwd"  title="再生">▶▶</button>
       <button id="pkAnimEnd"  title="最後まで">▶|</button>
-      <span class="pk-animtime" id="pkAnimTime">0 / 0台</span>
+      <span class="pk-animtime" id="pkAnimTime">0/0</span>
       <div class="spacer" style="flex:1;"></div>
       <button id="pkAnimApply" class="ok">ここで確定</button>
       <button id="pkAnimQuit">閉じる</button>
@@ -1887,8 +1892,15 @@
   <div class="modal">
     <div class="modal-header"><h3>設定</h3><button class="modal-close" data-close="settingsOverlay">✕</button></div>
     <div class="field"><label>帰庫予定の何分前から黄色く表示するか（分）</label><input type="number" id="fThreshold" min="1" max="180" value="5"></div>
-    <div class="field"><label>号車のフォントサイズ（<span id="fsNoVal">30</span>px）</label><input type="range" id="fsNo" min="18" max="56" step="1" value="30" style="width:100%;"></div>
-    <div class="field"><label>時刻のフォントサイズ（<span id="fsTimeVal">22</span>px）</label><input type="range" id="fsTime" min="16" max="48" step="1" value="22" style="width:100%;"></div>
+    <div class="field"><label>フォントサイズ</label>
+      <div class="seg2" id="fsAutoSeg">
+        <button data-auto="1">自動（画面に合わせる）</button>
+        <button data-auto="0" class="on">手動で決める</button>
+      </div>
+      <div class="hint" id="fsAutoNote" style="margin-top:6px; display:none;"></div>
+    </div>
+    <div class="field" id="fsNoField"><label>号車のフォントサイズ（<span id="fsNoVal">30</span>px）</label><input type="range" id="fsNo" min="18" max="56" step="1" value="30" style="width:100%;"></div>
+    <div class="field" id="fsTimeField"><label>時刻のフォントサイズ（<span id="fsTimeVal">22</span>px）</label><input type="range" id="fsTime" min="16" max="48" step="1" value="22" style="width:100%;"></div>
     <div class="field"><label>帰庫順モードで表示する台数（現在時刻の上下）</label>
       <div class="seg2" id="winSeg">
         <button data-above="3" data-below="7">上3/下7</button>
@@ -1981,7 +1993,7 @@ window.__start = function(FB){
     todayKey:todayStr(), dates:[], activeDate:null,
     template:[], times:{},
     view:'genpon', carOrderOffset:0, carSort:'busNo',
-    settings:{ thresholdMin:5, winAbove:0, winBelow:999, fsNo:30, fsTime:22 },
+    settings:{ thresholdMin:5, winAbove:0, winBelow:999, fsNo:30, fsTime:22, fsAuto:false },
     notified:new Set(),
     blinked:new Set(),
     ocr:{ ready:false, failed:false, worker:null },
@@ -2070,10 +2082,12 @@ window.__start = function(FB){
   function renderDayTabs(){ const w=$('dayTabs'); w.innerHTML=''; state.dates.forEach(dt=>{ const t=document.createElement('div'); t.className='day-tab'+(dt===state.activeDate?' active':''); t.textContent=fmtDateLabel(dt,state.todayKey); t.addEventListener('click',()=>switchDate(dt)); w.appendChild(t); }); }
   function renderViewUI(){
     document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.view===state.view));
-    if(state.view==='genpon'){ $('chCol1').textContent='翌日出庫'; $('chCol2').textContent='帰庫予定'; $('windowNote').textContent='原本と同じ並び'; }
-    else if(state.view==='carNo'){ $('chCol1').textContent='帰庫予定'; $('chCol2').textContent='翌日出庫'; const order=[0,1,2,3].map(i=>['大型','中型','特車','コミュ'][(i+state.carOrderOffset)%4]); $('windowNote').textContent='車種順 '+order.join('→')+'（車種順を再タップで並び替え）'; }
-    else if(state.view==='depart'){ $('chCol1').textContent='翌日出庫 ▲'; $('chCol2').textContent='帰庫予定'; $('windowNote').textContent='出庫が早い順'; }
-    else { $('chCol1').textContent='帰庫予定 ▲'; $('chCol2').textContent='翌日出庫'; $('windowNote').textContent=state.settings.winBelow>900?'全件':('現在 上'+state.settings.winAbove+'/下'+state.settings.winBelow); }
+    /* 見出しの一例（号車／翌日出庫／帰庫予定）は枠の中に出ているので廃止。
+       ここでは並び順の説明だけ出す */
+    if(state.view==='genpon'){ $('windowNote').textContent='原本と同じ並び'; }
+    else if(state.view==='carNo'){ const order=[0,1,2,3].map(i=>['大型','中型','特車','コミュ'][(i+state.carOrderOffset)%4]); $('windowNote').textContent='車種順 '+order.join('→')+'（車種順を再タップで並び替え）'; }
+    else if(state.view==='depart'){ $('windowNote').textContent='出庫が早い順'; }
+    else { $('windowNote').textContent=state.settings.winBelow>900?'全件':('現在 上'+state.settings.winAbove+'/下'+state.settings.winBelow); }
     // 車種順サブバー（号車順/帰庫順/出庫順）
     const sub=$('carSubBar'); if(sub){ sub.style.display=(state.view==='carNo')?'flex':'none'; document.querySelectorAll('#carSortSeg button').forEach(b=>b.classList.toggle('on',b.dataset.sort===state.carSort)); }
   }
@@ -2507,12 +2521,43 @@ window.__start = function(FB){
   function applySeg(){ document.querySelectorAll('#winSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.above===state.settings.winAbove&&+b.dataset.below===state.settings.winBelow)); }
   document.querySelectorAll('#winSeg button').forEach(b=>b.addEventListener('click',()=>{ state.settings.winAbove=+b.dataset.above; state.settings.winBelow=+b.dataset.below; applySeg(); }));
   $('btnSettings').addEventListener('click',()=>{ $('fThreshold').value=state.settings.thresholdMin; $('fsNo').value=state.settings.fsNo; $('fsNoVal').textContent=state.settings.fsNo; $('fsTime').value=state.settings.fsTime; $('fsTimeVal').textContent=state.settings.fsTime; applySeg(); updateNotif(); openModal('settingsOverlay'); });
-  function applyFontSizes(){ document.documentElement.style.setProperty('--fs-no', state.settings.fsNo+'px'); document.documentElement.style.setProperty('--fs-time', state.settings.fsTime+'px'); }
+  /* 自動サイズの基準：幅390pxの端末で 号車30px・時刻22px がちょうど良い、という実機の見え方。
+     この比率のまま画面幅に合わせて拡げ縮めする（スライダーの上下限は超えない） */
+  const FS_BASE_W=390, FS_BASE_NO=30, FS_BASE_TIME=22;
+  function autoFontSizes(){
+    const w=Math.max(280, Math.min(1200, window.innerWidth||FS_BASE_W));
+    const k=w/FS_BASE_W;
+    return { no:Math.round(Math.max(18,Math.min(56, FS_BASE_NO*k))),
+             time:Math.round(Math.max(16,Math.min(48, FS_BASE_TIME*k))) };
+  }
+  function effectiveFontSizes(){
+    if(state.settings.fsAuto) return autoFontSizes();
+    return { no:state.settings.fsNo, time:state.settings.fsTime };
+  }
+  function applyFontSizes(){
+    const f=effectiveFontSizes();
+    document.documentElement.style.setProperty('--fs-no', f.no+'px');
+    document.documentElement.style.setProperty('--fs-time', f.time+'px');
+    const note=$('fsAutoNote');
+    if(note){ note.textContent='いまの画面（幅'+Math.round(window.innerWidth)+'px）では 号車'+f.no+'px・時刻'+f.time+'px になります'; }
+  }
+  /* 画面の幅が変わったら자動サイズを取り直す */
+  window.addEventListener('resize',()=>{ if(state.settings.fsAuto) applyFontSizes(); });
+  function applyFsAutoUI(){
+    const on=!!state.settings.fsAuto;
+    document.querySelectorAll('#fsAutoSeg button').forEach(b=>b.classList.toggle('on', (b.dataset.auto==='1')===on));
+    const note=$('fsAutoNote'); if(note) note.style.display = on ? '' : 'none';
+    ['fsNoField','fsTimeField'].forEach(id=>{ const el=$(id); if(el) el.style.display = on ? 'none' : ''; });
+  }
+  document.querySelectorAll('#fsAutoSeg button').forEach(b=>b.addEventListener('click',()=>{
+    state.settings.fsAuto = b.dataset.auto==='1';
+    applyFsAutoUI(); applyFontSizes(); renderList();
+  }));
   $('fsNo').addEventListener('input',e=>{ $('fsNoVal').textContent=e.target.value; document.documentElement.style.setProperty('--fs-no', e.target.value+'px'); });
   $('fsTime').addEventListener('input',e=>{ $('fsTimeVal').textContent=e.target.value; document.documentElement.style.setProperty('--fs-time', e.target.value+'px'); });
   function updateNotif(){ const p=('Notification'in window)?Notification.permission:'unsupported'; const m={granted:'通知は許可されています',denied:'通知が拒否されています',default:'まだ許可されていません',unsupported:'この環境では通知に対応していません'}; $('notifStatusText').textContent=m[p]||'未設定'; }
   $('btnNotifPermission').addEventListener('click',async()=>{ if(!('Notification'in window)){showToast('通知非対応');return;} try{await Notification.requestPermission();}catch(e){} updateNotif(); });
-  $('btnSaveSettings').addEventListener('click',()=>{ const v=parseInt($('fThreshold').value,10); state.settings.thresholdMin=(isFinite(v)&&v>0)?v:5; state.settings.fsNo=parseInt($('fsNo').value,10)||30; state.settings.fsTime=parseInt($('fsTime').value,10)||26; applyFontSizes(); localStorage.setItem('rb-settings',JSON.stringify(state.settings)); closeModal('settingsOverlay'); renderList(); showToast('設定を保存しました'); });
+  $('btnSaveSettings').addEventListener('click',()=>{ const v=parseInt($('fThreshold').value,10); state.settings.thresholdMin=(isFinite(v)&&v>0)?v:5; state.settings.fsNo=parseInt($('fsNo').value,10)||30; state.settings.fsTime=parseInt($('fsTime').value,10)||26; applyFsAutoUI(); applyFontSizes(); localStorage.setItem('rb-settings',JSON.stringify(state.settings)); closeModal('settingsOverlay'); renderList(); showToast('設定を保存しました'); });
 
   /* ===== notifications ===== */
   function checkNotifications(){ if(!('Notification'in window)||Notification.permission!=='granted')return; if(state.activeDate!==state.todayKey)return; const now=nowMin(); allBusesFlat().forEach(b=>{ const r=rec(b.busNo); if(r.returned){state.notified.delete(b.busNo);return;} const rt=parseT(r.r); if(rt===null)return; const diff=rt-now; if(diff>=0&&diff<=state.settings.thresholdMin&&!state.notified.has(b.busNo)){ try{new Notification('帰庫が近づいています',{body:`号車 ${b.busNo}　帰庫予定 ${r.r}`});}catch(e){} state.notified.add(b.busNo); } if(diff<0)state.notified.delete(b.busNo); }); }
@@ -2586,7 +2631,9 @@ window.__start = function(FB){
   async function ensureTodayIndex(){ if(!state.metaSeen){ setTimeout(ensureTodayIndex,400); return; } if(!state.dates.includes(state.todayKey)){ state.dates.push(state.todayKey); state.dates.sort(); while(state.dates.length>3)state.dates.shift(); await pushMeta(); } }
 
   /* ===== start ===== */
-  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; if(!(state.settings.fsNo>0))state.settings.fsNo=30; if(!(state.settings.fsTime>0))state.settings.fsTime=22; applyFontSizes(); drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); applyRoleUI(); subscribeMainSession(); if(userRole==='main') startMainHeartbeat(); }
+  function startApp(){ try{ const s=JSON.parse(localStorage.getItem('rb-settings')||'{}'); Object.assign(state.settings,s); }catch(e){} if(!(state.settings.thresholdMin>0))state.settings.thresholdMin=5; if(!(state.settings.fsNo>0))state.settings.fsNo=30; if(!(state.settings.fsTime>0))state.settings.fsTime=22;
+    if(state.settings.fsAuto===undefined) state.settings.fsAuto=false;
+    applyFsAutoUI(); applyFontSizes(); drawBus(); renderClock(); buildKeypad('keypad',padKey); buildKeypad('seqKeypad',seqKey); renderViewUI(); subscribeTpl(); subscribeMeta(); ensureTodayIndex(); startLoops(); applyRoleUI(); subscribeMainSession(); if(userRole==='main') startMainHeartbeat(); }
   /* ===== ログインフロー：役割選択 → パスコード → （サブのみ）名前選択 ===== */
   let pendingRole=null;
   function showRoleSelect(){ pendingRole=null; $('roleSelect').style.display='flex'; $('passStep').style.display='none'; $('nameStep').style.display='none'; $('gateInput').value=''; $('gateErr').textContent=''; }
@@ -3006,6 +3053,11 @@ window.__start = function(FB){
     return m;
   })();
   const PK_ESCAPE=['g-4','g-5','g-6','g-7','g-8','d-4','d-5','d-6','d-7'];
+  /* このうち「整備を決めるまで空けておく」枠。
+     中の島は左の中型2台スペース（g-9・g-10）だけ空きを許し、
+     g-2〜g-8 は必ず埋める。ヤナセは1枠（d-7）まで。
+     以前は9枠すべて空けていたため、中の島とヤナセに空きが並んで残っていた */
+  const PK_HOLD=['g-8','d-7'];
   const PK_LATE_MIN=420;      // 7:00
   /* 手前のブロックは6時台・5時台の車。手順④「前列 k-1〜8 は6時台5時台を一気に」 */
   const PK_EARLY_BLOCK=(function(){
@@ -3518,6 +3570,32 @@ window.__start = function(FB){
        同じ列の行どうしに前後関係は無いので、入れ替えても条件は壊れない。
        「上ほど帰庫が遅い」に並べ直すと、到着順に下から順に埋まって穴が消える。
        入れ替えて条件を満たさない車が出たら元に戻す。 */
+    /* 列まるごとの並べ直し（tidyMaintenance）は、1か所でも置けないと全部やめてしまう。
+       そこで最後に「隣り合う2台だけ入れ替える」直しを回して、
+       上の行のほうが早く帰る組を1つずつ解消する */
+    function fixMaintenanceOrder(){
+      for(let pass=0; pass<8; pass++){
+        let moved=false;
+        for(let c=1;c<=6;c++){
+          const rows=[];
+          for(let r=1;r<=8;r++){ const id=mId(c,r); if(!fixed[id]&&assign[id]&&assign[id].ret!=null) rows.push(r); }
+          for(let k=0;k+1<rows.length;k++){
+            const ra=rows[k], rb=rows[k+1];
+            const ida=mId(c,ra), idb=mId(c,rb);
+            const ca=assign[ida], cb=assign[idb];
+            if(!ca||!cb) continue;
+            if(ca.ret>=cb.ret) continue;          // 上のほうが遅い＝正しい
+            delete assign[ida]; delete assign[idb];
+            if(fitsDirect(ida,cb,null)&&fitsDirect(idb,ca,null)){
+              assign[ida]=cb; assign[idb]=ca; moved=true;
+            }else{
+              assign[ida]=ca; assign[idb]=cb;
+            }
+          }
+        }
+        if(!moved) break;
+      }
+    }
     function tidyMaintenance(){
       for(let c=1;c<=6;c++){
         /* その列に入っている車を集める（手入力・テンプレの枠は触らない） */
@@ -3591,7 +3669,7 @@ window.__start = function(FB){
       /* ── 枠を「埋める順」に見て、条件に合ううち帰庫がいちばん早い車を置く ──
          こうすると a・b・c… どのエリアも奥から帰庫順に埋まり、
          アニメで見ても順序どおりに入っていく（L-204 / L-205 / L-255） */
-      let holdEscape=true;      // 整備を決めるまで逃がし先は空けておく
+      let holdEscape=true;      // 整備を決めるまで逃がし先を空けておく（各エリア1枠だけ）
       const order=PK_FILL.filter(sl=>!assign[sl]&&!blockedSet[sl]);
       /* 埋める順を1周で打ち切らない。先に来た枠に置ける車がまだ帰っていないと
          その枠が空のままになり、整備の次の列のゲートが開かなくなる。
@@ -3603,7 +3681,7 @@ window.__start = function(FB){
       for(let oi=0; oi<order.length && pool.length; oi++){
         const slot=order[oi];
         if(assign[slot]||!gateOpen(slot)) continue;
-        if(holdEscape&&PK_ESCAPE.indexOf(slot)>=0) continue;
+        if(holdEscape&&PK_HOLD.indexOf(slot)>=0) continue;
         const cand=candidatesFor(slot);
         if(!cand.length) continue;
         const lim=Math.min(cand.length,7);
@@ -3812,9 +3890,9 @@ window.__start = function(FB){
       else if(ESCAPE2.has(slot)) cost-=1;   // グリーン・新駐車場も受け皿として使う
       return cost;
     }
-    /* 整備に穴を作るか。strict のあいだは、下にまだ空きがある行に入れない＋
-       同じ列の上下の帰庫の順（上ほど遅い）も崩さない */
-    let rescueStrict=true;
+    /* 押し込みの厳しさ。0＝穴も逆転も作らない／1＝穴は許すが逆転は作らない／2＝最後の手段。
+       いきなり 0→2 に落とすと、穴を1つ避けるために列の順番まで崩れていた */
+    let rescueLevel=0;
     function mOrderOK(slot,car){
       if(areaOf(slot)!=='m'||car.ret==null) return true;
       const n=numOf(slot), c=mCol(n), r=mRow(n);
@@ -3828,7 +3906,10 @@ window.__start = function(FB){
       let best=null,bestCost=Infinity;
       for(const t of freeSlots){
         if(assign[t]||(used&&used.has(t))) continue;
-        if(rescueStrict&&areaOf(t)==='m'&&(!mBottomOK(t)||!mOrderOK(t,car))) continue;
+        if(areaOf(t)==='m'){
+          if(rescueLevel<=0 && !mBottomOK(t)) continue;      // 穴を作らない
+          if(rescueLevel<=1 && !mOrderOK(t,car)) continue;   // 列の上下の順を崩さない
+        }
         if(!fitsHard(t,car,null)) continue;
         const cst=rescueCost(t,car);
         if(cst<bestCost){ bestCost=cst; best=t; }
@@ -3858,8 +3939,8 @@ window.__start = function(FB){
        先に玉突きを許すと、直接置ける車のために他の車を動かしてしまう。
        さらに ③整備に穴を作らない範囲で全部やってから、
        それでも余ったときだけ穴を許す（順番を崩すのは本当の最後） */
-    for(const strict of [true,false]){
-      rescueStrict=strict;
+    for(const lv of [0,1,2]){
+      rescueLevel=lv;
       for(let d=0;d<=3;d++){
         for(let ui=pool.length-1;ui>=0;ui--){
           const car=pool[ui];
@@ -3870,12 +3951,42 @@ window.__start = function(FB){
       }
       if(!pool.length) break;
     }
-    rescueStrict=true;
+    rescueLevel=0;
     /* 外した跡や押し込みで列に穴が残ることがあるので、最後にもう一度詰め直す */
     tidyMaintenance();
+    fixMaintenanceOrder();
+    /* 中の島は g-2〜g-8 を必ず埋める。空くとしたら g-9・g-10（左の中型2台）だけ。
+       整備を決めるまで g-8 を空けておく都合で穴が残ったら、ここで前へ詰める */
+    (function compactNakanoshima(){
+      const seq=PK_SEQ.g;
+      for(let pass=0; pass<seq.length; pass++){
+        let moved=false;
+        for(let i=0;i<seq.length-1;i++){
+          if(assign[seq[i]]||blockedSet[seq[i]]||fixed[seq[i]]) continue;
+          for(let j=i+1;j<seq.length;j++){
+            const car=assign[seq[j]];
+            if(!car) continue;
+            if(fixed[seq[j]]) break;
+            delete assign[seq[j]];
+            if(fitsHard(seq[i],car,null)){ assign[seq[i]]=car; moved=true; }
+            else { assign[seq[j]]=car; }
+            break;
+          }
+        }
+        if(!moved) break;
+      }
+    })();
+    /* できあがりの粗さ＝整備の列の逆転と穴。案を選ぶときの決め手に使う */
+    let flaws=0;
+    for(let c=1;c<=6;c++){
+      const f=[];
+      for(let r=1;r<=8;r++){ const v=assign[mId(c,r)]; if(v&&v.ret!=null) f.push({r,ret:v.ret}); }
+      for(let k=1;k<f.length;k++) if(f[k-1].ret<f[k].ret) flaws+=3;      // 上のほうが早く帰る
+      if(f.length>1) flaws+=(f[f.length-1].r-f[0].r+1)-f.length;         // 列の途中の空き
+    }
     const out={};
     Object.keys(assign).forEach(s=>{ if(!fixed[s]) out[s]=assign[s].no; });
-    return {assign:out, unplaced:pool.map(c=>c.no), rescued:rescued, placedCount:placed, assignObj:assign,
+    return {assign:out, unplaced:pool.map(c=>c.no), rescued:rescued, flaws:flaws, placedCount:placed, assignObj:assign,
       lo:lo,hi:hi,rlo:rlo,rhi:rhi,
       dbg:input.debug?{lo,hi,rlo,rhi,assign,canPlace,gateOpen}:null};
   }
@@ -3890,7 +4001,8 @@ window.__start = function(FB){
                        deadline:Math.min(Date.now()+ms, t0+budget)});
       r.relax=relax; r.strategy=strategy;
       /* 未配置が少ない方を優先。同数なら「最後の砦で押し込んだ台数」が少ない方＝並びが綺麗な方 */
-      const sc=x=>x.unplaced.length*1000+((x.rescued&&x.rescued.length)||0);
+      /* ①置けない車が少ない ②押し込みが少ない ③整備の並びが綺麗、の順で選ぶ */
+      const sc=x=>x.unplaced.length*10000+((x.rescued&&x.rescued.length)||0)*100+(x.flaws||0);
       if(!best||sc(r)<sc(best)) best=r;
       return r;
     };
@@ -3903,7 +4015,7 @@ window.__start = function(FB){
     const plan=[['order',0,3500],['order',1,2500],['order',2,2000]];
     for(const [st,rx,ms] of plan){
       run(st,rx,rx+1,ms);
-      if(best&&!best.unplaced.length&&!(best.rescued&&best.rescued.length)) return best;
+      if(best&&!best.unplaced.length&&!(best.rescued&&best.rescued.length)&&!best.flaws) return best;
     }
     return best;
   }
@@ -4669,7 +4781,7 @@ window.__start = function(FB){
     }
     pk.animHide=hide;
     const total=pkAnimTotal(), n=pkAnim.buses.length;
-    $('pkAnimTime').textContent=(n-hide.size)+' / '+n+'台';
+    $('pkAnimTime').textContent=(n-hide.size)+'/'+n;
     $('pkAnimSeek').value=Math.round(1000*Math.max(0,Math.min(1, pkAnim.time/total)));
     if(before!==hide.size) pkRenderCards();      // 表示・非表示が変わったときだけ描き直す
   }
