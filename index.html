@@ -1803,6 +1803,24 @@
 <div class="modal-overlay" id="editOverlay">
   <div class="modal">
     <div class="modal-header"><h3 id="editTitle">修正</h3><button class="modal-close" data-close="editOverlay">✕</button></div>
+    <!-- 急な車両交換のとき、2台の「翌日出庫」「帰庫予定」をまとめて入れ替える -->
+    <div id="swapBox" style="margin-bottom:12px;">
+      <button class="btn ghost" id="btnSwapOpen"
+        style="width:100%; justify-content:center; color:#1a1f26; border-style:dashed;">⇄ 車両入替</button>
+      <div id="swapPanel" style="display:none; margin-top:8px; padding:10px 10px 12px;
+           border:1px solid var(--line); border-radius:10px; background:var(--panel-2);">
+        <div class="field" style="margin-bottom:8px;">
+          <label>入れ替える号車</label>
+          <input type="tel" inputmode="numeric" maxlength="4" id="swapNo" placeholder="0000"
+            style="font-family:var(--mono); font-size:22px; letter-spacing:4px; text-align:center;">
+        </div>
+        <div class="hint" id="swapPreview" style="margin-bottom:8px;">4桁を入れると入れ替え後の時刻が出ます</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost" id="swapCancel" style="flex:1; justify-content:center; color:#1a1f26;">やめる</button>
+          <button class="btn primary" id="swapOk" style="flex:1; justify-content:center;">入れ替える</button>
+        </div>
+      </div>
+    </div>
     <div class="field"><label>号車</label><input type="text" id="editNo"></div>
     <div class="field"><label>翌日出庫（例 7:07 / 数字 / 文字も可）</label><input type="text" id="editD"></div>
     <div class="field"><label>帰庫予定（例 19:38 / 数字 / 文字も可）</label><input type="text" id="editR"></div>
@@ -2425,7 +2443,43 @@ window.__start = function(FB){
       card.addEventListener('click',(e)=>{ if(userRole==='sub')return; if(!editMode)return; if(e.target.closest('[data-action]'))return; const no=card.dataset.no; openEdit(no); });
     });
   }
-  function openEdit(no){ const r=rec(no); state.edit.no=no; $('editTitle').textContent='修正　号車 '+no; $('editNo').value=no; $('editD').value=r.d||''; $('editR').value=r.r||''; openModal('editOverlay'); }
+  function openEdit(no){ const r=rec(no); state.edit.no=no; swapReset(); $('editTitle').textContent='修正　号車 '+no; $('editNo').value=no; $('editD').value=r.d||''; $('editR').value=r.r||''; openModal('editOverlay'); }
+  /* ===== 車両入替 =====
+     急な車両交換のとき、2台の「翌日出庫」と「帰庫予定」をそっくり入れ替える。
+     号車そのものは動かさず、時刻だけを交換する（帰庫済みの印もその車についていく） */
+  function swapReset(){ $('swapPanel').style.display='none'; $('swapNo').value='';
+    $('swapPreview').textContent='4桁を入れると入れ替え後の時刻が出ます'; $('swapPreview').style.color=''; }
+  $('btnSwapOpen').addEventListener('click',()=>{
+    const open=$('swapPanel').style.display!=='none';
+    if(open){ swapReset(); return; }
+    $('swapPanel').style.display=''; setTimeout(()=>$('swapNo').focus(),60);
+  });
+  $('swapCancel').addEventListener('click', swapReset);
+  function swapPeek(){
+    const a=state.edit.no, b=$('swapNo').value.trim();
+    const p=$('swapPreview'); p.style.color='';
+    if(b.length<4){ p.textContent='4桁を入れると入れ替え後の時刻が出ます'; return null; }
+    if(b===a){ p.textContent='同じ号車です'; p.style.color='#a33'; return null; }
+    const t=dayTimes();
+    if(!t[b]){ p.textContent='号車 '+b+' は本日の一覧にありません'; p.style.color='#a33'; return null; }
+    const ra=t[a]||{d:'',r:''}, rb=t[b];
+    p.innerHTML='<b>'+a+'</b> ← '+(rb.d||'--')+' / '+(rb.r||'--')+'<br><b>'+b+'</b> ← '+(ra.d||'--')+' / '+(ra.r||'--');
+    return {a,b};
+  }
+  $('swapNo').addEventListener('input',e=>{ e.target.value=e.target.value.replace(/\D/g,''); swapPeek(); });
+  $('swapOk').addEventListener('click',()=>{
+    const s=swapPeek(); if(!s) return;
+    const t=dayTimes();
+    if(!t[s.a]) t[s.a]={d:'',r:'',returned:false};
+    const A={d:t[s.a].d, r:t[s.a].r, returned:t[s.a].returned};
+    const B={d:t[s.b].d, r:t[s.b].r, returned:t[s.b].returned};
+    t[s.a].d=B.d; t[s.a].r=B.r; t[s.a].returned=B.returned;
+    t[s.b].d=A.d; t[s.b].r=A.r; t[s.b].returned=A.returned;
+    pushDay(); renderList(); attachEditHandlers();
+    swapReset(); closeModal('editOverlay');
+    showToast('⇄ '+s.a+' と '+s.b+' の時刻を入れ替えました',3000);
+  });
+
   $('editSave').addEventListener('click',()=>{
     const oldNo=state.edit.no; const newNo=$('editNo').value.trim();
     const d=normTime($('editD').value.trim()); const r=normTime($('editR').value.trim());
