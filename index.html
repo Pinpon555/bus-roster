@@ -39,7 +39,7 @@
   .role-select{width:100%; max-width:240px; display:flex; flex-direction:column; gap:12px;}
   .role-btn{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:16px; font-size:16px; font-weight:700;}
   .role-btn:active{border-color:var(--amber);}
-  .role-btn .sub-label{display:block; font-size:11px; font-weight:400; color:var(--text-dim); margin-top:3px;}
+  .role-btn .sub-label{display:block; font-size:11px; font-weight:400; color:#fff; margin-top:3px;}
   .role-back{margin-top:14px; background:none; border:none; color:var(--text-dim); font-size:12px; text-decoration:underline;}
   .name-select{width:100%; max-width:240px; display:flex; gap:10px; margin-top:6px;}
   .name-select button{flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:14px 6px; font-size:14px; font-weight:700;}
@@ -271,9 +271,16 @@
   /* 車両検索でみつけた枠：4回光ってから、ソナーのように広がって消える */
   @keyframes pk-find-blink{ 0%,100%{fill-opacity:1;} 50%{fill-opacity:.12;} }
   .pk-slot.pk-found{fill:#e03131 !important; animation:pk-find-blink .32s ease-in-out 4;}
-  @keyframes pk-sonar{ from{transform:scale(1); opacity:.95;} to{transform:scale(3); opacity:0;} }
-  .pk-sonar{fill:none; stroke:#e03131; stroke-width:5; transform-box:fill-box; transform-origin:center;
-            animation:pk-sonar 1.15s ease-out forwards; pointer-events:none;}
+  /* ソナー：見えないくらい小さな点から始まる。
+     出はじめは透明 → すぐ赤くはっきり → 広がりながらフェードアウト。
+     色は枠の点滅と同じ赤（#e03131）。範囲は前の3倍 */
+  /* ソナーは「半径そのもの」を 0 から広げる。
+     拡大(transform)方式だと半径0のものは何倍にしても0のままなので、
+     どうしても見える大きさの丸から始めることになり、枠に赤丸が乗ってしまう。
+     線の太さは vector-effect で拡大に引きずらせない */
+  /* stroke-width は SMIL で動かすので CSS では指定しない。
+     CSS の指定があると属性側のアニメより CSS が優先されて線が出ない */
+  .pk-sonar{fill:none; stroke:#e03131; pointer-events:none;}
   @keyframes pk-chip-blink{ 0%,100%{opacity:1;} 50%{opacity:.2;} }
   .pk-chip.pk-found-chip{animation:pk-chip-blink .32s ease-in-out 4;
             outline:3px solid #e03131; outline-offset:1px; background:#8f1d1d;}
@@ -4148,6 +4155,7 @@ window.__start = function(FB){
       $('pkRotateHint').style.display=s.rotate?'':'none';
       $('pkFindBtn').style.display=(s.map==='full')?'':'none';   // 車両検索は全面図のみ
       pkUpdateOrientation();
+      pkFixYanaseLabels();
       pkRenderAll();
     }
     document.querySelectorAll('.pk-dot').forEach((d,j)=>d.classList.toggle('on', j===pk.screen));
@@ -4625,6 +4633,49 @@ window.__start = function(FB){
 
   (function bindSlots(){ document.querySelectorAll('.pk-map .pk-slot[id]').forEach(attachSlotEvents); })();
 
+  /* ヤナセの枠番号（①〜⑪）は、元の図では曲線に沿った1本の文字列で、
+     枠11個ぶんの高さに対して半分ほどの範囲に詰まっていた。
+     枠の位置を実測して、1つずつ左横に置き直す */
+  function pkFixYanaseLabels(){
+    /* 全面図には元から番号が無いので付けない。上図だけ直す */
+    ['upper'].forEach(mid=>{
+      const svg=document.getElementById('pkMap-'+mid); if(!svg) return;
+      if(svg.dataset.dLabeled) return;
+      const slots=[];
+      for(let i=1;i<=11;i++){ const e=svg.querySelector('[id="d-'+i+'"]'); if(e) slots.push({n:i,el:e}); }
+      if(slots.length<11) return;
+      let box; try{ box=slots[0].el.getBBox(); }catch(e){ return; }
+      if(!box.width) return;                       // まだ描かれていない
+      /* 元の詰まった番号を消す */
+      [...svg.querySelectorAll('text')].forEach(t=>{
+        const s2=(t.textContent||'').replace(/\s/g,'');
+        if(s2==='①②③④⑤⑥⑦⑧⑨⑩⑪') t.style.display='none';
+      });
+      const NS='http://www.w3.org/2000/svg';
+      const g=document.createElementNS(NS,'g'); g.setAttribute('class','pk-dlabels');
+      const MARU='①②③④⑤⑥⑦⑧⑨⑩⑪';
+      /* 大きさは同じ図の中にある新駐車場の番号（27px）に合わせる。
+         枠の左は掃除小屋にかかるので、右側に置く */
+      let fs=27;
+      const ref=svg.querySelector('.upper-st5, .lower-st3');
+      if(ref){ const v=parseFloat(getComputedStyle(ref).fontSize); if(v>0) fs=v; }
+      slots.forEach(s3=>{
+        const b2=s3.el.getBBox();
+        const t=document.createElementNS(NS,'text');
+        t.setAttribute('x', b2.x + b2.width + fs*0.35);
+        t.setAttribute('y', b2.y + b2.height*0.5 + fs*0.36);
+        t.setAttribute('text-anchor','start');
+        t.setAttribute('font-size', fs);
+        t.setAttribute('fill','#604a45');
+        t.style.pointerEvents='none';
+        t.textContent=MARU[s3.n-1];
+        g.appendChild(t);
+      });
+      svg.appendChild(g);
+      svg.dataset.dLabeled='1';
+    });
+  }
+
   /* ---------------- 車両検索（全面図のみ） ----------------
      4桁を入れた時点ですぐ閉じて探す。決定を押す必要はない。
      配置済みならその枠を、未配置ならトレイの号車を、4回光らせてから
@@ -4636,15 +4687,40 @@ window.__start = function(FB){
     setTimeout(()=>el.classList.remove('pk-found'), 1400);
     try{
       const b=el.getBBox(), NS='http://www.w3.org/2000/svg';
-      for(let i=0;i<3;i++){
-        const r=document.createElementNS(NS,'rect');
-        r.setAttribute('x',b.x); r.setAttribute('y',b.y);
-        r.setAttribute('width',b.width); r.setAttribute('height',b.height);
-        r.setAttribute('rx',Math.min(b.width,b.height)*0.25);
+      const cx=b.x+b.width/2, cy=b.y+b.height/2;
+      /* 出発点は見えないくらい小さな点。ここから 27倍 まで広がる。
+         最大の大きさが 枠の高さ×0.72×3（＝前の3倍）になるよう半径を決める */
+      /* 「ここにある」の合図は枠の点滅だけが担当する。
+         輪は半径0（見えない）から始まり、外へ広がりながら細く薄くなって消える */
+      const radMax=Math.min(b.width,b.height)/2*0.72*27*0.8;
+      /* begin は「ページを開いてからの時刻」なので、秒数を書くとすでに過ぎていて
+         いきなり終了状態になる。indefinite にして、時間が来たら手で走らせる */
+      const anim=(name,from,to,dur,spline)=>{
+        const a2=document.createElementNS(NS,'animate');
+        a2.setAttribute('attributeName',name);
+        a2.setAttribute('from',from); a2.setAttribute('to',to);
+        a2.setAttribute('dur',dur+'s'); a2.setAttribute('begin','indefinite');
+        a2.setAttribute('fill','freeze');
+        if(spline){ a2.setAttribute('calcMode','spline'); a2.setAttribute('keySplines',spline); }
+        return a2;
+      };
+      for(let i=0;i<7;i++){
+        const r=document.createElementNS(NS,'circle');
+        r.setAttribute('cx',cx); r.setAttribute('cy',cy);
+        r.setAttribute('r',0); r.setAttribute('opacity',0);
+        r.setAttribute('vector-effect','non-scaling-stroke');
+        r.setAttribute('stroke-width',0);
         r.setAttribute('class','pk-sonar');
-        r.style.animationDelay=(1.15+i*0.34)+'s';       // 4回光ったあとに続けて出す
+        /* 出だしはさらに速く、減速も強く。最後はほぼ止まるので
+           外側にリングが濃く寄り集まって見える */
+        const parts=[anim('r',0,radMax,1.7,'0 .97 .05 1'),
+                     anim('stroke-width',5,1.4,1.7),
+                     anim('opacity',.95,0,1.7,'.75 0 .97 .5')];
+        parts.forEach(x=>r.appendChild(x));
         m.appendChild(r);
-        setTimeout(()=>r.remove(), 3200);
+        const d=(1.30+i*0.16)*1000;               // 4回光ったあとに続けて出す（間隔は詰める）
+        setTimeout(()=>{ parts.forEach(x=>{ try{ x.beginElement(); }catch(e){} }); }, d);
+        setTimeout(()=>r.remove(), d+1900);
       }
     }catch(e){}
     el.scrollIntoView&&el.scrollIntoView({block:'center',behavior:'smooth'});
