@@ -3066,6 +3066,8 @@ window.__start = function(FB){
   };
   /* 保険スペース L-276：a-1〜3（中型・ポンチョ限定）／d-4〜7（特車以外）／g-2〜8（特車以外）
      いつでも出庫でき、帰庫が遅くても対応しやすい場所。予備車はここへ分散して置く */
+  /* 整備のうち予備車（出庫がヨ）を置いてよい枠。できるだけ奥（番号の小さい方）から詰める */
+  const M_SPARE_OK=['m-1','m-2','m-3','m-9','m-10','m-11','m-17','m-18','m-19'];
   const PK_HOKEN=['a-1','a-2','a-3','d-4','d-5','d-6','d-7','g-2','g-3','g-4','g-5','g-6','g-7','g-8'];
   const PK_SPARE_PREF={'a-1':-60,'a-2':-60,'a-3':-60,'d-4':-60,'d-5':-60,'d-6':-55,'d-7':-55,
     'g-2':-55,'g-3':-55,'g-4':-40,'g-5':-40,'g-6':-40,'g-7':-40,'g-8':-25,
@@ -3144,6 +3146,12 @@ window.__start = function(FB){
     if(slot==='d-2'&&t==='大型'&&/^66/.test(String(car.no))) return false;
     if((slot==='k-19'||slot==='k-20')&&t!=='コミュニティ') return false; // ポンチョ専用
     if(a==='i'&&car.dep==null) return false;                    // 洗車機に予備車は置かない
+    /* スタンドは給油する場所。出庫がヨ＝翌日動かない、帰庫がヨ＝給油できない。
+       どちらのヨも置けない */
+    if(a==='b'&&(car.dep==null||car.ret==null)) return false;
+    /* 整備に予備車（出庫がヨ）を置けるのは m-1・2・3／9・10・11／17・18・19 だけ。
+       ほかの枠に置くと、朝に動かない車が前をふさぐ */
+    if(a==='m'&&car.dep==null&&M_SPARE_OK.indexOf(slot)<0) return false;
     /* 中の島1はポンチョ（基本テンプレ1②の0101）の枠。大型・中型は入れない */
     if(slot==='g-1'&&t!=='コミュニティ') return false;
     /* グリーンへのポンチョは担当者のみ。一括配置では置かない */
@@ -3452,8 +3460,36 @@ window.__start = function(FB){
           put(sl,car); break;
         }
       }
-      /* ② 残った予備車は、通常の「埋める順」に任せる（奥のブロックへ自然に入る）。
-         ③ それでも入りきらない＝予備車が大量にある日の特例。本人が挙げた枠だけを使う。
+      /* ② 指定席に入らなかった予備車は、あとで車両交換があったとき動かしやすいよう
+            **1か所に固めず散らす**。中の島 → ヤナセ → 新駐車場 の順に1台ずつ回し、
+            一巡したらまた先頭へ戻る。奥から詰めるのは他と同じ */
+      const spread=[
+        ['g-6','g-7','g-8','g-5','g-4'],          // 中の島
+        ['d-7','d-6','d-5','d-4'],                // ヤナセ
+        ['k-5','k-6','k-7','k-8','k-4','k-3']     // 新駐車場
+      ];
+      let guard2=0;
+      for(const car of spares.slice()){
+        if(pool.indexOf(car)<0) continue;
+        /* いま予備車がいちばん少ないエリアから順に試す。
+           単純に順番で回すと、先の処理で中の島に2台入っている日に
+           また中の島へ行ってしまい、分散にならない */
+        const order2=spread.map((g,i)=>({i, n:spareCnt[areaOf(g[0])]||0}))
+                           .sort((x,y)=>x.n-y.n).map(x=>x.i);
+        let done=false;
+        for(let t=0;t<order2.length&&!done;t++){
+          const gi=order2[t];
+          for(const sl of spread[gi]){
+            if(assign[sl]||blockedSet[sl]||!gateOpen(sl)) continue;
+            const a=areaOf(sl), cap=PK_SPARE_CAP[a]===undefined?2:PK_SPARE_CAP[a];
+            if(spareCnt[a]>=cap) continue;
+            if(!canPlace(sl,car)) continue;
+            put(sl,car); done=true; break;
+          }
+        }
+        if(guard2++>60) break;
+      }
+      /* ③ それでも入りきらない＝予備車が大量にある日の特例。本人が挙げた枠だけを使う。
             整備1・2・3・9・10・11・17・18・19／グリーン12〜19／新駐車場11〜18と3〜8／
             ヤナセ4〜6／花壇1〜3／中の島1〜8  ※通常のロジックでは使わない */
     }
