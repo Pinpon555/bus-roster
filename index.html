@@ -1747,6 +1747,25 @@
   </div>
 </div>
 
+<!-- ★検証用：まとめて書き出したテキストを見せる（コピーしてチャットに貼るだけ） -->
+<div class="modal-overlay" id="pkExportOverlay">
+  <div class="modal">
+    <div class="seq-head">
+      <h3 style="margin:0;color:var(--amber);font-size:15px;">まとめて書き出し</h3>
+      <button class="modal-close" data-close="pkExportOverlay">✕</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--text-dim);margin:4px 0 8px;">
+      下を全部コピーして、そのままチャットに貼ってください。</p>
+    <textarea id="pkExportText" readonly
+      style="width:100%; height:44vh; font-family:var(--mono); font-size:11px; line-height:1.6;
+             border:1px solid var(--line); border-radius:8px; padding:8px; background:#fff; color:#1a1f26;"></textarea>
+    <div class="modal-actions">
+      <button class="btn primary" id="pkExportCopy" style="flex:1; justify-content:center;">📋 コピー</button>
+      <button class="btn ghost" id="pkExportCloseBtn" style="justify-content:center; color:#1a1f26;">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- テンプレ選択モーダル -->
 <div class="modal-overlay" id="pkTplOverlay">
   <div class="modal">
@@ -1761,6 +1780,18 @@
       <div class="ptpl-btns"><button class="btn ghost" id="pkBase1" style="color:#1a1f26;">▶ 適用</button></div>
     </div>
     <div id="pkTplList"></div>
+
+    <!-- ★検証用：今の画面の状態（会社指定・手入力・対象外・テンプレ有無）をまるごと保存する。
+         のりちゃんはこのボタンを押すだけでよい。あとでまとめて書き出して私に渡す */ -->
+    <div class="ptpl-row" style="border-color:#5b6470; margin-top:14px;">
+      <h4>検証用に保存</h4>
+      <div class="cnt" id="pkSnapNote">今の会社指定・手入力・対象外・時刻データをこの日として保存します</div>
+      <div class="ptpl-btns" style="flex-wrap:wrap;">
+        <button class="btn primary" id="pkSnapSave">💾 この日を保存</button>
+        <button class="btn ghost" id="pkSnapExport" style="color:#1a1f26;">📤 まとめて書き出し</button>
+      </div>
+      <div id="pkSnapList" style="margin-top:8px; font-size:11.5px; color:var(--text-dim);"></div>
+    </div>
   </div>
 </div>
 
@@ -1955,7 +1986,7 @@ try{
   const db=f.getFirestore(app);
   const auth=au.getAuth(app);
   await au.signInAnonymously(auth); // 匿名ログインの完了を待ってからDB操作を許可（未認証アクセスを弾くルール対応）
-  FB={db, doc:f.doc, setDoc:f.setDoc, onSnapshot:f.onSnapshot, getDoc:f.getDoc};
+  FB={db, doc:f.doc, setDoc:f.setDoc, onSnapshot:f.onSnapshot, getDoc:f.getDoc, getDocs:f.getDocs, collection:f.collection};
   FB_OK=true;
 }catch(e){ FB_OK=false; } // 匿名ログイン未有効/通信失敗時はこの端末のみlocalStorage動作に安全退避
 window.__start(FB_OK?FB:null);
@@ -5198,6 +5229,7 @@ window.__start = function(FB){
 
   /* ---------------- 基本テンプレ1（本日の時刻から計算して配置） ---------------- */
   function pkApplyBase1(){
+    pk.base1Used=true;                      // 検証用：テンプレを押したことを覚えておく
     if(userRole!=='main'){ showToast('メインのみ操作できます'); return; }
     const day=state.times[state.activeDate]||{}, placed=placedNos();
     const D=no=>parseT((day[no]||{}).d), R=no=>parseT((day[no]||{}).r);
@@ -5420,7 +5452,102 @@ window.__start = function(FB){
       row.appendChild(btns); wrap.appendChild(row);
     });
   }
-  $('pkTplBtn').addEventListener('click',()=>{ openModal('pkTplOverlay'); pkRenderTplList(); });
+  $('pkTplBtn').addEventListener('click',()=>{ openModal('pkTplOverlay'); pkRenderTplList(); pkRenderSnapList(); });
+
+  /* ===== ★検証用スナップショット =====
+     いま画面にある「会社指定・手入力・対象外・時刻データ・テンプレ有無」を
+     まるごと1つの保存として Firestore（コレクション pk_snapshots）に置く。
+     のりちゃんは「この日を保存」を押すだけでよい。同じ日はあとから押すと上書きされる。
+     書き出しは、その保存内容を lab/days の書式そのままの文字にして見せるだけ。
+     一括配置のロジックには一切触れない。 */
+  const PK_SNAP_M_OK=['m-1','m-2','m-3','m-9','m-10','m-11','m-17','m-18','m-19'];
+  function pkSnapCollect(){
+    const day=state.times[state.activeDate]||{};
+    const fixed={}, hand={}, exclude=[];
+    Object.keys(pk.slots||{}).forEach(slot=>{
+      const s=pk.slots[slot]; if(!s||!s.no) return;
+      if(['e-1','e-2','f-1','f-2','f-3','f-4','f-5'].indexOf(slot)>=0){ fixed[slot]=s.no; return; }
+      /* 一括配置より前に置いた車＝手入力。st が 'auto' 以外のものがそれにあたる。
+         枠の場所では判定しない（予備枠に限らず、担当者はどこにでも置くため） */
+      if(s.st!=='auto') hand[slot]=s.no;
+    });
+    (pk.excluded?[...pk.excluded]:[]).forEach(no=>exclude.push(no));
+    return { date: state.activeDate, times: day, fixed, hand, exclude,
+             tpl: !!pk.base1Used, savedAt: Date.now() };
+  }
+  async function pkSnapSave(){
+    const snap=pkSnapCollect();
+    if(!snap.date){ showToast('日付が選ばれていません'); return; }
+    if(!Object.keys(snap.times).length){ showToast('号車データが空です。先に運行の画面で入力してください',3200); return; }
+    /* まず端末に残す（通信が切れていても消えない）。そのうえで Firestore にも置く */
+    try{
+      const key='pk-snap-'+snap.date;
+      localStorage.setItem(key, JSON.stringify(snap));
+      const idx=JSON.parse(localStorage.getItem('pk-snap-index')||'[]');
+      if(idx.indexOf(snap.date)<0){ idx.push(snap.date); idx.sort(); }
+      localStorage.setItem('pk-snap-index', JSON.stringify(idx));
+    }catch(e){}
+    let ok2=false;
+    if(FB_OK&&db){
+      try{ await FB.setDoc(FB.doc(db,'pk_snapshots',snap.date), snap); ok2=true; }catch(e){}
+    }
+    showToast(ok2 ? ('💾 '+snap.date+' を保存しました') : ('💾 '+snap.date+' をこの端末に保存しました（通信が戻ると共有されます）'), 3000);
+    pkRenderSnapList();
+  }
+  /* 端末に残したぶんと Firestore のぶんを合わせて返す（同じ日は新しい方） */
+  async function pkSnapList(){
+    const byDate={};
+    try{
+      const idx=JSON.parse(localStorage.getItem('pk-snap-index')||'[]');
+      idx.forEach(d=>{ try{ const v=JSON.parse(localStorage.getItem('pk-snap-'+d)||'null'); if(v&&v.date) byDate[v.date]=v; }catch(e){} });
+    }catch(e){}
+    if(FB_OK&&db){
+      try{
+        const snap=await FB.getDocs(FB.collection(db,'pk_snapshots'));
+        snap.forEach(d=>{ const v=d.data(); if(!v||!v.date) return;
+          const cur=byDate[v.date];
+          if(!cur||(v.savedAt||0)>=(cur.savedAt||0)) byDate[v.date]=v; });
+      }catch(e){}
+    }
+    return Object.keys(byDate).sort().map(d=>byDate[d]);
+  }
+  async function pkRenderSnapList(){
+    const el=$('pkSnapList'); if(!el) return;
+    el.textContent='読み込み中…';
+    const list=await pkSnapList();
+    if(!list.length){ el.textContent='まだ保存された日はありません'; return; }
+    el.innerHTML='保存済み '+list.length+'日：'+list.map(x=>x.date).join('　');
+  }
+  /* lab/days と同じ書式のテキストに直す */
+  function pkSnapToText(s){
+    const L=[];
+    L.push('[日付]', s.date, '', '[時刻]');
+    Object.keys(s.times||{}).forEach(no=>{ const t=s.times[no]||{}; L.push(no+','+(t.d||'')+','+(t.r||'')); });
+    L.push('', '[会社指定]');
+    Object.keys(s.fixed||{}).forEach(k=>L.push(k+'='+s.fixed[k]));
+    L.push('', '[手入力]');
+    Object.keys(s.hand||{}).forEach(k=>L.push(k+'='+s.hand[k]));
+    L.push('', '[対象外]');
+    (s.exclude||[]).forEach(no=>L.push(no));
+    L.push('', '[テンプレ]', s.tpl?'はい':'いいえ');
+    return L.join('\n');
+  }
+  async function pkSnapExport(){
+    const list=await pkSnapList();
+    if(!list.length){ showToast('保存された日がありません。先に「この日を保存」を押してください',3200); return; }
+    const text=list.map(s=>'===== '+s.date+' =====\n'+pkSnapToText(s)).join('\n\n');
+    $('pkExportText').value=text;
+    openModal('pkExportOverlay');
+  }
+  $('pkSnapSave').addEventListener('click', pkSnapSave);
+  $('pkSnapExport').addEventListener('click', pkSnapExport);
+  $('pkExportCloseBtn').addEventListener('click',()=>closeModal('pkExportOverlay'));
+  $('pkExportCopy').addEventListener('click', async ()=>{
+    const t=$('pkExportText');
+    t.focus(); t.select();
+    try{ await navigator.clipboard.writeText(t.value); showToast('📋 コピーしました。チャットに貼り付けてください',3200); }
+    catch(e){ try{ document.execCommand('copy'); showToast('📋 コピーしました',2400); }catch(e2){ showToast('コピーできませんでした。手動で選択してコピーしてください',3400); } }
+  });
   $('pkBase1').addEventListener('click',pkApplyBase1);
 
   /* 初期テンプレの自動投入は廃止（基本テンプレ1は本日の時刻から計算する方式に変更）
