@@ -1785,9 +1785,13 @@
          のりちゃんはこのボタンを押すだけでよい。あとでまとめて書き出して私に渡す */ -->
     <div class="ptpl-row" style="border-color:#5b6470; margin-top:14px;">
       <h4>検証用に保存</h4>
-      <div class="cnt" id="pkSnapNote">今の会社指定・手入力・対象外・時刻データをこの日として保存します</div>
+      <div class="cnt" id="pkSnapNote">今の会社指定・手入力・対象外・時刻データを、付けた名前で保存します。<br>
+        同じ名前で保存し直すと上書きされます。</div>
+      <input id="pkSnapName" type="text" maxlength="24" placeholder="名前（例 8月18日 / 予備車が多い日）"
+        style="width:100%; font-size:14px; padding:9px 10px; margin:8px 0 8px;
+               border:1px solid var(--line); border-radius:8px; background:#fff; color:#1a1f26;">
       <div class="ptpl-btns" style="flex-wrap:wrap;">
-        <button class="btn primary" id="pkSnapSave">💾 この日を保存</button>
+        <button class="btn primary" id="pkSnapSave">💾 この名前で保存</button>
         <button class="btn ghost" id="pkSnapExport" style="color:#1a1f26;">📤 まとめて書き出し</button>
       </div>
       <div id="pkSnapList" style="margin-top:8px; font-size:11.5px; color:var(--text-dim);"></div>
@@ -5472,56 +5476,63 @@ window.__start = function(FB){
       if(s.st!=='auto') hand[slot]=s.no;
     });
     (pk.excluded?[...pk.excluded]:[]).forEach(no=>exclude.push(no));
-    return { date: state.activeDate, times: day, fixed, hand, exclude,
+    return { times: day, fixed, hand, exclude,
              tpl: !!pk.base1Used, savedAt: Date.now() };
   }
   async function pkSnapSave(){
+    /* 保存の見出しは「名前」。過去の日付を名前として付けられるようにするため、
+       アプリが選んでいる日付ではなく、入力された名前で1件とする */
+    const name=($('pkSnapName').value||'').trim();
+    if(!name){ showToast('名前を入れてください（例 8月18日）',3000); $('pkSnapName').focus(); return; }
     const snap=pkSnapCollect();
-    if(!snap.date){ showToast('日付が選ばれていません'); return; }
+    snap.name=name;
     if(!Object.keys(snap.times).length){ showToast('号車データが空です。先に運行の画面で入力してください',3200); return; }
     /* まず端末に残す（通信が切れていても消えない）。そのうえで Firestore にも置く */
+    const key=pkSnapKey(name);
     try{
-      const key='pk-snap-'+snap.date;
-      localStorage.setItem(key, JSON.stringify(snap));
+      localStorage.setItem('pk-snap-'+key, JSON.stringify(snap));
       const idx=JSON.parse(localStorage.getItem('pk-snap-index')||'[]');
-      if(idx.indexOf(snap.date)<0){ idx.push(snap.date); idx.sort(); }
+      if(idx.indexOf(key)<0){ idx.push(key); idx.sort(); }
       localStorage.setItem('pk-snap-index', JSON.stringify(idx));
     }catch(e){}
     let ok2=false;
     if(FB_OK&&db){
-      try{ await FB.setDoc(FB.doc(db,'pk_snapshots',snap.date), snap); ok2=true; }catch(e){}
+      try{ await FB.setDoc(FB.doc(db,'pk_snapshots',key), snap); ok2=true; }catch(e){}
     }
-    showToast(ok2 ? ('💾 '+snap.date+' を保存しました') : ('💾 '+snap.date+' をこの端末に保存しました（通信が戻ると共有されます）'), 3000);
+    showToast(ok2 ? ('💾「'+name+'」を保存しました') : ('💾「'+name+'」をこの端末に保存しました（通信が戻ると共有されます）'), 3000);
     pkRenderSnapList();
   }
-  /* 端末に残したぶんと Firestore のぶんを合わせて返す（同じ日は新しい方） */
+  /* 名前をそのまま保存の見出しに使う。Firestore の名前に使えない記号だけ置き換える */
+  function pkSnapKey(name){ return String(name).replace(/[\/\\.#$\[\]]/g,'_').slice(0,60); }
+  /* 端末に残したぶんと Firestore のぶんを合わせて返す（同じ名前は新しい方） */
   async function pkSnapList(){
-    const byDate={};
+    const byName={};
     try{
       const idx=JSON.parse(localStorage.getItem('pk-snap-index')||'[]');
-      idx.forEach(d=>{ try{ const v=JSON.parse(localStorage.getItem('pk-snap-'+d)||'null'); if(v&&v.date) byDate[v.date]=v; }catch(e){} });
+      idx.forEach(k=>{ try{ const v=JSON.parse(localStorage.getItem('pk-snap-'+k)||'null');
+        if(v&&v.name) byName[v.name]=v; }catch(e){} });
     }catch(e){}
     if(FB_OK&&db){
       try{
         const snap=await FB.getDocs(FB.collection(db,'pk_snapshots'));
-        snap.forEach(d=>{ const v=d.data(); if(!v||!v.date) return;
-          const cur=byDate[v.date];
-          if(!cur||(v.savedAt||0)>=(cur.savedAt||0)) byDate[v.date]=v; });
+        snap.forEach(d=>{ const v=d.data(); if(!v||!v.name) return;
+          const cur=byName[v.name];
+          if(!cur||(v.savedAt||0)>=(cur.savedAt||0)) byName[v.name]=v; });
       }catch(e){}
     }
-    return Object.keys(byDate).sort().map(d=>byDate[d]);
+    return Object.keys(byName).sort().map(n=>byName[n]);
   }
   async function pkRenderSnapList(){
     const el=$('pkSnapList'); if(!el) return;
     el.textContent='読み込み中…';
     const list=await pkSnapList();
-    if(!list.length){ el.textContent='まだ保存された日はありません'; return; }
-    el.innerHTML='保存済み '+list.length+'日：'+list.map(x=>x.date).join('　');
+    if(!list.length){ el.textContent='まだ保存はありません'; return; }
+    el.innerHTML='保存済み '+list.length+'件：'+list.map(x=>x.name).join('　');
   }
   /* lab/days と同じ書式のテキストに直す */
   function pkSnapToText(s){
     const L=[];
-    L.push('[日付]', s.date, '', '[時刻]');
+    L.push('[名前]', s.name||'', '', '[時刻]');
     Object.keys(s.times||{}).forEach(no=>{ const t=s.times[no]||{}; L.push(no+','+(t.d||'')+','+(t.r||'')); });
     L.push('', '[会社指定]');
     Object.keys(s.fixed||{}).forEach(k=>L.push(k+'='+s.fixed[k]));
@@ -5534,8 +5545,8 @@ window.__start = function(FB){
   }
   async function pkSnapExport(){
     const list=await pkSnapList();
-    if(!list.length){ showToast('保存された日がありません。先に「この日を保存」を押してください',3200); return; }
-    const text=list.map(s=>'===== '+s.date+' =====\n'+pkSnapToText(s)).join('\n\n');
+    if(!list.length){ showToast('保存がありません。先に名前を入れて保存してください',3200); return; }
+    const text=list.map(s=>'===== '+(s.name||'')+' =====\n'+pkSnapToText(s)).join('\n\n');
     $('pkExportText').value=text;
     openModal('pkExportOverlay');
   }
