@@ -1717,6 +1717,19 @@
   </div>
 </div>
 
+<!-- 日を選ぶ（「本日」タブをタップ） -->
+<div class="modal-overlay" id="dayPickOverlay">
+  <div class="modal" style="max-width:300px;">
+    <div class="seq-head">
+      <h3 style="margin:0;color:var(--amber);font-size:15px;">日を選ぶ</h3>
+      <button class="modal-close" data-close="dayPickOverlay">✕</button>
+    </div>
+    <p style="font-size:11.5px; color:var(--text-dim); margin:6px 0 10px;">
+      営業日は朝8時で切り替わります。夜勤で日をまたいでも配置は続きます。</p>
+    <div id="dayPickList"></div>
+  </div>
+</div>
+
 <!-- すでに車が入っている枠へドロップしたときの選択 -->
 <div class="modal-overlay" id="pkSwapOverlay">
   <div class="modal" style="max-width:320px;">
@@ -1785,13 +1798,16 @@
          のりちゃんはこのボタンを押すだけでよい。あとでまとめて書き出して私に渡す */ -->
     <div class="ptpl-row" style="border-color:#5b6470; margin-top:14px;">
       <h4>検証用に保存</h4>
-      <div class="cnt" id="pkSnapNote">今の会社指定・手入力・対象外・時刻データを、付けた名前で保存します。<br>
-        同じ名前で保存し直すと上書きされます。</div>
-      <input id="pkSnapName" type="text" maxlength="24" placeholder="名前（例 8月18日 / 予備車が多い日）"
+      <div class="cnt" id="pkSnapNote">日付を入れて、そのときのボタンを押してください。<br>
+        <b>一括配置前</b>＝会社指定・手置き・テンプレまで（一括配置が置いた車は入りません）<br>
+        <b>完成</b>＝いまの画面のまま全部<br>
+        同じ日付・同じ種類で押し直すと上書きされます。</div>
+      <input id="pkSnapName" type="text" maxlength="24" placeholder="日付（例 8月30日）"
         style="width:100%; font-size:14px; padding:9px 10px; margin:8px 0 8px;
                border:1px solid var(--line); border-radius:8px; background:#fff; color:#1a1f26;">
       <div class="ptpl-btns" style="flex-wrap:wrap;">
-        <button class="btn primary" id="pkSnapSave">💾 この名前で保存</button>
+        <button class="btn ghost" id="pkSnapSaveBefore" style="color:#1a1f26;">💾 一括配置前として保存</button>
+        <button class="btn primary" id="pkSnapSaveDone">💾 完成として保存</button>
         <button class="btn ghost" id="pkSnapExport" style="color:#1a1f26;">📤 まとめて書き出し</button>
       </div>
       <div id="pkSnapList" style="margin-top:8px; font-size:11.5px; color:var(--text-dim);"></div>
@@ -2030,7 +2046,16 @@ window.__start = function(FB){
 
   const $=(id)=>document.getElementById(id);
   const pad2=(n)=>String(n).padStart(2,'0');
-  const todayStr=(d=new Date())=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  const ymd=(d)=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  /* 営業日の区切りは朝8時。構内の担当は夜勤で日をまたぐので、
+     0時で切り替わると作業中に配置が別の日へ移ってしまう。
+     朝8時までは前の日の続きとして扱う */
+  const DAY_START_HOUR=8;
+  const todayStr=(d=new Date())=>{
+    const x=new Date(d.getTime());
+    if(x.getHours()<DAY_START_HOUR) x.setDate(x.getDate()-1);
+    return ymd(x);
+  };
   function fmtDateLabel(s,t){ if(s===t)return '本日'; const d=new Date(s+'T00:00:00'); return (d.getMonth()+1)+'/'+d.getDate(); }
   function parseT(t){ if(!t)return null; const m=String(t).match(/^(\d{1,2}):(\d{2})$/); if(!m)return null; const h=+m[1],mi=+m[2]; if(h>29||mi>59)return null; return h*60+mi; } // 24:00〜29:59は深夜帯の同一営業日として扱う（23:59の続きとして正しく並ぶ）
   function normTime(s){ // accept "1938"/"19:38"/"7:7" -> "HH:MM" or '' 
@@ -2139,7 +2164,33 @@ window.__start = function(FB){
 
   /* ===== render ===== */
   function renderClock(){ const d=new Date(); $('clock').textContent=pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
-  function renderDayTabs(){ const w=$('dayTabs'); w.innerHTML=''; state.dates.forEach(dt=>{ const t=document.createElement('div'); t.className='day-tab'+(dt===state.activeDate?' active':''); t.textContent=fmtDateLabel(dt,state.todayKey); t.addEventListener('click',()=>switchDate(dt)); w.appendChild(t); }); }
+  /* タブは1つだけ出し、タップで日を選ぶ（横に並べる場所が無いため） */
+  function renderDayTabs(){
+    const w=$('dayTabs'); w.innerHTML='';
+    const t=document.createElement('div');
+    t.className='day-tab active';
+    const cur=state.activeDate||state.todayKey;
+    t.textContent=fmtDateLabel(cur,state.todayKey)+(state.dates.length>1?' ▾':'');
+    t.addEventListener('click',()=>{
+      if(state.dates.length<2){ showToast('ほかの日はありません'); return; }
+      openDayPick();
+    });
+    w.appendChild(t);
+  }
+  function openDayPick(){
+    const box=$('dayPickList'); if(!box) return;
+    box.innerHTML='';
+    state.dates.slice().reverse().forEach(dt=>{
+      const b2=document.createElement('button');
+      b2.className='btn '+(dt===state.activeDate?'primary':'ghost');
+      b2.style.cssText='width:100%; justify-content:center; margin-bottom:8px;'+(dt===state.activeDate?'':'color:#1a1f26;');
+      const d=new Date(dt+'T00:00:00');
+      b2.textContent=(dt===state.todayKey?'本日　':'')+(d.getMonth()+1)+'月'+d.getDate()+'日';
+      b2.addEventListener('click',()=>{ switchDate(dt); closeModal('dayPickOverlay'); });
+      box.appendChild(b2);
+    });
+    openModal('dayPickOverlay');
+  }
   function renderViewUI(){
     document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.view===state.view));
     /* 見出しの一例（号車／翌日出庫／帰庫予定）は枠の中に出ているので廃止。
@@ -3473,20 +3524,22 @@ window.__start = function(FB){
         if(areaOf(slot)==='g') needGSpare=Math.max(0,needGSpare-1);
         placed++;
       };
-      // ⓪ 中の島の予備車2台は絶対条件（L-292）。基幹が足りなければ他の予備車で埋める
-      for(const sl of ['g-2','g-3','g-4','g-5']){
+      // ⓪ 中の島の予備車2台は絶対条件（L-292）。使える枠は g-2・3・4 のみ（g-5 は入らない）
+      for(const sl of ['g-2','g-3','g-4']){
         if(needGSpare<=0) break;
         if(assign[sl]||blockedSet[sl]||!gateOpen(sl)) continue;
         let car=spares.find(c=>pool.indexOf(c)>=0&&c.kikan&&canPlace(sl,c));
         if(!car) car=spares.find(c=>pool.indexOf(c)>=0&&canPlace(sl,c));
         if(car) put(sl,car,true);
       }
-      // ① 予備車の指定席（L-271）：中型＝花壇1〜3／基幹＝中の島2〜3・ヤナセ4〜5／特車＝グリーン2〜4
-      const seat={ '中型':['a-1','a-2','a-3'], '大型':['g-2','g-3','d-4','d-5'],
+      /* ① 予備車の指定席（L-271）：中型＝花壇1〜3／**基幹**＝中の島2〜4・ヤナセ4〜5／特車＝グリーン2〜4
+         中の島の指定席に入れるのは基幹の大型だけ。一般の大型はヤナセへ回す */
+      const seat={ '中型':['a-1','a-2','a-3'], '大型':['g-2','g-3','g-4','d-4','d-5'],
                    '特車':['l-2','l-3','l-4'], 'コミュニティ':['h-1','h-2','h-3','h-4'], '電気':[] };
       for(const car of spares.slice()){
         if(pool.indexOf(car)<0) continue;
-        const list=seat[car.type]||[];
+        let list=seat[car.type]||[];
+        if(car.type==='大型'&&!car.kikan) list=list.filter(x=>areaOf(x)!=='g');
         for(const sl of list){
           if(assign[sl]||blockedSet[sl]||!gateOpen(sl)) continue;
           const a=areaOf(sl), cap=PK_SPARE_CAP[a]===undefined?2:PK_SPARE_CAP[a];
@@ -5278,7 +5331,7 @@ window.__start = function(FB){
     (function(){
       const sp=spare(avail().filter(n=>pkIsKikan(n))).sort((x,y)=>R(x)-R(y));
       if(!sp.length) return;
-      const sl={}; const cand=['g-2','g-3','g-4','g-5'];
+      const sl={}; const cand=['g-2','g-3','g-4'];
       let i=0;
       sp.slice(0,2).forEach(n=>{ while(i<cand.length&&!isFree(cand[i])) i++; if(i<cand.length){ sl[cand[i]]=n; i++; } });
       if(!Object.keys(sl).length){ off.push('④'); return; }
@@ -5393,7 +5446,10 @@ window.__start = function(FB){
   $('pkClear').addEventListener('click',()=>{
     if(userRole==='sub'){showToast('閲覧のみです');return;}
     if(!confirm('本日の駐車配置をすべてクリアしますか？（確定・帰庫済みも消えます）')) return;
-    pk.slots={}; pk.unlocked.clear(); pkPush(); pkRenderAll();
+    pk.slots={}; pk.unlocked.clear();
+    pk.base1Used=false;                        // 検証用の記録もリセット
+    if(pk.autoOnce) pk.autoOnce.clear();
+    pkPush(); pkRenderAll();
   });
 
   /* ---------------- テンプレート（3枠・登録制） ---------------- */
@@ -5465,27 +5521,38 @@ window.__start = function(FB){
      書き出しは、その保存内容を lab/days の書式そのままの文字にして見せるだけ。
      一括配置のロジックには一切触れない。 */
   const PK_SNAP_M_OK=['m-1','m-2','m-3','m-9','m-10','m-11','m-17','m-18','m-19'];
-  function pkSnapCollect(){
+  /* kind='before' … 一括配置より前の状態だけ（一括配置が置いた車は入れない）
+     kind='done'   … いまの画面のまま全部
+     ※ pkTplApplied は「一括配置が置いた枠」の目印。それ以外を手入力として拾う */
+  function pkSnapCollect(kind){
     const day=state.times[state.activeDate]||{};
     const fixed={}, hand={}, exclude=[];
     Object.keys(pk.slots||{}).forEach(slot=>{
       const s=pk.slots[slot]; if(!s||!s.no) return;
       if(['e-1','e-2','f-1','f-2','f-3','f-4','f-5'].indexOf(slot)>=0){ fixed[slot]=s.no; return; }
-      /* 一括配置より前に置いた車＝手入力。st が 'auto' 以外のものがそれにあたる。
-         枠の場所では判定しない（予備枠に限らず、担当者はどこにでも置くため） */
-      if(s.st!=='auto') hand[slot]=s.no;
+      if(kind==='before'){
+        /* 一括配置が置いた車は入れない。
+           st==='auto' はもちろん、一括配置のあとに手で動かした車も
+           pk.autoOnce に記録してあるので除く */
+        if(s.st==='auto') return;
+        if(pk.autoOnce && pk.autoOnce.has(String(s.no))) return;
+      }
+      hand[slot]=s.no;
     });
     (pk.excluded?[...pk.excluded]:[]).forEach(no=>exclude.push(no));
-    return { times: day, fixed, hand, exclude,
+    return { times: day, fixed, hand, exclude, kind:kind,
              tpl: !!pk.base1Used, savedAt: Date.now() };
   }
-  async function pkSnapSave(){
-    /* 保存の見出しは「名前」。過去の日付を名前として付けられるようにするため、
-       アプリが選んでいる日付ではなく、入力された名前で1件とする */
-    const name=($('pkSnapName').value||'').trim();
-    if(!name){ showToast('名前を入れてください（例 8月18日）',3000); $('pkSnapName').focus(); return; }
-    const snap=pkSnapCollect();
+  async function pkSnapSave(kind){
+    /* 保存の見出しは「日付／種類」。同じ日で2種類を持てるようにする */
+    const base=($('pkSnapName').value||'').trim();
+    if(!base){ showToast('日付を入れてください（例 8月30日）',3000); $('pkSnapName').focus(); return; }
+    const name=base+'／'+(kind==='before'?'一括配置前':'完成');
+    const snap=pkSnapCollect(kind);
     snap.name=name;
+    if(kind==='before'&&!Object.keys(snap.hand).length&&!Object.keys(snap.fixed).length){
+      showToast('会社指定も手置きもありません。先に置いてから押してください',3400); return;
+    }
     if(!Object.keys(snap.times).length){ showToast('号車データが空です。先に運行の画面で入力してください',3200); return; }
     /* まず端末に残す（通信が切れていても消えない）。そのうえで Firestore にも置く */
     const key=pkSnapKey(name);
@@ -5550,7 +5617,8 @@ window.__start = function(FB){
     $('pkExportText').value=text;
     openModal('pkExportOverlay');
   }
-  $('pkSnapSave').addEventListener('click', pkSnapSave);
+  $('pkSnapSaveBefore').addEventListener('click', ()=>pkSnapSave('before'));
+  $('pkSnapSaveDone').addEventListener('click',   ()=>pkSnapSave('done'));
   $('pkSnapExport').addEventListener('click', pkSnapExport);
   $('pkExportCloseBtn').addEventListener('click',()=>closeModal('pkExportOverlay'));
   $('pkExportCopy').addEventListener('click', async ()=>{
