@@ -5580,9 +5580,12 @@ window.__start = function(FB){
       delete plan[worst];
     }
     let n=0;
+    /* テンプレが置いた枠を覚えておく。一括配置より前の状態なので、
+       検証用の「一括配置前」保存には含める（st は 'auto' のままにして他の処理を変えない） */
+    if(!pk.tplSlots) pk.tplSlots={};
     Object.keys(plan).forEach(sl=>{
       if(pk.slots[sl]) return;
-      pk.slots[sl]={no:String(plan[sl]), st:'auto'}; n++;
+      pk.slots[sl]={no:String(plan[sl]), st:'auto'}; pk.tplSlots[sl]=String(plan[sl]); n++;
     });
     pkPush(); pkRenderAll(); closeModal('pkTplOverlay');
     const notes=[];
@@ -5607,6 +5610,7 @@ window.__start = function(FB){
     pk.slots={}; pk.unlocked.clear();
     pk.base1Used=false;                        // 検証用の記録もリセット
     if(pk.autoOnce) pk.autoOnce.clear();
+    pk.tplSlots={};
     pkPush(); pkRenderAll();
   });
 
@@ -5644,7 +5648,8 @@ window.__start = function(FB){
           if(pk.slots[slotId]) return;               // 埋まっている枠は上書きしない
           if(placed.has(String(no))) return;          // 既に配置済みの号車は入れない
           const c=pkCheckPlace(slotId,no); if(c.ng.length) return;
-          pk.slots[slotId]={no:String(no), st:'auto'}; n++;
+          if(!pk.tplSlots) pk.tplSlots={};
+          pk.slots[slotId]={no:String(no), st:'auto'}; pk.tplSlots[slotId]=String(no); n++;
         });
         pkPush(); pkRenderAll(); closeModal('pkTplOverlay');
         showToast('✓ テンプレ「'+(t.name||i)+'」から '+n+'台を配置しました');
@@ -5688,7 +5693,9 @@ window.__start = function(FB){
     Object.keys(pk.slots||{}).forEach(slot=>{
       const s=pk.slots[slot]; if(!s||!s.no) return;
       if(['e-1','e-2','f-1','f-2','f-3','f-4','f-5'].indexOf(slot)>=0){ fixed[slot]=s.no; return; }
-      const isAuto = s.st==='auto' || (pk.autoOnce && pk.autoOnce.has(String(s.no)));
+      /* テンプレが置いた枠は一括配置より前なので「手入力」側として残す */
+      const isTpl = !!(pk.tplSlots && pk.tplSlots[slot]===String(s.no));
+      const isAuto = !isTpl && (s.st==='auto' || (pk.autoOnce && pk.autoOnce.has(String(s.no))));
       if(kind==='before'){ if(isAuto) return; hand[slot]=s.no; return; }
       if(isAuto) auto[slot]=s.no; else hand[slot]=s.no;
     });
