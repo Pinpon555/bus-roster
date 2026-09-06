@@ -488,6 +488,7 @@
     <button class="btn ghost" id="pkTplBtn" style="color:#1a1f26;">テンプレ／保存</button>
     <button class="btn ghost" id="pkBulk" style="color:#1a1f26;">一括配置</button>
     <button class="btn ghost" id="pkDayKind" style="color:#1a1f26;" title="翌日が土休日（日祝・祝日前日・お盆・年末年始）なら押して切り替え">翌日：平日</button>
+    <button class="btn ghost" id="pkYanaseKind" style="color:#1a1f26; display:none;" title="翌日が土休日でも、ヤナセ1〜3だけ平日ルールで組む日があります">ヤナセ休日</button>
     <button class="btn ghost" id="pkAnimBtn" style="color:#1a1f26;">再生</button>
     <button class="btn ghost" id="pkFindBtn" style="color:#1a1f26;">車両検索</button>
     <button class="btn ghost" id="pkClear" style="color:#a33;">配置クリア</button>
@@ -2033,7 +2034,7 @@ window.__start = function(FB){
     {cat:"一般ノンステAT(車椅子2席)", nos:["1018","1020","1026"]},
     {cat:"一般ノンステAT", nos:["1378"]},
     {cat:"一般新顔ノンステAT", nos:["1515","1516","4008","4501","4502","4711","4712","4807","4808","4809","4815","4822","4830","4836","4905","4909"]},
-    {cat:"中型MT", nos:["8452","8501","8614","8617","8618","8714","8715","8716","9352"]},
+    {cat:"中型", nos:["8452","8501","8614","8617","8618","8714","8715","8716","9352"]},
     {cat:"中型AMT", nos:["8009","8804","8902","8905","8907","8916","8923"]},
     {cat:"中型AT", nos:["8401","8402","8403"]},
     {cat:"ポンチョ", nos:["0255"]},
@@ -2721,7 +2722,14 @@ window.__start = function(FB){
   function subscribeDay(d){ if(state.unsubDay){ state.unsubDay(); state.unsubDay=null; } if(!(FB_OK&&db)){ state.times[d]=loadLocalDay(d); $('syncDot').className='sync-dot err'; $('syncText').textContent='オフライン（この端末のみ）'; renderList(); return; } state.unsubDay=FB.onSnapshot(dayRef(d),snap=>{ $('syncDot').className='sync-dot on'; $('syncText').textContent='同期済み '+pad2(new Date().getHours())+':'+pad2(new Date().getMinutes()); if(state.writing)return; const data=snap.exists()?snap.data():null; state.times[d]=(data&&data.times)?data.times:{}; renderList(); if(editMode)attachEditHandlers(); },()=>{ $('syncDot').className='sync-dot err'; $('syncText').textContent='同期エラー'; state.times[d]=loadLocalDay(d); renderList(); }); }
   function switchDate(d){ state.activeDate=d; renderDayTabs(); subscribeDay(d); }
   function subscribeMeta(){ if(!(FB_OK&&db)){ state.metaSeen=true; let dates=[]; try{ const r=localStorage.getItem('rb-meta'); if(r)dates=JSON.parse(r); }catch(e){} if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3)dates.shift(); } state.dates=dates; state.activeDate=state.todayKey; subscribeDay(state.activeDate); renderDayTabs(); return; } state.unsubMeta=FB.onSnapshot(metaRef(),snap=>{ state.metaSeen=true; const data=snap.exists()?snap.data():null; let dates=(data&&Array.isArray(data.dates))?data.dates.slice():[]; if(!dates.includes(state.todayKey)){ dates.push(state.todayKey); dates.sort(); while(dates.length>3)dates.shift(); } state.dates=dates; if(!state.activeDate){ state.activeDate=state.todayKey; subscribeDay(state.activeDate); } renderDayTabs(); },()=>{}); }
-  function subscribeTpl(){ if(!(FB_OK&&db)){ let t=null; try{ const r=localStorage.getItem('rb-tpl'); if(r)t=JSON.parse(r); }catch(e){} state.template=t||JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); renderList(); return; } state.unsubTpl=FB.onSnapshot(tplRef(),snap=>{ const data=snap.exists()?snap.data():null; if(data&&Array.isArray(data.template)&&data.template.length){ state.template=data.template; } else { state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); pushTpl(); } renderList(); if(editMode)attachEditHandlers(); },()=>{ state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); renderList(); }); }
+  /* 車種の名前の読み替え。保存済みのデータにも効かせる（2026-09-04 本人指示） */
+  const TPL_RENAME={'中型MT':'中型'};
+  function pkFixTplNames(t){
+    if(!Array.isArray(t)) return t;
+    t.forEach(g=>{ if(g&&TPL_RENAME[g.cat]) g.cat=TPL_RENAME[g.cat]; });
+    return t;
+  }
+  function subscribeTpl(){ if(!(FB_OK&&db)){ let t=null; try{ const r=localStorage.getItem('rb-tpl'); if(r)t=JSON.parse(r); }catch(e){} state.template=pkFixTplNames(t||JSON.parse(JSON.stringify(DEFAULT_TEMPLATE))); renderList(); return; } state.unsubTpl=FB.onSnapshot(tplRef(),snap=>{ const data=snap.exists()?snap.data():null; if(data&&Array.isArray(data.template)&&data.template.length){ state.template=pkFixTplNames(data.template); } else { state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); pushTpl(); } renderList(); if(editMode)attachEditHandlers(); },()=>{ state.template=JSON.parse(JSON.stringify(DEFAULT_TEMPLATE)); renderList(); }); }
 
   /* ===== メイン/サブ 権限管理 ===== */
   function updateMainBar(activeBool,sinceMs){
@@ -2972,14 +2980,24 @@ window.__start = function(FB){
      構内の配置は前日の夜に行うので「翌日がどのダイヤか」で条件が変わる（翌土休日ルール）。
      祝日の前日・お盆・年末年始は日付から判定できないため、担当者がその場で選ぶ。保存はしない。
      休日＝日祝。日曜担当（翌日が平日）は平日でよい（帰庫のヨは手入力してから一括配置するため） */
-  let PK_WEEKEND=false;   // false=翌日は平日／true=翌日は土休日
-  function pkIsWeekend(){ return !!PK_WEEKEND; }
+  /* 翌日の区分は3つ。
+     'weekday' 平日 ／ 'holiday' 土休日 ／ 'special' 特別日
+     特別日は「予備車が多い翌土休日でも組みきれない日」用の実験箱。
+     ルールは土休日と同じまま、探し方だけを変える。壊れても特別日を使わなければよい */
+  let PK_DAYKIND='weekday';
+  let PK_YANASE_WEEKEND=true;    // 土休日・特別日のとき、ヤナセ1〜3を休日ルールにするか
+  function pkIsWeekend(){ return PK_DAYKIND!=='weekday'; }
+  function pkIsSpecial(){ return PK_DAYKIND==='special'; }
+  function pkDayKindLabel(){ return PK_DAYKIND==='weekday'?'平日':(PK_DAYKIND==='holiday'?'土休日':'特別日'); }
+  function pkYanaseLabel(){ return (pkIsWeekend()&&PK_YANASE_WEEKEND)?'ヤナセ休日':'ヤナセ平日'; }
   /* 出庫時刻の上限（分）。翌土休日は全体に出庫が遅いので緩める */
   function pkDepLimit(kind){
     const wk=pkIsWeekend();
     switch(kind){
-      case 'd1':    return wk?510:390;   // ヤナセ1：平日6:30／土休日8:30
-      case 'd23':   return wk?9999:390;  // ヤナセ2・3：平日6:30／土休日は制限なし（4〜7と同じ）
+      /* ヤナセ1〜3は、翌日が土休日でも平日ルールで組む日がある。
+         そのため土休日を選んだときだけ、ヤナセのルールを別に選べる（2026-09-04 本人指示） */
+      case 'd1':    return (wk&&PK_YANASE_WEEKEND)?510:390;
+      case 'd23':   return (wk&&PK_YANASE_WEEKEND)?9999:390;
       case 'wash':  return wk?500:375;   // 洗車機2・3：平日6:15／土休日8:20
       case 'office':return wk?500:480;   // 事務所前：平日8:00／土休日8:20
       case 'kadan': return wk?440:420;   // 花壇4〜6：平日7時前／土休日7:20
@@ -3014,11 +3032,13 @@ window.__start = function(FB){
       if(d==null) warn.push('洗車機には予備車を置かないのが基本です');
     }
     if(area==='j' && d!=null && d>pkDepLimit('office')) warn.push('事務所前は出庫'+(pkIsWeekend()?'8:20':'8:00')+'までの車が基本です');
+    if(area==='m' && ((n-1)%8)+1>=4 && d!=null && d>526) warn.push('整備の4〜8行目は出庫8:46までの車が基本です');
     if(area==='a' && n>=4 && d!=null && d>pkDepLimit('kadan')) warn.push('花壇4〜6は出庫'+(pkIsWeekend()?'7:20':'7時前')+'までの車が基本です');
     if(area==='d' && t==='特車') warn.push('特車はヤナセに置かないのが基本です');
     if((slotId==='g-9'||slotId==='g-10') && !(t==='中型'||t==='コミュニティ')) warn.push('中の島9・10は中型・ポンチョ向けです');
     if(area==='l' && t!=='特車' && t!=='不明') warn.push('グリーンは特車を置くのが基本です');
     if(PK_RESERVED.indexOf(slotId)>=0) warn.push(jp(slotId)+'は担当者専用の枠です');
+    if(slotId==='l-1') warn.push('グリーン1は普段は空けておく枠です');
     return {ng,warn};
   }
 
@@ -3043,7 +3063,12 @@ window.__start = function(FB){
      ===================================================================== */
   const M_ROWS=8;
   const mId=(c,r)=>'m-'+((c-1)*M_ROWS+r);
-  const PK_RESERVED=['i-1','l-1','n-1'];   // 担当者専用（一括配置・テンプレとも使わない）
+  const PK_RESERVED=['i-1','n-1'];         // 担当者専用（一括配置・テンプレとも使わない）
+  let PK_ALLOW_L1=false;                   // グリーン1を最後の砦に開放するか（1回目で置けない車が出たときだけ）
+  let PK_TOKUSHA_HOLD=0;                   // グリーンに入れず整備へ回す特車の台数（詰まった日だけ）
+  let pkMovedFrom={};                      // 特別日で動かした手置き車：号車 → 元の枠
+  /* グリーン1は普段は空けておくが、置けない車が出たときは使ってよい（2026-09-04 本人指示）。
+     普通の埋める処理では使わず、最後の砦だけが解禁する（スタンド2と同じ扱い） */
   const PK_ALLIDS=Object.keys(PK_GEOM.full);
 
   /* グリーン l-j に停めるとき「まだ空である必要がある」整備枠（§9・積み重ね式） */
@@ -3269,6 +3294,10 @@ window.__start = function(FB){
     /* 整備に予備車（出庫がヨ）を置けるのは m-1・2・3／9・10・11／17・18・19 だけ。
        ほかの枠に置くと、朝に動かない車が前をふさぐ */
     if(a==='m'&&car.dep==null&&M_SPARE_OK.indexOf(slot)<0) return false;
+    /* 整備の下段（各列の4〜8行目）は出庫8:46まで。列は出庫の帯なので1列目を縛れば全列に効く。
+       これより遅く出る車は中の島・ヤナセ・新駐車場へ回す（2026-09-04 本人指示。平日・翌土休日とも）
+       予備枠（1〜3行目）は対象外 */
+    if(a==='m'&&mRow(n)>=4){ if(car.dep==null||car.dep>526) return false; }
     /* 中の島1はポンチョ（基本テンプレ1②の0101）の枠。大型・中型は入れない */
     if(slot==='g-1'&&t!=='コミュニティ') return false;
     /* グリーンへのポンチョは担当者のみ。一括配置では置かない */
@@ -3281,8 +3310,9 @@ window.__start = function(FB){
       if(slot==='i-3'&&!(t==='中型'||t==='コミュニティ')) return false;
     }
     // 給油所は一括配置では1台だけ。しかも帰庫21:30以降の車。2台目は担当者のみ
-    if(slot==='b-1'&&(car.ret==null||car.ret<1290)) return false;
-    if(slot==='b-2'&&!opt) return false;   // 2台目は「他に置き場所が無いとき」だけ（§Q4）
+    if(a==='b'&&(car.ret==null||car.ret<1260)) return false;   // スタンドは帰庫21時以降（2026-09-04 本人指示）
+    if(slot==='b-2'&&!opt) return false;
+    if(slot==='l-1'&&!(opt&&PK_ALLOW_L1)) return false;   // グリーン1は置けない車が出た日だけ   // 2台目は「他に置き場所が無いとき」だけ（§Q4）
     if((slot==='g-9'||slot==='g-10')&&!(t==='中型'||t==='コミュニティ')) return false;
     return true;
   }
@@ -3309,8 +3339,20 @@ window.__start = function(FB){
         for(let i=0;i<PP.length;i++){ if(rt>rlo[PP[i]]) rlo[PP[i]]=rt; }
       }
     }
+    /* 置いた車を外すと窓（出庫・帰庫の許容範囲）が古いままになる。
+       外す操作をする特別日のために、全部やり直して作り直せるようにしておく */
+    function rebuildWindows(){
+      PK_ALLIDS.forEach(s=>{ lo[s]=-1; hi[s]=PK_INF+1; rlo[s]=-1; rhi[s]=PK_INF; });
+      Object.keys(assign).forEach(s=>{ if(assign[s]) propagate(s,assign[s]); });
+    }
     const fixedSlots=[];
     for(const fsl in fixed){ if(!fixed[fsl]) continue; assign[fsl]=fixed[fsl]; fixedSlots.push(fsl); propagate(fsl,fixed[fsl]); }
+    /* 特別日で「置けない車が残ったとき」だけ動かしてよい手置きの枠。
+       会社指定と、帰庫時刻の無い車は対象外 */
+    const COMPANY_SLOTS={'e-1':1,'e-2':1,'f-1':1,'f-2':1,'f-3':1,'f-4':1,'f-5':1};
+    const movableFixed={};
+    if(pkIsSpecial()) fixedSlots.forEach(sl=>{ if(!COMPANY_SLOTS[sl]&&fixed[sl].ret!=null) movableFixed[sl]=1; });
+    const canTouch=(sl)=>!fixed[sl]||(rescueUnlock&&movableFixed[sl]);
     const heavy=c=>c&&(c.type==='大型'||c.type==='特車');
     function contextOK(slot,car,skip){
       if(slot==='i-1'||slot==='i-2'){
@@ -3336,10 +3378,18 @@ window.__start = function(FB){
       }
       return true;
     }
+    let rescueUnlock=false;   // 最後の最後だけ、計画で固めた枠も玉突きの対象にし、帰庫順も少し緩める
+    /* 整備の列の帰庫順は厳密でなくてよい（本人確認 2026-09-04）。
+       普段は今までどおり厳密に守り、置けない車が残った最後の段階だけ1時間まで前後を許す。
+       実配置でも4列目は最大58分ほど前後していた */
+    const RET_TOL_M=60;
     function windowOK(slot,car){
       const dk=depKey(car);
       if(dk<lo[slot]||dk>hi[slot]) return false;
-      if(car.ret!=null&&(car.ret<rlo[slot]||car.ret>rhi[slot])) return false;
+      if(car.ret!=null){
+        const tol=(rescueUnlock&&areaOf(slot)==='m')?RET_TOL_M:0;
+        if(car.ret<rlo[slot]-tol||car.ret>rhi[slot]+tol) return false;
+      }
       return true;
     }
     /* ★整備は必ず下から詰める。同じ列の下にまだ空き枠があるうちは上の行に置かない。
@@ -3762,7 +3812,16 @@ window.__start = function(FB){
       const slots=[];
       for(let n=19;n>=3;n--){ const sl='l-'+n; if(!assign[sl]&&!blockedSet[sl]) slots.push(sl); }
       if(!slots.length) return;
-      const tok=pool.filter(c=>c.type==='特車'&&c.ret!=null).sort((a,b)=>a.ret-b.ret);
+      let tok=pool.filter(c=>c.type==='特車'&&c.ret!=null).sort((a,b)=>a.ret-b.ret);
+      /* 置けない車が出た日は、特車を何台かグリーンから外して整備へ回す。
+         空いたグリーンが大型の逃がし先になる（本人が厳しい日にやっている手。2026-09-04）
+         外すのは帰庫が遅い＝手前に来る特車で、整備の下段に入れる条件（出庫8:46まで）を満たすもの */
+      if(PK_TOKUSHA_HOLD>0){
+        let hold=PK_TOKUSHA_HOLD;
+        for(let i=tok.length-1;i>=0&&hold>0;i--){
+          if(tok[i].dep!=null&&tok[i].dep<=526){ tok.splice(i,1); hold--; }
+        }
+      }
       /* 特車の出庫の最小値。大型はこれ以上遅い出庫の車だけ入れる */
       let lim=Infinity;
       tok.forEach(c=>{ lim=Math.min(lim,depKey(c)); });
@@ -3833,7 +3892,10 @@ window.__start = function(FB){
         nFree+=colFree[c].length;
       }
       if(!nFree) return;
-      const cars=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0);
+      /* 整備の下段（4〜8行目）は出庫8:46まで。それより遅く出る車をここで数に入れると、
+         列に割り当てても置けず、5・6列目が空のまま穴になる。最初から外して外へ回す */
+      const mOK=x=>PK_ALLOW['m'].indexOf(x.type)>=0 && (x.dep==null||x.dep<=526);
+      const cars=pool.filter(mOK);
       if(!cars.length) return;
       /* 奥度＝「出庫が遅い」＋「帰庫が早い」。両方の順位を足して並べる。
          出庫だけで並べると、遅く帰って遅く出る車（例 1816 出9:20/帰21:54）が
@@ -3850,7 +3912,7 @@ window.__start = function(FB){
            手前の列に入れなかった車ならここに入ることがある。
            列を丸ごと飛ばすと、5・6列目が空のまま車が余り、
            最後の砦が行の途中に押し込んで壁と穴になる（実機8/23の不具合） */
-        if(!list.length) list=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0&&x.ret!=null);
+        if(!list.length) list=pool.filter(x=>mOK(x)&&x.ret!=null);
         if(!list.length) continue;
         /* 同じ行の左どなり（1つ奥の列）が埋まっている行だけ使う。
            これを守らないと行の方向に穴ができる（m(c,r) は m(c-1,r) が先） */
@@ -3881,7 +3943,7 @@ window.__start = function(FB){
             if(canPlace(sl,car)){ pick=car; break; }
           }
           if(!pick){
-            const rest=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0&&ok(x)).sort((a,b)=>a.ret-b.ret);
+            const rest=pool.filter(x=>mOK(x)&&ok(x)).sort((a,b)=>a.ret-b.ret);
             for(const car of rest){ if(canPlace(sl,car)){ pick=car; break; } }
           }
           if(!pick) break;
@@ -3986,9 +4048,72 @@ window.__start = function(FB){
       }
     }
     let placed=0, guard=0;
+
+    /* ════════ 特別日の組み立て ════════
+       予備車が多くて翌土休日ルールでも組みきれない日のための作り。考え方が根本的に違う。
+       いちばん制約の強いところから順に「先に決めて」いく。あとから入れ替えて直すのではなく、
+       序盤の置き方そのものを組む（2026-09-04 本人の考え方）。
+
+       ・制約がいちばん強いのはグリーン19と整備1列目。ここに連なる前後関係が全部ぶら下がる
+       ・整備1〜3行目は予備車。ヨが多い日はグリーン19〜15も予備車で埋まる
+       ・次に強いのは新駐車場の後列18〜11。前列との前後関係の元になる
+       ・k-19・20を予備車で埋めれば、前列k-8〜3も前後関係が消えて予備車を置ける
+       ・そのうえで出庫時刻のある車。整備1列目の残り（m-8〜m-4）は出庫8:46まで。
+         8:46にいちばん近い出庫で、かつ帰庫の早い車をここに置く。
+         そうしないと2列目以降の前後がどんどん厳しくなる
+       ・8:47以降の出庫車は、制約の無い中の島・ヤナセ・新駐車場前列・花壇1〜3・グリーン2〜3へ */
+    function specialPlan(){
+      const put=(sl,car)=>{
+        if(!car||assign[sl]||blockedSet[sl]) return false;
+        if(pool.indexOf(car)<0) return false;
+        if(!gateOpen(sl)||!canPlace(sl,car)) return false;
+        assign[sl]=car; propagate(sl,car); pool.splice(pool.indexOf(car),1); placed++;
+        return true;
+      };
+      const spares=()=>pool.filter(c=>c.dep==null).sort((a,b)=>(a.ret==null?PK_INF:a.ret)-(b.ret==null?PK_INF:b.ret));
+      /* ── 1. 整備を列ごとに組む。下から詰めつつ、帯（出庫）を1列目から順に狭めていく ── */
+      let cap=526;                       // その列に置ける出庫の上限。1列目は8:46
+      for(let c=1;c<=6;c++){
+        let lowest=cap, anyPlaced=false;
+        /* 行ごとに、その枠に本当に置ける車の中から選ぶ。
+           下の行ほど帰庫が早い車。同じ帰庫なら出庫が遅い（帯を無駄に狭めない）車を選ぶ */
+        for(const r of [8,7,6,5,4]){
+          const sl=mId(c,r);
+          if(assign[sl]||blockedSet[sl]) continue;
+          let pick=null;
+          for(const x of pool){
+            if(x.dep==null||x.ret==null||x.dep>cap) continue;
+            if(PK_ALLOW['m'].indexOf(x.type)<0) continue;
+            if(!gateOpen(sl)||!canPlace(sl,x)) continue;
+            if(!pick||x.ret<pick.ret||(x.ret===pick.ret&&x.dep>pick.dep)) pick=x;
+          }
+          if(pick&&put(sl,pick)){ anyPlaced=true; if(pick.dep<lowest) lowest=pick.dep; }
+        }
+        if(!anyPlaced&&c>1) break;
+        /* 予備枠（1〜3行目）。1〜3列目は予備車、4〜6列目は出庫のある車でもよい */
+        for(const r of [3,2,1]){
+          const sl=mId(c,r); if(assign[sl]||blockedSet[sl]) continue;
+          if(M_SPARE_OK.indexOf(sl)>=0){ for(const sp of spares()){ if(put(sl,sp)) break; } }
+          if(assign[sl]) continue;
+          const rest=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0&&x.ret!=null).sort((a,b)=>b.ret-a.ret);
+          for(const x of rest){ if(put(sl,x)) break; }
+        }
+        cap=Math.min(cap,lowest);        // 次の列は、この列より早い出庫の帯
+      }
+      /* ── 2. 予備車を制約の強い順に確定 ── */
+      const order=['l-19','l-18','l-17','l-16','l-15','l-14','l-13','l-12',
+                   'k-18','k-17','k-16','k-15','k-14','k-13','k-12','k-11',
+                   'k-20','k-19','k-8','k-7','k-6','k-5','k-4','k-3','o-2','o-1'];
+      for(const sl of order){
+        if(assign[sl]||blockedSet[sl]) continue;
+        for(const sp of spares()){ if(put(sl,sp)) break; }
+      }
+    }
+
     if(strategy==='order'){
       placeSpares();
       placeTokusha();
+      if(pkIsSpecial()) specialPlan();
       /* 予備車などが指定席に収まらないほど多い日（土日など）は、
          本人が挙げた特例枠に先に確保する。通常の日はここは動かない */
       if(!pkIsWeekend()&&pool.filter(c=>c.dep==null).length>6) placeSparesOverflow();
@@ -4250,10 +4375,13 @@ window.__start = function(FB){
     function rescueChain(u,depth,used){
       const t=rescueBest(u,used);
       if(t!=null){ assign[t]=u; propagate(t,u); return true; }
-      if(depth<=0||rescueGuard++>3000) return false;
+      if(depth<=0||rescueGuard++>(rescueUnlock?20000:3000)) return false;   // 最後の段階だけ深く探す
+      if(rescueUnlock&&(rescueGuard&255)===0&&timeUp()) return false;        // 時間切れなら打ち切る
       /* lockedSlots＝planMaintenance と placeTokusha がまとめて計画した枠。
-         ここを玉突きで動かすと整備の列とグリーンの特車が崩れるので触らない */
-      const occ=Object.keys(assign).filter(s=>!fixed[s]&&!used.has(s)&&!lockedSlots.has(s)&&fitsHard(s,u,assign[s]));
+         ここを玉突きで動かすと整備の列とグリーンの特車が崩れるので、普段は触らない。
+         ただし最後の最後（rescueUnlock）だけは開ける。本人は厳しい日に
+         「特車をどかしてグリーンを空け、そこへ大型を入れる」をやっている（2026-09-04） */
+      const occ=Object.keys(assign).filter(s=>canTouch(s)&&!used.has(s)&&(rescueUnlock||!lockedSlots.has(s))&&fitsHard(s,u,assign[s]));
       occ.sort((a,b)=>rescueCost(a,u)-rescueCost(b,u));
       for(const s3 of occ){
         const p2=assign[s3];
@@ -4268,10 +4396,13 @@ window.__start = function(FB){
        先に玉突きを許すと、直接置ける車のために他の車を動かしてしまう。
        さらに ③整備に穴を作らない範囲で全部やってから、
        それでも余ったときだけ穴を許す（順番を崩すのは本当の最後） */
-    for(const lv of [0,1,2]){
-      rescueLevel=lv;
-      for(let d=0;d<=3;d++){
+    for(const lv of [0,1,2,3]){
+      /* lv3 は「計画で固めた枠も動かしてよい」段階。ここまで来るのは置けない車が残った日だけ */
+      rescueUnlock=(lv===3);
+      rescueLevel=Math.min(lv,2);
+      for(let d=0;d<=(lv===3?4:3);d++){
         for(let ui=pool.length-1;ui>=0;ui--){
+          if(lv===3&&timeUp()) break;
           const car=pool[ui];
           rescueGuard=0;
           if(rescueChain(car,d,new Set())){ pool.splice(ui,1); placed++; rescued.push(car.no); }
@@ -4280,7 +4411,38 @@ window.__start = function(FB){
       }
       if(!pool.length) break;
     }
-    rescueLevel=0;
+    rescueLevel=0; rescueUnlock=false;
+    /* ── 特別日だけの追い出し探索 ──
+       置けない車を、条件の合う「埋まっている枠」に入れ、押し出された車を次の対象にする。
+       行き止まりになったら別の枠を選び直す。窓は毎回作り直すので、外しても壊れない。
+       ルールは一切緩めない。組み合わせを変えているだけ（2026-09-04 実験箱） */
+    if(pkIsSpecial()&&pool.length){
+      rescueUnlock=true;   // 最後の手段なので、グリーン1と帰庫順の緩みもここで使う
+      const snap=()=>{ const o={}; Object.keys(assign).forEach(k=>o[k]=assign[k]); return {a:o,p:pool.slice()}; };
+      const restore=(sv)=>{ Object.keys(assign).forEach(k=>delete assign[k]);
+        Object.keys(sv.a).forEach(k=>assign[k]=sv.a[k]); pool.length=0; sv.p.forEach(c=>pool.push(c)); rebuildWindows(); };
+      let bestSv=snap(), bestN=pool.length;
+      for(let trial=0; trial<400 && bestN>0 && !timeUp(); trial++){
+        restore(bestSv);
+        let stall=0;
+        while(pool.length && stall<120 && !timeUp()){
+          const u=pool[0];
+          const cands=Object.keys(assign).filter(sl=>canTouch(sl)&&assign[sl]&&fitsHard(sl,u,assign[sl]));
+          if(!cands.length){ pool.push(pool.shift()); stall++; continue; }
+          const sl=cands[Math.floor(rnd()*cands.length)];
+          const kicked=assign[sl];
+          assign[sl]=u; pool.shift(); rebuildWindows();
+          /* 押し出された車を、まず空き枠へ */
+          let put=null;
+          for(const e of PK_ALLIDS){ if(assign[e]||blockedSet[e]) continue; if(fitsHard(e,kicked,null)){ put=e; break; } }
+          if(put){ assign[put]=kicked; rebuildWindows(); }
+          else { pool.push(kicked); stall++; }
+          if(pool.length<bestN){ bestN=pool.length; bestSv=snap(); stall=0; }
+        }
+      }
+      restore(bestSv);
+      rescueUnlock=false;
+    }
     /* 外した跡や押し込みで列に穴が残ることがあるので、最後にもう一度詰め直す */
     tidyMaintenance();
     fixMaintenanceOrder();
@@ -4323,7 +4485,7 @@ window.__start = function(FB){
 
   /* 何通りか試して、いちばん良い結果を返す */
   function pkSolveBest(input){
-    let best=null; const t0=Date.now(), budget=input.budgetMs||9000;
+    let best=null; const t0=Date.now(); let budget=input.budgetMs||9000;
     const run=(strategy,relax,seed,ms)=>{
       if(Date.now()-t0>budget) return null;
       const r=pkSolve({cars:input.cars,fixed:input.fixed,blocked:input.blocked,
@@ -4342,10 +4504,42 @@ window.__start = function(FB){
     /* ★予備の作戦（貪欲な詰め込み）は使わない。
        順番のルールを全部捨てて詰め込むので、全部埋まっても穴だらけになる。
        置けない車は置かずに車番を出すのが正しい（担当者が手で置く）。 */
-    const plan=[['order',0,3500],['order',1,2500],['order',2,2000]];
+    /* 特別日は「予備車が多い翌土休日でも組みきれない日」用。ルールは土休日と同じまま、
+       作戦・乱数・特車の外し方をたくさん試して一番良いものを選ぶ（2026-09-04 実験箱） */
+    const plan = pkIsSpecial()
+      ? [['order',0,2500],['order',1,2000],['order',2,2000],['deep',0,2500],['deep',1,2000],['deep',2,2000]]
+      : [['order',0,3500],['order',1,2500],['order',2,2000]];
+    PK_ALLOW_L1=false;
     for(const [st,rx,ms] of plan){
       run(st,rx,rx+1,ms);
-      if(best&&!best.unplaced.length&&!(best.rescued&&best.rescued.length)&&!best.flaws) return best;
+      if(best&&!best.unplaced.length&&!(best.rescued&&best.rescued.length)&&!best.flaws){ PK_ALLOW_L1=false; return best; }
+    }
+    /* ここまでで置けない車が残ったら、グリーン1も逃がし先に開けてもう一度。
+       普段の日は空けたままにしたいので、詰まった日だけ（2026-09-04 本人指示） */
+    if(best&&best.unplaced.length){
+      /* 1回目で時間を使い切っていても、この再挑戦は必ず走らせる */
+      budget += pkIsSpecial()? 50000 : 7000;
+      PK_ALLOW_L1=true;
+      for(const [st,rx,ms] of plan) run(st,rx,rx+1,Math.round(ms*0.5));
+      /* それでも残るなら、特車をグリーンから外して整備へ回す量を増やしながら試す */
+      const holds = pkIsSpecial()? [1,2,3,4,5,6,7,8] : [2,4,6];
+      for(const hold of holds){
+        if(!best.unplaced.length) break;
+        PK_TOKUSHA_HOLD=hold;
+        for(const [st,rx,ms] of plan) run(st,rx,rx+1,Math.round(ms*0.5));
+      }
+      /* 特別日はさらに、乱数の種を変えて何度も引き直す */
+      if(pkIsSpecial()){
+        for(let sd=2; sd<=9 && best.unplaced.length; sd++){
+          for(const hold of [0,3,6]){
+            if(!best.unplaced.length) break;
+            PK_TOKUSHA_HOLD=hold;
+            run('order',2,sd,1500); run('deep',2,sd+20,1500);
+          }
+        }
+      }
+      PK_TOKUSHA_HOLD=0;
+      PK_ALLOW_L1=false;
     }
     return best;
   }
@@ -5392,7 +5586,8 @@ window.__start = function(FB){
     if(!force){
       const msgs=[];
       /* 翌日の区分は保存しない（本人確認 2026-09）。忘れると平日ルールで走って結果が変わるので毎回見せる */
-      msgs.push('・翌日を「'+(pkIsWeekend()?'土休日':'平日')+'」として配置します。違うなら［キャンセル］して「翌日：」ボタンで切り替えてください。');
+      msgs.push('・翌日を「'+pkDayKindLabel()+'」'+(pkIsWeekend()?('／'+pkYanaseLabel()+'ルール'):'')
+        +'として配置します。違うなら［キャンセル］してボタンで切り替えてください。');
       const ef=['e-1','e-2','f-1','f-2','f-3','f-4','f-5'].filter(s=>!occ(s));
       if(ef.length) msgs.push('・'+ef.map(jp).join('、')+'が空いています。会社指定の車を先に入れてください。');
       if(got.noRet.length) msgs.push('・帰庫時刻の無い車が未配置です（'+got.noRet.slice(0,12).join('、')+(got.noRet.length>12?' ほか'+(got.noRet.length-12)+'台':'')+'）。一括配置では置きません。');
@@ -5401,14 +5596,22 @@ window.__start = function(FB){
         showToast('一括配置をやめました'); return;
       }
     }
-    $('pkMsg').textContent='計算中…（翌日：'+(pkIsWeekend()?'土休日':'平日')+'）';
+    $('pkMsg').textContent='計算中…（翌日：'+pkDayKindLabel()+'）';
     setTimeout(()=>pkBulkRun(got.cars), 40);
   }
 
   function pkBulkRun(cars){
     const t0=Date.now();
     let res;
-    try{ res=pkSolveBest({cars, fixed:pkFixedMap(), blocked:PK_RESERVED, tries:4, budgetMs:9000}); }
+    /* 特別日は手置きも組み替えてよい（2026-09-04 本人指示）。
+       ただし会社指定と、帰庫時刻の無い車（故障・事故車・ヨ両方など）は動かさない。
+       どこから動いたかは pkMovedFrom に残し、あとで矢印で示す */
+    const fixedMap=pkFixedMap();
+    pkMovedFrom={};
+    /* 特別日は、置けない車が残ったときだけ手置きの車も動かしてよい（2026-09-04 本人指示）。
+       会社指定と、帰庫時刻の無い車（故障・事故車など）は動かさない。土台は活かす */
+    Object.keys(fixedMap).forEach(sl=>{ const c=fixedMap[sl]; if(c) pkMovedFrom[String(c.no)]=sl; });
+    try{ res=pkSolveBest({cars, fixed:fixedMap, blocked:PK_RESERVED, tries:4, budgetMs:9000}); }
     catch(e){ console.error('[一括配置]',e); $('pkMsg').textContent='⚠ 計算に失敗しました'; return; }
     const ids=Object.keys(res.assign);
     /* 検証用：一括配置が置いた車を覚えておく。あとで手で動かしても「一括配置が置いたもの」として区別できる */
@@ -5421,22 +5624,39 @@ window.__start = function(FB){
     if(issues.length) console.warn('[一括配置] 自己検査', issues.join(' / '));
     if(res.unplaced.length){
       $('pkMsg').textContent='⚠ '+res.unplaced.length+'台が置けません（'+res.unplaced.join('・')+'）'
-        +'　※順番を崩さないため空けてあります。手で置いてください（翌日：'+(pkIsWeekend()?'土休日':'平日')+'で配置）';
+        +'　※順番を崩さないため空けてあります。手で置いてください（翌日：'+pkDayKindLabel()+'で配置）';
       showToast('✓ '+ids.length+'台を配置。'+res.unplaced.length+'台が置けませんでした',4200);
     }else{
-      $('pkMsg').textContent=(issues.length?('△ '+issues.join(' / ')):'')+'　（翌日：'+(pkIsWeekend()?'土休日':'平日')+'で配置）';
+      $('pkMsg').textContent=(issues.length?('△ '+issues.join(' / ')):'')+'　（翌日：'+(pkIsWeekend()?pkDayKindLabel()+'／'+pkYanaseLabel():'平日')+'で配置）';
       showToast('✓ '+ids.length+'台を配置しました',2400);
     }
     setTimeout(()=>{ if(ids.length) pkAnimPlay(); }, 350);   // そのまま入庫アニメを再生
   }
   $('pkBulk').addEventListener('click',()=>pkBulkPlace(false));
   /* 翌日の区分（平日／土休日）。保存はしない＝アプリを開き直すと平日に戻る */
-  function pkDayKindRender(){ const b=$('pkDayKind'); if(!b) return;
-    b.textContent='翌日：'+(pkIsWeekend()?'土休日':'平日'); b.style.color=pkIsWeekend()?'#a33':'#1a1f26'; b.style.fontWeight=pkIsWeekend()?'700':''; }
+  function pkDayKindRender(){
+    const b=$('pkDayKind'); if(!b) return;
+    b.textContent='翌日：'+pkDayKindLabel();
+    b.style.color=pkIsSpecial()?'#7a3ea3':(pkIsWeekend()?'#a33':'#1a1f26');
+    b.style.fontWeight=pkIsWeekend()?'700':'';
+    const y=$('pkYanaseKind'); if(!y) return;
+    y.style.display=pkIsWeekend()?'':'none';
+    y.textContent=pkYanaseLabel();
+    y.style.color=PK_YANASE_WEEKEND?'#a33':'#1a1f26'; y.style.fontWeight=PK_YANASE_WEEKEND?'700':'';
+  }
   $('pkDayKind').addEventListener('click',()=>{
     if(userRole==='sub'){ showToast('閲覧のみです'); return; }
-    PK_WEEKEND=!PK_WEEKEND; pkDayKindRender();
-    showToast(pkIsWeekend()?'翌日を土休日にしました。翌土休日ルールで配置します':'翌日を平日にしました',2600);
+    PK_DAYKIND = PK_DAYKIND==='weekday'?'holiday':(PK_DAYKIND==='holiday'?'special':'weekday');
+    pkDayKindRender();
+    showToast(PK_DAYKIND==='holiday'?'翌日を土休日にしました。翌土休日ルールで配置します'
+      :(PK_DAYKIND==='special'?'特別日にしました。土休日ルールのまま、置き方をとことん探します（時間がかかります）'
+      :'翌日を平日にしました'),3200);
+  });
+  $('pkYanaseKind').addEventListener('click',()=>{
+    if(userRole==='sub'){ showToast('閲覧のみです'); return; }
+    PK_YANASE_WEEKEND=!PK_YANASE_WEEKEND; pkDayKindRender();
+    showToast(PK_YANASE_WEEKEND?'ヤナセ1〜3を休日ルールにしました（1は8:30まで、2・3は制限なし）'
+                               :'ヤナセ1〜3を平日ルールにしました（1〜3とも6:30まで）',3000);
   });
   pkDayKindRender();
   $('pkAnimBtn').addEventListener('click',pkAnimPlay);
@@ -5706,7 +5926,7 @@ window.__start = function(FB){
     const rest=[];
     try{ pkVehicleList().forEach(no=>{ no=String(no);
       if(!placed[no] && !(pk.excluded&&pk.excluded.has(no))) rest.push(no); }); }catch(e){}
-    return { times: day, fixed, hand, auto, rest, kind:kind, dayKind: pkIsWeekend()?'土休日':'平日',
+    return { times: day, fixed, hand, auto, rest, kind:kind, dayKind: pkDayKindLabel(),
              exclude, tpl: !!pk.base1Used, savedAt: Date.now() };
   }
   async function pkSnapSave(kind){
