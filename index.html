@@ -3087,7 +3087,8 @@ window.__start = function(FB){
     K1.forEach(a=>K2.forEach(b=>E.push([a,b])));
     K2.forEach(a=>K3.forEach(b=>E.push([a,b])));
     E.push(['k-17','k-18']);
-    E.push(['c-1','c-2'],['c-2','c-3'],['c-1','c-3']);
+    /* 小屋の3枠は並んだ独立の枠（構内図）。正本に小屋の中の前後関係は無いので辺は張らない。
+       埋める順 3→2→1 と取り置きの順で自然に並ぶ（2026-09-07） */
     ['c-1','c-2','c-3'].forEach(c=>{ E.push([c,'d-1']); E.push([c,'d-2']); });
     for(let i=1;i<=5;i++) for(let g=2;g<=8;g++) E.push(['f-'+i,'g-'+g]);
     ['m-22','m-23','m-24'].forEach(m=>{ E.push([m,'o-1']); E.push([m,'o-2']); });
@@ -3302,6 +3303,9 @@ window.__start = function(FB){
        これより遅く出る車は中の島・ヤナセ・新駐車場へ回す（2026-09-04 本人指示。平日・翌土休日とも）
        予備枠（1〜3行目）は対象外 */
     if(a==='m'&&mRow(n)>=4){ if(car.dep==null||car.dep>526) return false; }
+    /* 休憩室前に出庫ヨの車は置かない。どうしても置き場が無いときだけ h-4 に限って可
+       （本人指示 2026-09-07。平日・翌土休日・特別日とも） */
+    if(a==='h'&&car.dep==null){ if(slot!=='h-4'||!opt) return false; }
     /* 中の島1はポンチョ（基本テンプレ1②の0101）の枠。大型・中型は入れない */
     if(slot==='g-1'&&t!=='コミュニティ') return false;
     /* グリーンへのポンチョは担当者のみ。一括配置では置かない */
@@ -3485,7 +3489,7 @@ window.__start = function(FB){
     })();
     /* ── 取り置きする車を決める ──
        対象は「大型が入れられない枠」のうち、埋める順のいちばん後ろに来るところ。
-       花壇6→5→4、小屋1→2→3 の順に、その枠の条件（花壇4〜6は出庫7時前など）を
+       花壇6→5→4、小屋3→2→1 の順に、その枠の条件（花壇4〜6は出庫7時前など）を
        満たす中型・ポンチョを1台ずつよける。スタンドは花壇4〜6より遅く出る車が要るので最後 */
     (function reserveMidOnly(){
       const pick=(slot,extra)=>{
@@ -3501,6 +3505,7 @@ window.__start = function(FB){
         if(best) reserved.set(best,slot);
         return best;
       };
+
       /* 条件のいちばん厳しい枠から先によける。後回しにすると候補が残らない。
          洗車機3は「帰庫21:30以降＋出庫が早い中型」で最も狭いので先頭 */
       if(!assign['i-3']&&!blockedSet['i-3']) pick('i-3');
@@ -3509,7 +3514,11 @@ window.__start = function(FB){
         if(assign[s]||blockedSet[s]) return;
         const c=pick(s); if(c&&depKey(c)>aLate) aLate=depKey(c);
       });
-      ['c-1','c-2','c-3'].forEach(s=>{ if(!assign[s]&&!blockedSet[s]) pick(s); });
+      /* 小屋は 3→2→1 の順に埋める（本人指示 2026-09-07）。前後関係は c-1→c-2→c-3
+         （1がいちばん先に出て、3がいちばん先に帰る）なので、3から順に「出庫の遅い車」をよけ、
+         2・1 は、それより先に出る車を順によける */
+      /* 小屋は 3→2→1 の順（正本 5-2-2）。取り置きだけ 1→2→3 になっていたので正本に合わせた（2026-09-07） */
+      ['c-3','c-2','c-1'].forEach(s=>{ if(!assign[s]&&!blockedSet[s]) pick(s); });
       if(!assign['b-1']&&!blockedSet['b-1']) pick('b-1',c=>depKey(c)>aLate);
     })();
     const freeSlots=PK_ALLIDS.filter(s=>!assign[s]&&!blockedSet[s]);
@@ -5466,6 +5475,7 @@ window.__start = function(FB){
      時間を直接動かせるので、スライドで前後に自由に行き来できる */
   const pkAnim={running:false, raf:0, buses:[], layer:null, last:0, time:0, speed:1, map:'full'};
   function pkAnimStop(){
+    pkMovedAnimClear();
     pkAnim.running=false;
     if(pkAnim.raf) cancelAnimationFrame(pkAnim.raf);
     if(pkAnim.layer) pkAnim.layer.remove();
@@ -5529,8 +5539,65 @@ window.__start = function(FB){
     pkAnimSetSpeed(0);                                   // つまんだら止めて、その位置へ
     pkAnim.time=pkAnimTotal()*(+e.target.value/1000);
     pkAnimSyncArrived();
+    if(+e.target.value<=40) pkMovedAnimPlay();           // 頭まで戻したら、動かした手置きをもう一度見せる
   });
-  function pkAnimPlay(){
+  /* ── 一括配置が「手置きの車」を動かしたとき、元の枠→新しい枠へ点滅しながら3回動かして示す ──
+     対象は pkMovedFrom（一括配置前の手置きの枠）と今の枠が違う車だけ。
+     入庫アニメとは別の層に置くので、スライドバーをどこへ動かしても消えない（本人指示 2026-09-07） */
+  let pkMovedTimer=0;
+  function pkMovedAnimClear(){
+    if(pkMovedTimer){ clearTimeout(pkMovedTimer); pkMovedTimer=0; }
+    document.querySelectorAll('#pkMovedLayer').forEach(el=>el.remove());
+  }
+  function pkMovedAnimPlay(){
+    pkMovedAnimClear();
+    const m=mapEl(); if(!m) return;
+    const key=curMap(), geom=PK_GEOM[key]||{};
+    const moves=[];
+    Object.keys(pkMovedFrom).forEach(no=>{
+      const from=pkMovedFrom[no];
+      const to=Object.keys(pk.slots).find(sl=>pk.slots[sl]&&String(pk.slots[sl].no)===String(no));
+      if(!to||to===from||!geom[from]||!geom[to]) return;
+      moves.push({no:String(no),from,to});
+    });
+    if(!moves.length) return;
+    const NS='http://www.w3.org/2000/svg';
+    const layer=document.createElementNS(NS,'g');
+    layer.setAttribute('id','pkMovedLayer'); layer.setAttribute('pointer-events','none');
+    const LOOP=1.8, REPEAT=3, STAG=0.25;
+    const mk=(tag,attrs)=>{ const e=document.createElementNS(NS,tag); Object.keys(attrs).forEach(k=>e.setAttribute(k,attrs[k])); return e; };
+    moves.forEach((mv,i)=>{
+      const [x1,y1,L,S]=geom[mv.from], [x2,y2]=geom[mv.to];
+      const w=Math.max(L,S)*0.9, h=Math.min(L,S)*1.1, fs=h*0.62;
+      const begin=(i*STAG).toFixed(2)+'s';
+      /* 元の枠：赤い破線の枠が点滅 */
+      const src=mk('rect',{x:x1-w/2,y:y1-h/2,width:w,height:h,rx:h*0.2,fill:'none',stroke:'#d0202a','stroke-width':Math.max(3,h*0.09),'stroke-dasharray':(h*0.25)+' '+(h*0.15)});
+      src.appendChild(mk('animate',{attributeName:'opacity',values:'1;0.15;1',dur:'0.5s',repeatCount:'indefinite',begin}));
+      layer.appendChild(src);
+      /* 新しい枠：赤い枠が点滅 */
+      const dst=mk('rect',{x:x2-w/2,y:y2-h/2,width:w,height:h,rx:h*0.2,fill:'none',stroke:'#d0202a','stroke-width':Math.max(3,h*0.09)});
+      dst.appendChild(mk('animate',{attributeName:'opacity',values:'1;0.15;1',dur:'0.5s',repeatCount:'indefinite',begin}));
+      layer.appendChild(dst);
+      /* 動く札：元→新へ3回。動きながら点滅 */
+      const g=mk('g',{});
+      const card=mk('rect',{x:-w/2,y:-h/2,width:w,height:h,rx:h*0.2,fill:'#d0202a',stroke:'#fff','stroke-width':Math.max(2,h*0.06)});
+      const txt=mk('text',{x:0,y:fs*0.36,'text-anchor':'middle','font-size':fs,'font-weight':'800',fill:'#fff','font-family':'-apple-system,BlinkMacSystemFont,sans-serif'});
+      txt.textContent=mv.no;
+      g.appendChild(card); g.appendChild(txt);
+      g.appendChild(mk('animateTransform',{attributeName:'transform',type:'translate',
+        values:x1+' '+y1+';'+x1+' '+y1+';'+x2+' '+y2+';'+x2+' '+y2, keyTimes:'0;0.18;0.82;1',
+        calcMode:'spline', keySplines:'0 0 1 1;0.4 0 0.2 1;0 0 1 1', dur:LOOP+'s', repeatCount:String(REPEAT), begin, fill:'freeze'}));
+      g.appendChild(mk('animate',{attributeName:'opacity',values:'1;0.25;1',dur:'0.4s',repeatCount:String(Math.round(LOOP*REPEAT/0.4)),begin}));
+      /* 矢印（元→新の線） */
+      const ln=mk('line',{x1,y1,x2,y2,stroke:'#d0202a','stroke-width':Math.max(2,h*0.05),'stroke-dasharray':(h*0.2)+' '+(h*0.12),opacity:'0.8'});
+      layer.appendChild(ln);
+      layer.appendChild(g);
+    });
+    m.appendChild(layer);
+    /* 3回動かし終わったら消す（枠の点滅も一緒に） */
+    pkMovedTimer=setTimeout(pkMovedAnimClear, Math.round((LOOP*REPEAT+moves.length*STAG+0.8)*1000));
+  }
+    function pkAnimPlay(){
     if(pkAnim.running){ pkAnimStop(); return; }
     if(pk.screen===0) pkGoScreen(1);
     const mapKey=curMap();
@@ -5563,6 +5630,7 @@ window.__start = function(FB){
       el:null, done:false, sz, seed:((i*2654435761)%1000)/1000 }));
     pkAnim.time=0; pkAnim.last=performance.now(); pkAnim.running=true;
     pkAnimSetSpeed(1);
+    pkMovedAnimPlay();                               // 動かした手置きも同時に示す
     /* フローティングのスキップはスライダーに重なるので出さない。
        バーの ▶| （最後まで）が同じ役割 */
     const sk=$('pkSkip'); if(sk) sk.style.display='none';
@@ -5752,7 +5820,7 @@ window.__start = function(FB){
       $('pkMsg').textContent=(issues.length?('△ '+issues.join(' / ')):'')+'　（翌日：'+(pkIsWeekend()?pkDayKindLabel()+'／'+pkYanaseLabel():'平日')+'で配置）';
       showToast('✓ '+ids.length+'台を配置しました',2400);
     }
-    setTimeout(()=>{ if(ids.length) pkAnimPlay(); }, 350);   // そのまま入庫アニメを再生
+    setTimeout(()=>{ if(ids.length) pkAnimPlay(); else pkMovedAnimPlay(); }, 350);   // そのまま入庫アニメを再生（動かした手置きも一緒に示す）
   }
   $('pkBulk').addEventListener('click',()=>pkBulkPlace(false));
   /* 翌日の区分（平日／土休日）。保存はしない＝アプリを開き直すと平日に戻る */
