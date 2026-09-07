@@ -3294,6 +3294,10 @@ window.__start = function(FB){
     /* 整備に予備車（出庫がヨ）を置けるのは m-1・2・3／9・10・11／17・18・19 だけ。
        ほかの枠に置くと、朝に動かない車が前をふさぐ */
     if(a==='m'&&car.dep==null&&M_SPARE_OK.indexOf(slot)<0) return false;
+    /* 特別日は整備の予備枠を予備車のために空けておく。出庫のある車で埋めると、
+       その車が本来入るべき場所を奪って行き場の無い車が出る（2026-09-06 本人指示）。
+       どうしても置き場所が無いときだけ opt で開放する */
+    if(pkIsSpecial()&&!opt&&a==='m'&&car.dep!=null&&M_SPARE_OK.indexOf(slot)>=0) return false;
     /* 整備の下段（各列の4〜8行目）は出庫8:46まで。列は出庫の帯なので1列目を縛れば全列に効く。
        これより遅く出る車は中の島・ヤナセ・新駐車場へ回す（2026-09-04 本人指示。平日・翌土休日とも）
        予備枠（1〜3行目）は対象外 */
@@ -3351,7 +3355,11 @@ window.__start = function(FB){
        会社指定と、帰庫時刻の無い車は対象外 */
     const COMPANY_SLOTS={'e-1':1,'e-2':1,'f-1':1,'f-2':1,'f-3':1,'f-4':1,'f-5':1};
     const movableFixed={};
-    if(pkIsSpecial()) fixedSlots.forEach(sl=>{ if(!COMPANY_SLOTS[sl]&&fixed[sl].ret!=null) movableFixed[sl]=1; });
+    /* 特別日に組み替えてよい手置き＝会社指定以外で、出庫か帰庫のどちらかに時刻がある車。
+       故障・事故車・貸出・移籍（どちらも時刻でない車）は今までどおり動かさない。
+       帰庫がヨでも出庫時刻がある車（2026-08-28 の 2504 など）は組み替えてよい（本人確認 2026-09-06）。
+       この1台がグリーンの奥に居ると、整備3〜6列目の上段がその出庫時刻に縛られて詰む */
+    if(pkIsSpecial()) fixedSlots.forEach(sl=>{ if(!COMPANY_SLOTS[sl]&&(fixed[sl].ret!=null||fixed[sl].dep!=null)) movableFixed[sl]=1; });
     const canTouch=(sl)=>!fixed[sl]||(rescueUnlock&&movableFixed[sl]);
     const heavy=c=>c&&(c.type==='大型'||c.type==='特車');
     function contextOK(slot,car,skip){
@@ -3395,8 +3403,10 @@ window.__start = function(FB){
     /* ★整備は必ず下から詰める。同じ列の下にまだ空き枠があるうちは上の行に置かない。
        これを守らないと、途中の行を飛ばして上に車が付き、
        列の中に穴＝担当者から見て「壁」ができる（実機 7/31・8/6 の指摘） */
+    let mLoose=false;   // 特別日で、置けない車が残ったときだけ「下が空でも上に置く」を許す
     function mBottomOK(slot){
       if(areaOf(slot)!=='m') return true;
+      if(mLoose) return true;   // 下から詰めるのは「できるだけ」でよい（本人確認）
       const n=numOf(slot), c=mCol(n), r=mRow(n);
       for(let k=r+1;k<=8;k++){
         const id=mId(c,k);
@@ -4090,11 +4100,25 @@ window.__start = function(FB){
           if(pick&&put(sl,pick)){ anyPlaced=true; if(pick.dep<lowest) lowest=pick.dep; }
         }
         if(!anyPlaced&&c>1) break;
-        /* 予備枠（1〜3行目）。1〜3列目は予備車、4〜6列目は出庫のある車でもよい */
+        /* 予備枠（1〜3行目）。ここは予備車だけにする。出庫のある車で埋めてしまうと、
+           その車が本来入るべき場所を奪い、行き場の無い車が出る（2026-09-06 本人指示）。
+           4〜6列目の1〜3行目は予備枠ではないので、出庫のある車でもよい */
+        const sparRows=[3,2,1].filter(r=>{
+          const sl=mId(c,r); return !assign[sl]&&!blockedSet[sl]&&M_SPARE_OK.indexOf(sl)>=0; });
+        if(sparRows.length){
+          /* 予備枠は「帰庫の遅い予備車」を先に取る。ここに早い車を入れると1行目の上限が下がり、
+             右の列の予備枠が入らなくなる（2026-09-06）。取ったあと、下の行から帰庫の早い順に置く */
+          const take=pool.filter(x=>x.dep==null&&x.ret!=null&&PK_ALLOW['m'].indexOf(x.type)>=0)
+                         .sort((a,b)=>b.ret-a.ret).slice(0,sparRows.length)
+                         .sort((a,b)=>a.ret-b.ret);
+          let i=0;
+          for(const r of sparRows){ if(i<take.length&&put(mId(c,r),take[i])) i++; }
+          /* 取れなかった行は、条件に合う予備車で埋め直す */
+          for(const r of sparRows){ const sl=mId(c,r); if(assign[sl]) continue;
+            for(const sp of spares()){ if(put(sl,sp)) break; } }
+        }
         for(const r of [3,2,1]){
-          const sl=mId(c,r); if(assign[sl]||blockedSet[sl]) continue;
-          if(M_SPARE_OK.indexOf(sl)>=0){ for(const sp of spares()){ if(put(sl,sp)) break; } }
-          if(assign[sl]) continue;
+          const sl=mId(c,r); if(assign[sl]||blockedSet[sl]||M_SPARE_OK.indexOf(sl)>=0) continue;
           const rest=pool.filter(x=>PK_ALLOW['m'].indexOf(x.type)>=0&&x.ret!=null).sort((a,b)=>b.ret-a.ret);
           for(const x of rest){ if(put(sl,x)) break; }
         }
@@ -4110,10 +4134,78 @@ window.__start = function(FB){
       }
     }
 
+    /* ════════ 特別日：全部を見比べて組む ════════
+       玉突きや押し出しで後から直すのではなく、毎回すべての車とすべての空き枠を見比べ、
+       「行き場のいちばん少ない車」から決めていく。行き場が1つしかない車を後回しにすると、
+       その枠を他の車に取られて詰む。パズルで角から埋めるのと同じ考え方（2026-09-06 本人指示） */
+    function globalAssign(){
+      const opts=(car)=>{
+        const out=[];
+        for(let i=0;i<PK_ALLIDS.length;i++){ const sl=PK_ALLIDS[i];
+          if(assign[sl]||blockedSet[sl]) continue;
+          if(!gateOpen(sl)) continue;
+          if(!canPlace(sl,car)) continue;
+          out.push(sl);
+        }
+        return out;
+      };
+      /* その枠の「もったいなさ」。他の車も置ける枠ほど後回しにしたい */
+      const slotCost=(sl,car)=>{
+        let n=0;
+        for(let i=0;i<pool.length&&n<6;i++){ const c=pool[i]; if(c===car) continue; if(canPlace(sl,c)) n++; }
+        let bonus=0;
+        const a=areaOf(sl);
+        if(car.dep==null){ if(a==='m'&&M_SPARE_OK.indexOf(sl)>=0) bonus-=4; if(a==='l'&&numOf(sl)>=12) bonus-=2; if(a==='k'&&numOf(sl)>=11) bonus-=2; }
+        else { if(a==='m') bonus-=2; }
+        return n+bonus+rnd()*0.9;
+      };
+      const one=(priority)=>{
+        let guard=0;
+        while(pool.length&&guard++<400&&!timeUp()){
+          let pick=null, pickOpts=null;
+          /* 前回置けなかった車は、今回はいちばん先に置く。
+             後回しにすると他の車に枠を取られて、また同じところで詰む */
+          const head=pool.filter(c=>priority.has(c.no));
+          const look=head.length?head:pool;
+          for(const c of look){
+            const o=opts(c);
+            if(!pickOpts||o.length<pickOpts.length){ pick=c; pickOpts=o; if(o.length<=1) break; }
+          }
+          if(!pickOpts||!pickOpts.length) break;
+          pickOpts.sort((x,y)=>slotCost(x,pick)-slotCost(y,pick));
+          const sl=pickOpts[0];
+          assign[sl]=pick; propagate(sl,pick); pool.splice(pool.indexOf(pick),1); placed++;
+        }
+      };
+      /* 置けなかった車を覚えて、最初から組み直す。パズルを崩して角から置き直すのと同じ */
+      const base={}; Object.keys(assign).forEach(k=>base[k]=assign[k]);
+      const allCars=pool.slice();
+      const priority=new Set();
+      let bestA=null,bestPool=null,bestN=1e9;
+      for(let round=0; round<14 && !timeUp(); round++){
+        mLoose = (round>=2);   // 2回目までは今までどおり下から詰める。それで無理なら緩める
+        Object.keys(assign).forEach(k=>{ if(!base[k]) delete assign[k]; });
+        pool.length=0; allCars.forEach(c=>pool.push(c)); rebuildWindows();
+        one(priority);
+        if(pool.length<bestN){ bestN=pool.length; bestA={}; Object.keys(assign).forEach(k=>bestA[k]=assign[k]); bestPool=pool.slice(); }
+        if(!pool.length) break;
+        pool.forEach(c=>priority.add(c.no));
+        if(priority.size>10) priority.clear();      // 溜まりすぎたら忘れてやり直す
+      }
+      mLoose=false;
+      if(bestA){
+        Object.keys(assign).forEach(k=>{ if(!base[k]) delete assign[k]; });
+        Object.keys(bestA).forEach(k=>assign[k]=bestA[k]);
+        pool.length=0; bestPool.forEach(c=>pool.push(c)); rebuildWindows();
+        placed=Object.keys(assign).length-Object.keys(base).length;
+      }
+    }
+
     if(strategy==='order'){
+      if(pkIsSpecial()){ globalAssign(); }
       placeSpares();
       placeTokusha();
-      if(pkIsSpecial()) specialPlan();
+      if(pkIsSpecial()&&pool.length) specialPlan();
       /* 予備車などが指定席に収まらないほど多い日（土日など）は、
          本人が挙げた特例枠に先に確保する。通常の日はここは動かない */
       if(!pkIsWeekend()&&pool.filter(c=>c.dep==null).length>6) placeSparesOverflow();
@@ -4417,25 +4509,42 @@ window.__start = function(FB){
        行き止まりになったら別の枠を選び直す。窓は毎回作り直すので、外しても壊れない。
        ルールは一切緩めない。組み合わせを変えているだけ（2026-09-04 実験箱） */
     if(pkIsSpecial()&&pool.length){
+      /* この探索は今まで一度も動いていなかった。ここへ来る時点で持ち時間を使い切っており、
+         入口の !timeUp() で必ず弾かれていた（2026-09-06 計測：8/28で21回中21回スキップ）。
+         残りが少ないときだけ、締切とは別に短い持ち時間を渡して必ず動かす。
+         外側の pkSolveBest は budget を超えると次の試行を始めないので、全体の時間は伸びない */
+      const ejEnd=Date.now()+(pool.length<=4?1500:400);
+      const ejUp=()=>Date.now()>ejEnd;
       rescueUnlock=true;   // 最後の手段なので、グリーン1と帰庫順の緩みもここで使う
       const snap=()=>{ const o={}; Object.keys(assign).forEach(k=>o[k]=assign[k]); return {a:o,p:pool.slice()}; };
       const restore=(sv)=>{ Object.keys(assign).forEach(k=>delete assign[k]);
         Object.keys(sv.a).forEach(k=>assign[k]=sv.a[k]); pool.length=0; sv.p.forEach(c=>pool.push(c)); rebuildWindows(); };
       let bestSv=snap(), bestN=pool.length;
-      for(let trial=0; trial<400 && bestN>0 && !timeUp(); trial++){
+      /* この探索が見ているのは fitsHard だけで、fitsHard は窓（lo/hi/rlo/rhi）を使わず
+         assign を直接見る。ループの中で毎回 rebuildWindows を回すと、その分だけ
+         試せる組み合わせが減るだけなので、窓の作り直しは trial の区切りに寄せる
+         （2026-09-06。8/28で試行回数がおよそ40倍になった） */
+      for(let trial=0; trial<20000 && bestN>0 && !ejUp(); trial++){
         restore(bestSv);
         let stall=0;
-        while(pool.length && stall<120 && !timeUp()){
+        while(pool.length && stall<120 && !ejUp()){
           const u=pool[0];
           const cands=Object.keys(assign).filter(sl=>canTouch(sl)&&assign[sl]&&fitsHard(sl,u,assign[sl]));
           if(!cands.length){ pool.push(pool.shift()); stall++; continue; }
-          const sl=cands[Math.floor(rnd()*cands.length)];
+          /* fitsHard は整備の列の帰庫順を見ないので、放っておくと列がどんどん乱れる。
+             順を崩さない枠が1つでもあるならそちらから選ぶ（2026-09-06） */
+          const clean=cands.filter(sl=>areaOf(sl)!=='m'||mOrderOK(sl,u));
+          const pick=clean.length?clean:cands;
+          const sl=pick[Math.floor(rnd()*pick.length)];
           const kicked=assign[sl];
-          assign[sl]=u; pool.shift(); rebuildWindows();
-          /* 押し出された車を、まず空き枠へ */
+          assign[sl]=u; pool.shift();
+          /* 押し出された車を、まず空き枠へ。ここも列の順を崩さない枠を先に探す */
           let put=null;
-          for(const e of PK_ALLIDS){ if(assign[e]||blockedSet[e]) continue; if(fitsHard(e,kicked,null)){ put=e; break; } }
-          if(put){ assign[put]=kicked; rebuildWindows(); }
+          for(const e of PK_ALLIDS){ if(assign[e]||blockedSet[e]) continue;
+            if(areaOf(e)==='m'&&!(mOrderOK(e,kicked)&&mBottomOK(e))) continue;
+            if(fitsHard(e,kicked,null)){ put=e; break; } }
+          if(!put) for(const e of PK_ALLIDS){ if(assign[e]||blockedSet[e]) continue; if(fitsHard(e,kicked,null)){ put=e; break; } }
+          if(put){ assign[put]=kicked; }
           else { pool.push(kicked); stall++; }
           if(pool.length<bestN){ bestN=pool.length; bestSv=snap(); stall=0; }
         }
@@ -4476,9 +4585,15 @@ window.__start = function(FB){
       for(let k=1;k<f.length;k++) if(!f[k-1].spare&&!f[k].spare&&f[k-1].ret<f[k].ret) flaws+=3;
       if(f.length>1) flaws+=(f[f.length-1].r-f[0].r+1)-f.length;         // 列の途中の空き
     }
-    const out={};
-    Object.keys(assign).forEach(s=>{ if(!fixed[s]) out[s]=assign[s].no; });
-    return {assign:out, unplaced:pool.map(c=>c.no), rescued:rescued, flaws:flaws, placedCount:placed, assignObj:assign,
+    /* 特別日は手置きの車も動かすことがある。動いた枠を書き出さないと、
+       元の枠に古い号車が残ったまま新しい枠にも同じ号車が出て（二重表示）、
+       元の枠に入った車が画面から消える（2026-09-06 発見・8/28で実際に3台消えていた）。
+       中身が変わった枠は手置きでも書き出し、空になった枠は cleared で消す。
+       平日・翌土休日は手置きが動かないので、この行は何も変えない */
+    const out={}, cleared=[];
+    Object.keys(assign).forEach(s=>{ if(!fixed[s]||String(fixed[s].no)!==String(assign[s].no)) out[s]=assign[s].no; });
+    fixedSlots.forEach(s=>{ if(!assign[s]) cleared.push(s); });
+    return {assign:out, cleared:cleared, unplaced:pool.map(c=>c.no), rescued:rescued, flaws:flaws, placedCount:placed, assignObj:assign,
       lo:lo,hi:hi,rlo:rlo,rhi:rhi,
       dbg:input.debug?{lo,hi,rlo,rhi,assign,canPlace,gateOpen}:null};
   }
@@ -4506,10 +4621,12 @@ window.__start = function(FB){
        置けない車は置かずに車番を出すのが正しい（担当者が手で置く）。 */
     /* 特別日は「予備車が多い翌土休日でも組みきれない日」用。ルールは土休日と同じまま、
        作戦・乱数・特車の外し方をたくさん試して一番良いものを選ぶ（2026-09-04 実験箱） */
+    if(pkIsSpecial()) PK_ALLOW_L1=true;   // 特別日はグリーン1も最初から逃がし先に使う
+    /* 特別日は必ず新しい組み立て（specialPlan）を通す作戦だけを使う */
     const plan = pkIsSpecial()
-      ? [['order',0,2500],['order',1,2000],['order',2,2000],['deep',0,2500],['deep',1,2000],['deep',2,2000]]
+      ? [['order',0,3000],['order',1,2500],['order',2,2500],['order',2,2500],['order',1,2500],['order',0,2500]]
       : [['order',0,3500],['order',1,2500],['order',2,2000]];
-    PK_ALLOW_L1=false;
+    if(!pkIsSpecial()) PK_ALLOW_L1=false;
     for(const [st,rx,ms] of plan){
       run(st,rx,rx+1,ms);
       if(best&&!best.unplaced.length&&!(best.rescued&&best.rescued.length)&&!best.flaws){ PK_ALLOW_L1=false; return best; }
@@ -4534,7 +4651,7 @@ window.__start = function(FB){
           for(const hold of [0,3,6]){
             if(!best.unplaced.length) break;
             PK_TOKUSHA_HOLD=hold;
-            run('order',2,sd,1500); run('deep',2,sd+20,1500);
+            run('order',2,sd,1500); run('order',1,sd+20,1500);
           }
         }
       }
@@ -5614,9 +5731,14 @@ window.__start = function(FB){
     try{ res=pkSolveBest({cars, fixed:fixedMap, blocked:PK_RESERVED, tries:4, budgetMs:9000}); }
     catch(e){ console.error('[一括配置]',e); $('pkMsg').textContent='⚠ 計算に失敗しました'; return; }
     const ids=Object.keys(res.assign);
-    /* 検証用：一括配置が置いた車を覚えておく。あとで手で動かしても「一括配置が置いたもの」として区別できる */
+    /* 検証用：一括配置が置いた車を覚えておく。あとで手で動かしても「一括配置が置いたもの」として区別できる。
+       ただし特別日で動かした手置きの車は「手置き」のまま残す（一括配置が連れてきた車ではないため） */
     if(!pk.autoOnce) pk.autoOnce=new Set();
-    ids.forEach(s=>{ pk.slots[s]={no:String(res.assign[s]), st:'auto'}; pk.autoOnce.add(String(res.assign[s])); });
+    const wasFixed=new Set(); Object.keys(fixedMap).forEach(sl=>{ if(fixedMap[sl]) wasFixed.add(String(fixedMap[sl].no)); });
+    (res.cleared||[]).forEach(s=>{ delete pk.slots[s]; });   // 手置きが出ていって空になった枠
+    ids.forEach(s=>{ const no=String(res.assign[s]);
+      if(wasFixed.has(no)){ pk.slots[s]={no, st:'man'}; }
+      else { pk.slots[s]={no, st:'auto'}; pk.autoOnce.add(no); } });
     pkPush(); pkRenderAll();
     const issues=pkSelfCheck();
     console.log('[一括配置] 配置'+ids.length+'台 / 置けず'+res.unplaced.length+'台 / 作戦'+res.strategy+' / 緩和レベル'+res.relax+' / '+(Date.now()-t0)+'ms');
