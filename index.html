@@ -8,384 +8,483 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="B.T.S.">
+<meta name="theme-color" content="#A51B2F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
 <title>Bus Time Scheduler</title>
 <style>
+  /* ===== B.T.S. デザイン 2026-09 =====
+     生成りの紙に、名鉄の赤を落ち着かせた深紅。見出しの帯はバスの車体の帯（赤＋細い生成りの線＋濃い赤の裾）。
+     黒い号車カード（号車・出庫・帰庫）は見やすいので従来どおり。 */
   :root{
-    --bg:#e8eaed; --panel:#ffffff; --panel-2:#f1f3f5; --line:#d4d8dd;
-    --text:#1a1f26; --text-dim:#6a737d; --amber:#d68a1f; --amber-dim:#caa468;
-    --red:#d6202a; --red-soft:#c0392b; --red-bg:#f7dcdc;
-    --yellow-bg:#fbf0c4; --yellow-line:#e1bd1e;
-    --green:#4a9a78; --next:#2f7d5a; --next-bg:#dff0e6;
-    --green-soft:#2e8b57; --green-bg:#dcf0e2; --forest:#1d5c38;
-    --navy:#16235c; --wine:#8a1f2b; --now-orange:#e8730f;
-    --header-bg:#14181e; --header-text:#eceae3;
+    --paper:#F3ECE1; --paper-2:#E9DFCF; --paper-3:#E2D6C3; --card:#FFFCF7; --card-2:#F8F2E8;
+    --sand:#D8C8B1; --sand-2:#C4B196;
+    --crimson:#A51B2F; --crimson-deep:#7D1323; --crimson-ink:#5C0D19; --blush:#F4DFDA; --blush-2:#EBC7C0;
+    --ink:#1a1f26; --ink-soft:#6E6356; --ink-faint:#9C9083; --ivory:#FFF8EF;
+    --moss:#3E7A57; --moss-bg:#E2EDE1; --moss-deep:#1d5c38;
+    --sun:#9A6A05; --sun-bg:#FBEEC4; --sun-line:#D9A928;
+    --plum:#6A3C7B; --plum-bg:#EFE3F2;
+    /* 以前の名前（HTML・JSの中で使っている） */
+    --bg:var(--paper); --panel:var(--card); --panel-2:var(--card-2); --line:var(--sand);
+    --text:var(--ink); --text-dim:var(--ink-soft); --amber:var(--crimson-deep); --amber-dim:var(--blush-2);
+    --red:var(--crimson); --red-soft:var(--crimson); --red-bg:#F6DAD6;
+    --yellow-bg:var(--sun-bg); --yellow-line:var(--sun-line);
+    --green:var(--moss); --next:var(--moss); --next-bg:var(--moss-bg);
+    --green-soft:var(--moss); --green-bg:var(--moss-bg); --forest:var(--moss-deep);
+    --navy:#16235c; --wine:var(--crimson-deep); --now-orange:var(--crimson);
+    --header-bg:var(--crimson); --header-text:var(--ivory);
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+    --sans: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+    --lip: 0 2px 0 var(--paper-3);
+    --r-s:9px; --r-m:12px; --r-l:18px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
-  body{background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; touch-action:manipulation;}
-  button{touch-action:manipulation;}
-  .app{max-width:820px; margin:0 auto; padding:0 0 90px;}
+  body{background:var(--paper); color:var(--text); font-family:var(--sans); font-weight:500; min-height:100vh; touch-action:manipulation;
+       -webkit-font-smoothing:antialiased;}
+  button{touch-action:manipulation; font-family:var(--sans);}
+  input[type=range]{accent-color:var(--crimson);}
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible{outline:3px solid rgba(165,27,47,.35); outline-offset:2px;}
+  .app{max-width:820px; margin:0 auto; padding:0 0 96px;}
 
-  /* Gate */
-  .gate{position:fixed; inset:0; background:var(--bg); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;}
-  .gate h1{font-size:20px; color:var(--amber); letter-spacing:.06em; margin:0 0 6px;}
-  .gate p{font-size:13px; color:var(--text-dim); margin:0 0 22px; text-align:center; line-height:1.7;}
-  .gate input{width:100%; max-width:240px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:14px; font-family:var(--mono); font-size:22px; text-align:center; letter-spacing:.3em;}
-  .gate input:focus{outline:none; border-color:var(--amber);}
-  .gate button{margin-top:16px; width:100%; max-width:240px; background:var(--amber); color:#1b1404; border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:700;}
-  .gate .err{color:var(--red-soft); font-size:12px; margin-top:10px; min-height:16px;}
-  .role-select{width:100%; max-width:240px; display:flex; flex-direction:column; gap:12px;}
-  .role-btn{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:16px; font-size:16px; font-weight:700;}
-  .role-btn:active{border-color:var(--amber);}
-  .role-btn .sub-label{display:block; font-size:11px; font-weight:400; color:#fff; margin-top:3px;}
-  .role-back{margin-top:14px; background:none; border:none; color:var(--text-dim); font-size:12px; text-decoration:underline;}
-  .name-select{width:100%; max-width:240px; display:flex; gap:10px; margin-top:6px;}
-  .name-select button{flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; color:var(--text); padding:14px 6px; font-size:14px; font-weight:700;}
-  .name-select button:active{border-color:var(--amber);}
-  .main-session-bar{margin-top:4px; font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
-  .main-session-bar .who{color:var(--amber); font-weight:700;}
-  .main-session-bar .viewer-tag{color:var(--text-dim);}
+  /* 手描きアイコン */
+  .ic{width:20px; height:20px; flex:none; display:inline-block; vertical-align:middle; color:var(--crimson-deep); --wash:rgba(165,27,47,.14); overflow:visible;}
+  .ic .w{fill:var(--wash);}
+  .ic .s path{fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round;}
+  .ic .d{fill:currentColor;}
+  .ic.sm{width:16px; height:16px;} .ic.lg{width:26px; height:26px;} .ic.xl{width:34px; height:34px;}
+  .bus-art{display:block;}
 
-  /* Mode select */
-  .modesel{position:fixed; inset:0; background:var(--bg); z-index:90; display:none; flex-direction:column; padding:24px 20px; overflow-y:auto;}
+  /* ===== 入口（利用方法・パスワード） ===== */
+  .gate{position:fixed; inset:0; background:var(--paper); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:0 24px 24px; overflow-y:auto;}
+  .gate-band{align-self:stretch; margin:0 -24px 26px; background:var(--crimson); padding:28px 20px 20px; text-align:center;
+             box-shadow:inset 0 -5px 0 var(--crimson-deep), inset 0 -7px 0 #F1DCC6;}
+  .gate-band .gate-scene{display:block; width:min(360px,94vw); height:auto; aspect-ratio:300/118; margin:0 auto 10px; overflow:hidden;}
+  .gate h1{font-size:21px; color:var(--ivory); letter-spacing:.06em; margin:0; font-weight:700;}
+  .gate .gate-sub{font-size:11.5px; color:rgba(255,248,239,.78); margin-top:4px; letter-spacing:.08em;}
+  .gate p{font-size:13px; color:var(--text-dim); margin:0 0 18px; text-align:center; line-height:1.7;}
+  .gate input{width:100%; max-width:260px; background:var(--card); border:1.5px solid var(--sand); border-radius:var(--r-m); color:var(--text); padding:14px; font-family:var(--mono); font-size:24px; text-align:center; letter-spacing:.35em; box-shadow:var(--lip);}
+  .gate input:focus{outline:none; border-color:var(--crimson); box-shadow:0 0 0 4px rgba(165,27,47,.12);}
+  .gate button{margin-top:16px; width:100%; max-width:260px; background:var(--crimson); color:var(--ivory); border:1px solid var(--crimson-deep); border-radius:var(--r-m); padding:14px; font-size:16px; font-weight:700; box-shadow:0 2px 0 var(--crimson-ink);}
+  .gate button:active{transform:translateY(1px); box-shadow:0 1px 0 var(--crimson-ink);}
+  .gate .err{color:var(--crimson); font-size:12.5px; margin-top:10px; min-height:16px;}
+  .role-select{width:100%; max-width:300px; display:flex; flex-direction:column; gap:12px;}
+  .role-btn{width:100%; background:var(--card); border:1.5px solid var(--sand); border-radius:14px; color:var(--text); padding:16px 16px 15px; font-size:17px; font-weight:700; text-align:left; box-shadow:var(--lip); display:flex; align-items:center; gap:12px; margin-top:0 !important;}
+  .gate .role-btn{max-width:none; color:var(--ink); background:var(--card); border-color:var(--sand); box-shadow:var(--lip);}
+  .gate .role-btn.main{background:var(--crimson); color:var(--ivory); border-color:var(--crimson-deep); box-shadow:0 2px 0 var(--crimson-ink);}
+  .role-btn .rb-ico{width:44px; height:44px; border-radius:50%; background:var(--blush); display:flex; align-items:center; justify-content:center; flex:none;}
+  .role-btn.main .rb-ico{background:rgba(255,248,239,.16);}
+  .role-btn.main .ic{color:var(--ivory); --wash:rgba(255,248,239,.22);}
+  .role-btn .rb-txt{display:flex; flex-direction:column;}
+  .role-btn:active{transform:translateY(1px);}
+  .role-btn .sub-label{display:block; font-size:11.5px; font-weight:500; color:var(--ink-soft); margin-top:3px;}
+  .role-btn.main .sub-label{color:rgba(255,248,239,.8);}
+  .role-back{margin-top:16px; background:none; border:none; color:var(--text-dim); font-size:12.5px; text-decoration:underline; text-underline-offset:3px;}
+  .gate .role-back{background:none; border:none; box-shadow:none; color:var(--ink-soft); font-weight:500; font-size:13px; padding:8px; margin-top:10px;}
+  .name-select{width:100%; max-width:260px; display:flex; gap:10px; margin-top:6px;}
+  .name-select button{flex:1; background:var(--card); border:1.5px solid var(--sand); border-radius:var(--r-m); color:var(--text); padding:14px 6px; font-size:15px; font-weight:700; box-shadow:var(--lip);}
+  .gate .name-select button{margin-top:0; background:var(--card); color:var(--ink); border-color:var(--sand); box-shadow:var(--lip);}
+  .name-select button:active{border-color:var(--crimson);}
+  .main-session-bar{margin-top:4px; font-size:11.5px; color:rgba(255,248,239,.82); display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .main-session-bar .who{color:var(--ivory); font-weight:700;}
+  .main-session-bar .viewer-tag{color:rgba(255,248,239,.7);}
+
+  /* ===== 入力モードの選択 ===== */
+  .modesel{position:fixed; inset:0; background:var(--paper); z-index:90; display:none; flex-direction:column; padding:28px 18px; overflow-y:auto;}
   .modesel.show{display:flex;}
-  .modesel h2{font-size:17px; color:var(--amber); text-align:center; margin:10px 0 4px;}
-  .modesel .sub{font-size:12px; color:var(--text-dim); text-align:center; margin-bottom:22px;}
-  .mode-card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:14px; display:flex; gap:14px; align-items:flex-start;}
-  .mode-card:active{border-color:var(--amber);}
-  .mode-card .ico{font-size:30px; flex:none; width:42px; text-align:center;}
-  .mode-card .mc-body h3{margin:0 0 4px; font-size:16px; color:var(--text);}
-  .mode-card .mc-body p{margin:0; font-size:12px; color:var(--text-dim); line-height:1.6;}
-  .modesel .skip{margin-top:8px; text-align:center;}
-  .modesel .skip button{background:none; border:none; color:var(--text-dim); font-size:13px; text-decoration:underline;}
+  .modesel h2{font-size:19px; color:var(--crimson-deep); text-align:center; margin:12px 0 4px; font-weight:700;}
+  .modesel .sub{font-size:12.5px; color:var(--text-dim); text-align:center; margin-bottom:22px;}
+  .mode-card{background:var(--card); border:1.5px solid var(--sand); border-radius:16px; padding:16px; margin:0 auto 14px; width:100%; max-width:520px; display:flex; gap:14px; align-items:center; box-shadow:var(--lip); cursor:pointer;}
+  .mode-card:active{border-color:var(--crimson); transform:translateY(1px);}
+  .mode-card .ico{flex:none; width:58px; height:58px; border-radius:50%; background:var(--blush); display:flex; align-items:center; justify-content:center;}
+  .mode-card .mc-body h3{margin:0 0 4px; font-size:16px; color:var(--text); font-weight:700;}
+  .mode-card .mc-body p{margin:0; font-size:12px; color:var(--text-dim); line-height:1.65;}
+  .modesel .skip{margin-top:10px; text-align:center;}
+  .modesel .skip button{background:none; border:none; color:var(--crimson-deep); font-size:13.5px; font-weight:700; padding:10px; text-decoration:underline; text-underline-offset:4px;}
 
-  /* Header */
-  .board-header{background:linear-gradient(180deg,#1b2129,#14181e); border-bottom:1px solid #2c343d; padding:12px 14px 8px; position:sticky; top:0; z-index:20;}
+  /* ===== 運行ボードの見出し：バスの帯 ===== */
+  .board-header{background:var(--crimson); color:var(--ivory); padding:8px 12px 14px; position:sticky; top:0; z-index:20;
+                box-shadow:inset 0 -5px 0 var(--crimson-deep), inset 0 -7px 0 #F1DCC6, 0 3px 10px rgba(92,13,25,.18);}
   .htop{display:flex; align-items:center; justify-content:space-between; gap:10px;}
-  .htitle{font-size:15px; letter-spacing:.06em; color:var(--amber); font-weight:700; display:flex; align-items:center; gap:8px;}
-  .hclock{font-family:var(--mono); font-size:15px; color:var(--header-text); font-variant-numeric:tabular-nums; font-weight:700;}
-  .sync-line{margin-top:5px; font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px;}
-  .sync-dot{width:7px; height:7px; border-radius:50%; background:#666; flex:none;}
-  .sync-dot.on{background:var(--green);} .sync-dot.err{background:var(--red-soft);}
-  .mascot{position:relative; width:92px; height:26px; flex:none; overflow:hidden; border-radius:4px;}
-  .scenery{image-rendering:pixelated; position:absolute; left:0; bottom:0; z-index:1;}
-  .dotbus{image-rendering:pixelated; position:absolute; right:0; bottom:0; z-index:2;}
-  .day-tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; flex-shrink:0;}
-  .main-session-row{display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin-top:6px; flex-wrap:nowrap;}
-  .main-session-row .main-session-bar{margin-top:0; flex:1; min-width:0;}
-  .day-tab{font-family:var(--mono); font-size:12px; padding:6px 11px; border-radius:7px; background:rgba(255,255,255,0.08); color:#aeb6bf; border:1px solid #2c343d; white-space:nowrap; flex:none;}
-  .day-tab.active{background:var(--amber); color:#1b1404; border-color:var(--amber); font-weight:700;}
+  .htitle{font-size:17px; letter-spacing:.1em; color:var(--ivory); font-weight:700; display:flex; align-items:center; gap:8px;}
+  .htitle{gap:10px;}
+  .hdr-scene{width:108px; height:36px; flex:none; display:block; overflow:hidden; margin:-2px 0 -2px -4px;}
+  .hclock{font-family:var(--mono); font-size:17px; color:var(--ivory); font-variant-numeric:tabular-nums; font-weight:700; letter-spacing:.02em;}
+  .sync-line{margin-top:4px; font-size:11px; color:rgba(255,248,239,.78); display:flex; align-items:center; gap:6px;}
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:rgba(255,248,239,.45); flex:none;}
+  .sync-dot.on{background:#9ED9A9;} .sync-dot.err{background:#FFD08A;}
+  .mascot{display:none;}
+  .day-tabs{display:flex; gap:6px; flex-shrink:0; align-items:center;}
+  .main-session-row{display:flex; justify-content:space-between; align-items:center; gap:7px; margin-top:7px; flex-wrap:nowrap;}
+  .hstatus{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;}
+  .hstatus .sync-line{margin:0; font-size:10.5px; line-height:1.35;}
+  .hstatus .main-session-bar{margin:0; font-size:10.5px; line-height:1.35; display:block;}
+  .hstatus .sync-line span:last-child, .hstatus .ln{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;}
+  .hstatus .ln .who{display:inline;}
+  .hdr-btn{font-family:var(--sans); font-size:12.5px; font-weight:700; min-height:40px; padding:6px 10px 6px 8px; flex:none; border-radius:11px;
+           background:rgba(255,248,239,.12); color:var(--ivory); border:1px solid rgba(255,248,239,.42); display:inline-flex; align-items:center; gap:5px; white-space:nowrap;}
+  .hdr-btn .ic{color:var(--ivory); --wash:rgba(255,248,239,.2); width:18px; height:18px;}
+  .hdr-btn:active{background:rgba(255,248,239,.24);}
+  .hdr-btn.past{background:var(--ivory); color:var(--crimson-deep); border-color:var(--ivory);}
+  .hdr-btn.past .ic{color:var(--crimson-deep); --wash:rgba(165,27,47,.14);}
+  .day-tab{display:none;}
 
-  .modebar{display:flex; gap:0; padding:10px 14px 2px;}
-  .modebar .seg{display:flex; width:100%; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
-  .modebar .seg button{flex:1; background:var(--panel-2); border:none; color:var(--text-dim); padding:11px 4px; font-size:13px; font-weight:700;}
-  .modebar .seg button.on{background:var(--amber); color:#1b1404;}
+  /* 表示の切り替え（原本順・出庫順…） */
+  .modebar{display:flex; gap:0; padding:12px 14px 2px;}
+  .modebar .seg{display:flex; width:100%; background:var(--paper-2); border-radius:13px; padding:3px; gap:3px;}
+  .modebar .seg button{flex:1; background:transparent; border:none; color:var(--ink-soft); padding:10px 4px; font-size:13.5px; font-weight:700; border-radius:10px; min-height:40px;}
+  .modebar .seg button.on{background:var(--card); color:var(--crimson-deep); box-shadow:0 1px 0 var(--sand-2), 0 0 0 1px var(--sand);}
 
-  .toolbar{display:flex; gap:8px; padding:10px 14px 4px; flex-wrap:wrap;}
-  .btn{font-family:var(--sans); font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); display:flex; align-items:center; gap:6px;}
-  .btn:active{transform:scale(0.97);}
-  .btn.primary{background:var(--amber); color:#1b1404; border-color:var(--amber);}
-  .btn.ghost{background:transparent;}
-  .btn.danger{color:var(--red-soft); border-color:var(--red-soft);}
-  .btn.icon-only{padding:9px; width:40px; justify-content:center;}
+  .toolbar{display:flex; gap:6px; padding:10px 12px 4px; flex-wrap:nowrap; align-items:stretch;}
+  .toolbar .btn.primary{padding:8px 8px; gap:4px; font-size:13px; letter-spacing:-.02em; flex:1 1 auto; min-width:0; justify-content:center; white-space:nowrap; overflow:hidden;}
+  .toolbar .btn.primary .ic{width:17px; height:17px;}
+  .toolbar .btn.lbl-btn{flex:0 0 auto;}
+  .btn{font-family:var(--sans); font-size:13.5px; font-weight:700; min-height:42px; padding:9px 14px; border-radius:var(--r-m); border:1px solid var(--sand); background:var(--card); color:var(--text);
+       display:flex; align-items:center; gap:7px; box-shadow:var(--lip); line-height:1.25;}
+  .btn:active{transform:translateY(1px); box-shadow:0 1px 0 var(--paper-3);}
+  .btn.primary{background:var(--crimson); color:var(--ivory); border-color:var(--crimson-deep); box-shadow:0 2px 0 var(--crimson-ink);}
+  .btn.primary:active{box-shadow:0 1px 0 var(--crimson-ink);}
+  .btn.primary .ic{color:var(--ivory); --wash:rgba(255,248,239,.22);}
+  .btn.ghost{background:var(--card);}
+  .btn.danger{color:var(--crimson-deep); border-color:var(--blush-2); background:#FCF2EF;}
+  .btn.icon-only{padding:8px; width:44px; justify-content:center;}
+  .btn.lbl-btn{flex-direction:column; gap:1px; padding:4px 6px; font-size:10px; letter-spacing:-.02em; min-width:46px; justify-content:center; white-space:nowrap;}
+  .btn.lbl-btn .ic{width:21px; height:21px;}
   .spacer{flex:1;}
 
-  .legend{display:flex; gap:14px; padding:8px 14px 2px; font-size:11px; color:var(--text-dim); flex-wrap:wrap; align-items:center;}
+  .legend{display:flex; gap:14px; padding:10px 16px 2px; font-size:11.5px; color:var(--text-dim); flex-wrap:wrap; align-items:center;}
   .legend span{display:flex; align-items:center; gap:5px;}
-  .legend .sw{width:11px; height:11px; border-radius:3px;}
-  .sw.red-sw{background:var(--red-bg); border:1px solid var(--red-soft);}
-  .sw.yellow-sw{background:var(--yellow-bg); border:1px solid var(--yellow-line);}
-  .sw.next-sw{background:var(--next-bg); border:1px solid var(--next);}
+  .legend .sw{width:12px; height:12px; border-radius:4px;}
+  .sw.red-sw{background:var(--red-bg); border:1.5px solid var(--crimson);}
+  .sw.yellow-sw{background:var(--sun-bg); border:1.5px solid var(--sun-line);}
+  .sw.next-sw{background:var(--moss-bg); border:1.5px solid var(--moss);}
 
-  .now-divider{display:flex; align-items:center; gap:8px; margin:8px 2px; color:var(--now-orange); font-size:11px; font-weight:800;}
-  .now-divider::before,.now-divider::after{content:""; height:2px; background:var(--now-orange); flex:1; opacity:.85;}
-  /* sticky now-line: stays fixed below header while bus cards slide up past it */
-  .now-divider.now-sticky{position:sticky; top:118px; z-index:15; background:linear-gradient(180deg, rgba(17,20,26,0.96) 60%, rgba(17,20,26,0)); padding:6px 2px 8px; margin:4px 0; backdrop-filter:blur(2px);}
+  .now-divider{display:flex; align-items:center; gap:8px; margin:8px 2px; color:var(--crimson); font-size:11.5px; font-weight:700;}
+  .now-divider::before,.now-divider::after{content:""; height:2px; background:var(--crimson); flex:1; border-radius:2px;}
+  .now-divider.now-sticky{position:sticky; top:var(--hdr-h,118px); z-index:15; background:linear-gradient(180deg, rgba(243,236,225,.97) 62%, rgba(243,236,225,0)); padding:6px 2px 8px; margin:4px 0;}
 
   .list-wrap{padding:6px 14px 0;}
   .list-empty{text-align:center; color:var(--text-dim); padding:48px 20px; font-size:13px; line-height:1.9;}
-  .col-head{display:grid; grid-template-columns:84px 1fr 1fr 54px; gap:8px; padding:4px 12px; font-size:10px; letter-spacing:.04em; color:var(--text-dim);}
+  .col-head{display:grid; grid-template-columns:84px 1fr 1fr 54px; gap:8px; padding:4px 12px; font-size:10px; color:var(--text-dim);}
   .col-head>div:nth-child(2),.col-head>div:nth-child(3){text-align:right;}
   .col-head .ch-r{text-align:right;}
-  .card{display:grid; grid-template-columns:84px 1fr 1fr 54px; gap:8px; align-items:stretch; background:#1c2128; border:1px solid #2c343d; border-radius:11px; padding:11px 11px; margin-bottom:7px; transition:background .25s,border-color .25s; box-shadow:0 1px 3px rgba(0,0,0,0.18);}
-  .card.returned{background:var(--red-bg); border-color:var(--red-soft);}
-  .card.placed{background:var(--green-bg); border-color:var(--green-soft);}
-  .card.soon{background:var(--yellow-bg); border-color:var(--yellow-line);}
-  .card.nextup{border-color:var(--next); box-shadow:0 0 0 1px var(--next);}
-  /* soon: navy text + 10-blink */
+  /* 黒い号車カード：見やすいので従来どおり */
+  .card{display:grid; grid-template-columns:84px 1fr 1fr 54px; gap:8px; align-items:stretch; background:#1c2128; border:1px solid #2c343d; border-radius:13px; padding:11px 11px; margin-bottom:7px; transition:background .25s,border-color .25s; box-shadow:0 2px 0 rgba(60,40,30,.16);}
+  .card.returned{background:var(--red-bg); border-color:var(--crimson);}
+  .card.placed{background:var(--moss-bg); border-color:var(--moss);}
+  .card.soon{background:var(--sun-bg); border-color:var(--sun-line);}
+  .card.nextup{border-color:var(--moss); box-shadow:0 0 0 1.5px var(--moss);}
   .card.soon .bus-no, .card.soon .time-btn{ color:var(--navy); }
   .card.soon.blink{ animation:soonblink 0.5s steps(1) 10; }
-  @keyframes soonblink{ 0%{background:var(--yellow-bg);} 50%{background:#f5d836;} 100%{background:var(--yellow-bg);} }
-  /* returned: wine text */
-  .card.returned .bus-no, .card.returned .time-btn{ color:var(--wine); }
-  .card.returned .cat-tag{ color:var(--wine); opacity:.8; }
-  /* placed: forest text */
-  .card.placed .bus-no, .card.placed .time-btn{ color:var(--forest); }
-  .card.placed .cat-tag{ color:var(--forest); opacity:.8; }
+  @keyframes soonblink{ 0%{background:var(--sun-bg);} 50%{background:#F6D65A;} 100%{background:var(--sun-bg);} }
+  .card.returned .bus-no, .card.returned .time-btn{ color:var(--crimson-deep); }
+  .card.returned .cat-tag{ color:var(--crimson-deep); opacity:.8; }
+  .card.placed .bus-no, .card.placed .time-btn{ color:var(--moss-deep); }
+  .card.placed .cat-tag{ color:var(--moss-deep); opacity:.8; }
   .cell{display:flex; flex-direction:column; gap:0; min-width:0; justify-content:flex-start;}
   .cell.cell-time{align-items:flex-end;}
-  .cell .clabel{font-size:9px; color:#9aa3ad; letter-spacing:.04em; height:12px; line-height:12px;}
+  .cell .clabel{font-size:9.5px; color:#9aa3ad; height:12px; line-height:12px;}
+  .card.returned .clabel, .card.placed .clabel, .card.soon .clabel{color:var(--ink-soft);}
   .cell.cell-time .clabel{align-self:flex-end;}
   .cell .numline{height:34px; display:flex; align-items:center;}
   .cell.cell-time .numline{justify-content:flex-end;}
   .bus-no{font-family:var(--mono); font-size:var(--fs-no,30px); font-weight:800; letter-spacing:0; line-height:1; color:#ffffff;}
-  .cat-tag{font-size:8px; color:#8a939d; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78px; height:11px; line-height:11px;}
+  .cat-tag{font-size:8.5px; color:#8a939d; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78px; height:11px; line-height:11px;}
   .time-btn{font-family:var(--mono); font-size:var(--fs-time,22px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1; background:transparent; border:none; color:#f0f2f4; padding:0; text-align:right; width:100%; white-space:nowrap; overflow:visible;}
-  .time-btn.empty{color:var(--text-dim); border-bottom-color:var(--amber-dim);}
-  .nextbadge{position:absolute; top:-7px; right:0; font-size:9px; font-weight:800; color:#0c2a1c; background:var(--green); border-radius:4px; padding:1px 5px; width:max-content; z-index:3;}
+  .time-btn.empty{color:#7c8590;}
+  .nextbadge{position:absolute; top:-7px; right:0; font-size:9.5px; font-weight:700; color:#fff; background:var(--moss); border-radius:6px; padding:1px 6px; width:max-content; z-index:3;}
   .cell.cell-time{position:relative;}
   .card-actions{display:flex; flex-direction:column; gap:5px; align-items:stretch;}
-  .status-toggle{font-size:10px; padding:7px 4px; border-radius:7px; border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim); font-weight:700; white-space:nowrap; min-width:0; width:100%;}
-  .status-toggle.on{background:var(--red-soft); color:#fff; border-color:var(--red-soft);}
-  .status-toggle.placed{background:var(--green-soft); color:#fff; border-color:var(--green-soft);}
+  .status-toggle{font-family:var(--sans); font-size:10.5px; padding:8px 3px; border-radius:9px; border:1px solid #d9cfc1; background:#F6EFE4; color:#5b5249; font-weight:700; white-space:nowrap; min-width:0; width:100%;}
+  .status-toggle.on{background:var(--crimson); color:#fff; border-color:var(--crimson-deep);}
+  .status-toggle.placed{background:var(--moss); color:#fff; border-color:var(--moss-deep);}
   .read-only-note{text-align:center; font-size:12px; color:var(--text-dim); padding:12px 0 2px;}
-  .cat-header{font-size:11px; color:var(--amber); font-weight:700; padding:10px 4px 4px; letter-spacing:.04em;}
+  .cat-header{font-size:12px; color:var(--crimson-deep); font-weight:700; padding:12px 4px 5px; display:flex; align-items:center; gap:8px;}
+  .cat-header::after{content:""; flex:1; height:1px; background:var(--sand);}
 
-  .nowbtn{position:fixed; right:16px; bottom:84px; z-index:40; background:var(--now-orange); color:#fff; border:none; border-radius:24px; padding:12px 16px; font-size:13px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.4); display:none; align-items:center; gap:6px;}
-  .nowbtn:active{transform:scale(0.96);}
+  .nowbtn{position:fixed; right:16px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:40; background:var(--crimson); color:var(--ivory); border:1px solid var(--crimson-deep); border-radius:26px; padding:11px 16px 11px 12px; font-size:13.5px; font-weight:700; box-shadow:0 2px 0 var(--crimson-ink), 0 8px 20px rgba(92,13,25,.28); display:none; align-items:center; gap:6px;}
+  .nowbtn .ic{color:var(--ivory); --wash:rgba(255,248,239,.22);}
+  .nowbtn:active{transform:translateY(1px);}
 
-  /* Modal */
-  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.62); display:none; align-items:flex-end; justify-content:center; z-index:50;}
+  /* ===== シート（下から出る画面） ===== */
+  .modal-overlay{position:fixed; inset:0; background:rgba(46,28,22,.46); display:none; align-items:flex-end; justify-content:center; z-index:50;}
   .modal-overlay.show{display:flex;}
-  .modal{background:var(--panel); width:100%; max-width:820px; border-radius:18px 18px 0 0; padding:18px 18px 30px; max-height:92vh; overflow-y:auto; border-top:1px solid var(--line);}
-  .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
-  .modal-header h3{margin:0; font-size:16px; color:var(--amber);}
-  .modal-close{background:none; border:none; color:var(--text-dim); font-size:22px;}
+  .modal{position:relative; background:var(--card); width:100%; max-width:820px; border-radius:22px 22px 0 0; padding:22px 18px calc(28px + env(safe-area-inset-bottom)); max-height:92vh; overflow-y:auto; box-shadow:0 -8px 28px rgba(46,28,22,.22);}
+  .modal::before{content:""; position:absolute; top:8px; left:50%; width:40px; height:4px; margin-left:-20px; border-radius:4px; background:var(--sand);}
+  @media (prefers-reduced-motion:no-preference){ .modal-overlay.show .modal{animation:sheetup .22s cubic-bezier(.2,.8,.3,1) 1;} }
+  @keyframes sheetup{from{transform:translateY(24px); opacity:.6;} to{transform:none; opacity:1;}}
+  .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
+  .modal-header h3{margin:0; font-size:17px; color:var(--crimson-deep); font-weight:700;}
+  .modal-close{background:var(--card-2); border:1px solid var(--sand); color:var(--ink-soft); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; padding:0;}
+  .modal-close .ic{color:var(--ink-soft); width:18px; height:18px;}
+  .modal-close:active{background:var(--paper-2);}
   .field{margin-bottom:14px;}
-  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
-  .field input,.field textarea{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; color:var(--text); padding:11px 12px; font-family:var(--mono); font-size:15px;}
+  .field label{display:block; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;}
+  .field input,.field textarea,.field select{width:100%; background:#FBF7F0; border:1.5px solid var(--sand); border-radius:var(--r-m); color:var(--text); padding:11px 12px; font-family:var(--mono); font-size:15px;}
   .field textarea{min-height:160px; resize:vertical; line-height:1.5;}
-  .field input:focus,.field textarea:focus{outline:none; border-color:var(--amber);}
-  .hint{font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.6;}
+  .field input:focus,.field textarea:focus{outline:none; border-color:var(--crimson); box-shadow:0 0 0 4px rgba(165,27,47,.1);}
+  .hint{font-size:11.5px; color:var(--text-dim); margin-top:6px; line-height:1.65;}
 
-  /* keypad */
-  .timepad-display{font-family:var(--mono); font-size:38px; font-weight:800; text-align:center; letter-spacing:.05em; padding:10px 0 6px; color:var(--text);}
-  .timepad-display .ph{color:var(--text-dim);}
-  .timepad-display .colon{color:var(--amber); margin:0 4px;}
-  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px;}
-  .key{background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:17px 0; font-family:var(--mono); font-size:22px; font-weight:700; color:var(--text); text-align:center; touch-action:manipulation; user-select:none; -webkit-user-select:none;}
-  .key:active{background:var(--amber); color:#1b1404;}
-  .key.fn{font-size:13px; color:var(--text-dim);}
+  /* テンキー */
+  .timepad-display{font-family:var(--mono); font-size:40px; font-weight:800; text-align:center; letter-spacing:.05em; padding:10px 0 6px; color:var(--text);}
+  .timepad-display .ph{color:var(--ink-faint);}
+  .timepad-display .colon{color:var(--crimson); margin:0 4px;}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:6px;}
+  .key{background:var(--card); border:1px solid var(--sand); border-radius:13px; padding:16px 0; font-family:var(--mono); font-size:23px; font-weight:700; color:var(--text); text-align:center; touch-action:manipulation; user-select:none; -webkit-user-select:none; box-shadow:var(--lip); display:flex; align-items:center; justify-content:center; min-height:58px;}
+  .key:active{background:var(--crimson); color:var(--ivory); border-color:var(--crimson-deep); transform:translateY(1px);}
+  .key:active .ic{color:var(--ivory);}
+  .key.fn{font-family:var(--sans); font-size:14px; color:var(--ink-soft); background:var(--card-2);}
 
-  /* sequential entry */
-  .seq-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  /* 手打ち入力 */
+  .seq-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px;}
   .seq-prog{font-size:12px; color:var(--text-dim);}
   .seq-target{text-align:center; padding:8px 0 4px;}
-  .seq-target .sno{font-family:var(--mono); font-size:34px; font-weight:800; color:var(--amber);}
-  .seq-target .scat{font-size:11px; color:var(--text-dim); margin-top:2px;}
-  .seq-target .swhich{font-size:14px; color:var(--text); margin-top:8px; font-weight:700;}
-  .seq-disp{font-family:var(--mono); font-size:40px; font-weight:800; text-align:center; letter-spacing:.06em; padding:6px 0; color:var(--text);}
-  .seq-disp .colon{color:var(--amber);}
-  .seq-disp .ph{color:var(--text-dim);}
+  .seq-target .sno{font-family:var(--mono); font-size:36px; font-weight:800; color:var(--crimson-deep);}
+  .seq-target .scat{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+  .seq-target .swhich{font-size:14.5px; color:var(--text); margin-top:8px; font-weight:700;}
+  .seq-disp{font-family:var(--mono); font-size:42px; font-weight:800; text-align:center; letter-spacing:.06em; padding:6px 0; color:var(--text);}
+  .seq-disp .colon{color:var(--crimson);}
+  .seq-disp .ph{color:var(--ink-faint);}
   .seq-mini{display:flex; justify-content:center; gap:18px; font-family:var(--mono); font-size:13px; color:var(--text-dim); margin-bottom:4px;}
   .seq-mini b{color:var(--text);}
 
-  .modal-actions{display:flex; gap:8px; margin-top:14px;}
+  .modal-actions{display:flex; gap:8px; margin-top:16px;}
   .modal-actions .btn{flex:1; justify-content:center;}
-  .seg2{display:flex; gap:0; border:1px solid var(--line); border-radius:9px; overflow:hidden; margin-top:4px; flex-wrap:wrap;}
-  .seg2 button{flex:1; min-width:33%; background:var(--panel-2); border:none; color:var(--text-dim); padding:9px 4px; font-size:12px; font-weight:600;}
-  .seg2 button.on{background:var(--amber); color:#1b1404;}
+  .seg2{display:flex; gap:3px; background:var(--paper-2); border-radius:12px; padding:3px; margin-top:4px; flex-wrap:nowrap;}
+  .seg2 button{flex:1; min-width:0; background:transparent; border:none; color:var(--ink-soft); padding:9px 4px; font-size:12.5px; font-weight:700; border-radius:9px; min-height:38px;}
+  .seg2 button.on{background:var(--card); color:var(--crimson-deep); box-shadow:0 0 0 1px var(--sand), 0 1px 0 var(--sand-2);}
 
   .ocr-preview{width:100%; border-radius:12px; margin-bottom:12px; display:block; max-height:240px; object-fit:contain; background:#000;}
-  .ocr-status{font-size:13px; color:var(--amber); display:flex; align-items:center; gap:8px; margin-bottom:8px;}
-  .ocr-bar{height:5px; background:var(--panel-2); border-radius:3px; overflow:hidden; margin-bottom:12px;}
-  .ocr-bar .fill{height:100%; width:0%; background:var(--amber); transition:width .3s;}
-  .spin{width:14px; height:14px; border-radius:50%; border:2px solid var(--amber-dim); border-top-color:var(--amber); animation:sp .8s linear infinite; flex:none;}
+  .ocr-status{font-size:13px; color:var(--crimson-deep); display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .ocr-bar{height:5px; background:var(--paper-2); border-radius:3px; overflow:hidden; margin-bottom:12px;}
+  .ocr-bar .fill{height:100%; width:0%; background:var(--crimson); transition:width .3s;}
+  .spin{width:14px; height:14px; border-radius:50%; border:2px solid var(--blush-2); border-top-color:var(--crimson); animation:sp .8s linear infinite; flex:none;}
   @keyframes sp{to{transform:rotate(360deg);}}
   .chip-row{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
-  .chip{font-family:var(--mono); font-size:14px; background:var(--panel-2); border:1px solid var(--line); border-radius:7px; padding:8px 11px; color:var(--text);}
-  .chip:active{background:var(--amber); color:#1b1404;}
+  .chip{font-family:var(--mono); font-size:14px; background:var(--card); border:1px solid var(--sand); border-radius:9px; padding:8px 11px; color:var(--text); box-shadow:var(--lip);}
+  .chip:active{background:var(--crimson); color:var(--ivory);}
   .chip.matched{opacity:.4;}
-  .chip-label{font-size:10px; color:var(--text-dim); width:100%; margin:6px 0 2px;}
+  .chip-label{font-size:10.5px; color:var(--text-dim); width:100%; margin:6px 0 2px;}
 
   .quadbar{display:flex; gap:6px; margin-bottom:10px;}
-  .quadbar button{flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text-dim); border-radius:8px; padding:8px 2px; font-size:12px; font-weight:700;}
-  .quadbar button.done{background:var(--next-bg); border-color:var(--next); color:var(--green);}
-  .quadbar button.on{border-color:var(--amber); color:var(--amber);}
+  .quadbar button{flex:1; background:var(--card); border:1px solid var(--sand); color:var(--ink-soft); border-radius:10px; padding:9px 2px; font-size:12px; font-weight:700;}
+  .quadbar button.done{background:var(--moss-bg); border-color:var(--moss); color:var(--moss-deep);}
+  .quadbar button.on{border-color:var(--crimson); color:var(--crimson-deep); background:var(--blush);}
 
   .tpl-cat{margin-bottom:14px;}
-  .tpl-cat h4{font-size:12px; color:var(--amber); margin:0 0 6px;}
+  .tpl-cat h4{font-size:12.5px; color:var(--crimson-deep); margin:0 0 6px;}
   .tpl-nos{display:flex; flex-wrap:wrap; gap:6px;}
-  .tpl-no{display:flex; align-items:center; gap:4px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-family:var(--mono); font-size:13px;}
-  .tpl-no button{background:none; border:none; color:var(--red-soft); font-size:13px; padding:0 0 0 2px;}
-  .tpl-list{display:flex; flex-direction:column; gap:4px;}
-  .tpl-row{display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--line);
-           border-radius:7px; padding:7px 8px; font-family:var(--mono); font-size:14px; touch-action:none; user-select:none;}
+  .tpl-no{display:flex; align-items:center; gap:4px; background:var(--card); border:1px solid var(--sand); border-radius:8px; padding:5px 8px; font-family:var(--mono); font-size:13px;}
+  .tpl-no button{background:none; border:none; color:var(--crimson); font-size:13px; padding:0 0 0 2px;}
+  .tpl-list{display:flex; flex-direction:column; gap:5px;}
+  .tpl-row{display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--sand);
+           border-radius:10px; padding:8px 9px; font-family:var(--mono); font-size:14px; touch-action:pan-y; user-select:none;}
   .tpl-row.drag{opacity:.45; border-style:dashed;}
-  .tpl-row .grip{color:var(--text-dim); font-size:16px; cursor:grab; padding:0 2px; flex:0 0 auto;}
+  .tpl-row .grip{color:var(--ink-faint); font-size:18px; cursor:grab; padding:4px 10px 4px 4px; margin:-4px 0; flex:0 0 auto; touch-action:none;}
   .tpl-row .no{flex:1; font-weight:700;}
-  .tpl-row button{background:none; border:1px solid var(--line); border-radius:5px; color:var(--text);
-                  font-size:12px; padding:2px 7px; flex:0 0 auto;}
-  .tpl-row button.del{border-color:transparent; color:var(--red-soft); font-size:14px;}
+  .tpl-row button{background:var(--card-2); border:1px solid var(--sand); border-radius:7px; color:var(--text); font-size:12px; padding:3px 8px; flex:0 0 auto;}
+  .tpl-row button.del{border-color:transparent; background:none; color:var(--crimson); font-size:14px;}
   .tpl-add{display:flex; gap:6px; margin-top:8px;}
   .tpl-add input{flex:1;}
 
   .preview-table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:13px; margin-top:8px;}
-  .preview-table th{color:var(--text-dim); font-size:10px; text-align:left; padding:4px 6px; border-bottom:1px solid var(--line);}
-  .preview-table td{padding:4px 6px; border-bottom:1px solid var(--line);}
-  .preview-table tr.bad td{color:var(--red-soft);}
-  .preview-table tr.unknown td{color:var(--amber);}
+  .preview-table th{color:var(--text-dim); font-size:10.5px; text-align:left; padding:4px 6px; border-bottom:1px solid var(--sand); font-family:var(--sans);}
+  .preview-table td{padding:5px 6px; border-bottom:1px solid var(--paper-2);}
+  .preview-table tr.bad td{color:var(--crimson);}
+  .preview-table tr.unknown td{color:var(--sun);}
 
-  .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel-2); color:var(--text); border:1px solid var(--line); padding:11px 16px; border-radius:9px; font-size:13px; z-index:80; display:none; box-shadow:0 6px 22px rgba(0,0,0,.45); max-width:90%; text-align:center;}
-  .toast.show{display:block;}
+  .toast{position:fixed; bottom:calc(22px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:#2B2421; color:var(--ivory); border:none; padding:11px 16px; border-radius:14px; font-size:13.5px; z-index:80; display:none; box-shadow:0 10px 26px rgba(46,28,22,.35); max-width:90%; text-align:left; line-height:1.5;}
+  .toast.show{display:flex; align-items:center; gap:8px;}
+  .toast .ic{color:#F6C9C1; --wash:rgba(255,248,239,.12); width:19px; height:19px;}
   input[type=file]{display:none;}
 
-  /* ===== 駐車場ボード (Parking) ===== */
-  .pkroot{display:none; flex-direction:column; min-height:100vh; background:var(--bg);}
-  /* ボタンは4列×2段に固定。段が増えると図が小さくなるので、
-     文字を詰めてでも2段に収める（横向きでは丸ごと隠す） */
+  /* ===== 情報シート ===== */
+  .info-date{font-size:12.5px; color:var(--ink-soft); font-weight:500; margin-left:6px;}
+  .info-sec{background:var(--card-2); border:1px solid var(--sand); border-radius:16px; padding:6px 12px 8px; margin-bottom:12px;}
+  .info-head{display:flex; align-items:baseline; justify-content:space-between; padding:6px 2px 6px; border-bottom:1.5px solid var(--sand);}
+  .info-title{font-size:16px; font-weight:700; color:var(--crimson-deep); display:flex; align-items:center; gap:6px;}
+  .info-total{font-size:12.5px; color:var(--ink-soft);}
+  .info-total b{font-family:var(--mono); font-size:15px; color:var(--ink);}
+  .info-row{display:grid; grid-template-columns:92px 1fr 78px; align-items:center; gap:10px; width:100%; background:none; border:none; border-bottom:1px dashed var(--sand); padding:9px 2px; text-align:left; color:var(--ink); cursor:pointer;}
+  .info-row:last-of-type{border-bottom:none;}
+  .info-row .lbl{font-size:15px; font-weight:700;}
+  .info-row .lbl small{display:block; font-size:10.5px; color:var(--ink-soft); font-weight:500;}
+  .info-row .bar{height:8px; background:var(--paper-2); border-radius:6px; overflow:hidden;}
+  .info-row .bar i{display:block; height:100%; background:var(--crimson); border-radius:6px; min-width:2px;}
+  .info-row.yo .bar i{background:var(--ink-soft);} .info-row.etc .bar i{background:var(--sand-2);}
+  .info-row .num{font-family:var(--mono); font-size:26px; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; line-height:1;}
+  .info-row .num small{font-family:var(--sans); font-size:12px; font-weight:700; color:var(--ink-soft); margin-left:2px;}
+  .info-row.zero .num, .info-row.zero .lbl{color:var(--ink-faint);}
+  .info-row[aria-expanded="true"]{background:rgba(165,27,47,.05);}
+  .info-nos{display:flex; flex-wrap:wrap; gap:5px; padding:4px 2px 10px;}
+  .info-nos[hidden]{display:none;}
+  .info-nos span{font-family:var(--mono); font-size:13px; background:#1c2128; color:#f2f5f7; border-radius:7px; padding:4px 7px;}
+  .info-nos span em{font-style:normal; font-size:10.5px; color:#b9c0c8; margin-left:4px;}
+  .info-note{font-size:11.5px; color:var(--ink-soft); margin:2px 2px 10px; line-height:1.6;}
+  .info-days{display:flex; gap:8px; flex-wrap:wrap;}
+
+  /* ===== 構内図 ===== */
+  .pkroot{display:none; flex-direction:column; min-height:100vh; background:var(--paper);}
+  /* ボタンは4列×2段に固定（図を大きく保つ）。翌日とヤナセは1マスに重ねる */
   .pk-toolbar{display:grid; grid-template-columns:repeat(4,1fr); gap:4px; align-items:stretch;
-              padding:6px 6px; background:#fff; border-bottom:1px solid var(--line);
+              padding:5px 6px 6px; background:var(--card); border-bottom:1px solid var(--sand);
               position:sticky; top:0; z-index:30;}
-  .pk-toolbar .btn{font-size:11px; padding:6px 1px; white-space:nowrap; overflow:hidden;
-                   text-overflow:clip; letter-spacing:-.06em; min-width:0; justify-content:center;}
+  .pk-toolbar .btn{flex-direction:column; gap:0; font-size:10.5px; line-height:1.15; padding:2px 1px 2px; white-space:nowrap; overflow:hidden; min-height:32px;
+                   text-overflow:clip; letter-spacing:-.03em; min-width:0; justify-content:center; border-radius:9px; box-shadow:0 1px 0 var(--paper-3);}
+  .pk-toolbar .btn.primary{box-shadow:0 1px 0 var(--crimson-ink);}
+  .pk-toolbar .btn .ic{width:15px; height:15px;}
+  .pk-toolbar .btn.primary{letter-spacing:0;}
+  .pk-toolbar .btn.warnish{color:var(--crimson-deep);}
   .pk-toolbar .spacer{display:none;}
-  /* ※ボタンの寸法は上の 4列×2段 のルールにまとめた（ここの古い指定は削除） */
-  .pk-dots{display:flex; gap:6px; justify-content:center; padding:6px 0 2px;}
-  .pk-dot{width:8px; height:8px; border-radius:50%; background:#c8ced6;}
-  .pk-dot.on{background:var(--now-orange);}
-  /* エラーはツールバーのすぐ下に貼り付いて、スクロールしてもボタンの白枠に隠れない。
-     top はツールバーの高さ(--pk-headh)を実測して入れる */
-  .pk-msg{min-height:18px; font-size:11.5px; color:#a33; padding:2px 12px 4px; white-space:pre-line;
-          position:sticky; top:var(--pk-headh,0px); z-index:29; background:#fff;}
+  #pkDayKind[data-kind="holiday"]{background:var(--blush); border-color:var(--blush-2); color:var(--crimson-deep);}
+  #pkDayKind[data-kind="special"]{background:var(--plum-bg); border-color:#CDB2D6; color:var(--plum);}
+  #pkDayKind[data-kind="special"] .ic{color:var(--plum);}
+  .pk-subrow{position:relative; min-height:24px; display:flex; align-items:center; justify-content:center; background:var(--paper);}
+  .pk-dots{display:flex; gap:7px; justify-content:center; padding:4px 0 3px;}
+  .pk-yanase{position:absolute; left:8px; top:50%; transform:translateY(-50%); font-family:var(--sans); font-size:11px; font-weight:700; padding:3px 10px; min-height:24px;
+             border-radius:12px; border:1px solid var(--sand); background:var(--card); color:var(--ink);}
+  .pk-yanase[data-kind="holiday"]{background:var(--blush); border-color:var(--blush-2); color:var(--crimson-deep);}
+  body.pk-land .pk-yanase{display:none !important;}
+  .pk-find-mini{position:fixed; right:10px; bottom:58px; z-index:60; display:none; align-items:center; gap:5px;
+          background:rgba(43,36,33,.86); color:#fff; border:none; border-radius:20px; padding:8px 13px; font-size:13px; font-weight:700; font-family:var(--sans); box-shadow:0 3px 10px rgba(0,0,0,.28);}
+  .pk-find-mini .ic{color:#fff; --wash:rgba(255,255,255,.18); width:17px; height:17px;}
+  body.pk-land .pk-find-mini{display:flex;}
+  .pk-animclock{font-family:var(--mono); font-weight:800; fill:var(--crimson-deep); opacity:.9; pointer-events:none; letter-spacing:.02em;}
+  .pk-animclock .lb{font-family:var(--sans); font-weight:700; fill:var(--ink-soft);}
+  .pk-dot{width:8px; height:8px; border-radius:50%; background:var(--sand);}
+  .pk-dot.on{background:var(--crimson); width:18px; border-radius:5px;}
+  .pk-msg{min-height:18px; font-size:12px; color:var(--crimson-deep); padding:3px 12px 5px; white-space:pre-line;
+          position:sticky; top:var(--pk-headh,0px); z-index:29; background:var(--card); border-bottom:1px solid var(--paper-2);}
   .pk-msg:empty{display:none;}
-  .pk-svgwrap{flex:1; overflow:hidden; position:relative; background:#eef0f3; touch-action:none;}
+  .pk-svgwrap{flex:1; overflow:hidden; position:relative; background:#ECE3D5; touch-action:none;}
   .pk-svginner{transform-origin:0 0; will-change:transform; width:100%; height:100%;}
   .pk-map{width:100%; height:100%; display:none;}
   .pk-map.on{display:block;}
   .pk-slot{pointer-events:all; cursor:pointer;}
-  /* 枠そのものを状態色で塗る（カードの矩形は描かない） */
-  /* 状態色: 基本(未確認)は構内図そのままの白地＋黒文字。配置済=緑 / 帰庫済=赤(ロック) / 帰庫間近=黄点滅 */
-  .pk-slot.pk-s1{fill:var(--green-bg) !important; stroke:var(--green-soft) !important; stroke-width:1.6px !important;}
-  .pk-slot.pk-s2{fill:var(--red-bg) !important; stroke:var(--red-soft) !important; stroke-width:1.6px !important;}
-  .pk-slot.pk-soon{fill:#fff7d1 !important; stroke:#d7c26a !important; stroke-width:1.6px !important;}
+  .pk-slot.pk-s1{fill:var(--moss-bg) !important; stroke:var(--moss) !important; stroke-width:1.6px !important;}
+  .pk-slot.pk-s2{fill:var(--red-bg) !important; stroke:var(--crimson) !important; stroke-width:1.6px !important;}
+  .pk-slot.pk-soon{fill:#fff7d1 !important; stroke:#d7b85a !important; stroke-width:1.6px !important;}
   .pk-slot.pk-soon.pk-blink{animation:pkblink .6s steps(1) 8;}
   @keyframes pkblink{0%,100%{fill:#fff7d1;}50%{fill:#ffffff;}}
-  .pk-slot.pk-warn{stroke:#e02b2b !important; stroke-width:3px !important;}
+  .pk-slot.pk-warn{stroke:#C8243A !important; stroke-width:3px !important;}
   .pk-slot.pk-unlocked{stroke-dasharray:5 3;}
-  /* ドラッグ中、いま指を離すと入る枠。薄いグレーの影＋オレンジの枠線で示す */
-  .pk-slot.pk-target{fill:#8d97a3 !important; fill-opacity:.42 !important;
-                     stroke:#d98324 !important; stroke-width:3.5px !important;}
-  /* 車両検索でみつけた枠：4回光ってから、ソナーのように広がって消える */
+  .pk-slot.pk-target{fill:#9a8a76 !important; fill-opacity:.4 !important;
+                     stroke:var(--crimson) !important; stroke-width:3.5px !important;}
   @keyframes pk-find-blink{ 0%,100%{fill-opacity:1;} 50%{fill-opacity:.12;} }
-  .pk-slot.pk-found{fill:#e03131 !important; animation:pk-find-blink .32s ease-in-out 4;}
-  /* ソナー：見えないくらい小さな点から始まる。
-     出はじめは透明 → すぐ赤くはっきり → 広がりながらフェードアウト。
-     色は枠の点滅と同じ赤（#e03131）。範囲は前の3倍 */
-  /* ソナーは「半径そのもの」を 0 から広げる。
-     拡大(transform)方式だと半径0のものは何倍にしても0のままなので、
-     どうしても見える大きさの丸から始めることになり、枠に赤丸が乗ってしまう。
-     線の太さは vector-effect で拡大に引きずらせない */
-  /* stroke-width は SMIL で動かすので CSS では指定しない。
-     CSS の指定があると属性側のアニメより CSS が優先されて線が出ない */
-  .pk-sonar{fill:none; stroke:#e03131; pointer-events:none;}
+  .pk-slot.pk-found{fill:#C8243A !important; animation:pk-find-blink .32s ease-in-out 4;}
+  .pk-sonar{fill:none; stroke:#C8243A; pointer-events:none;}
   @keyframes pk-chip-blink{ 0%,100%{opacity:1;} 50%{opacity:.2;} }
   .pk-chip.pk-found-chip{animation:pk-chip-blink .32s ease-in-out 4;
-            outline:3px solid #e03131; outline-offset:1px; background:#8f1d1d;}
+            outline:3px solid #C8243A; outline-offset:1px; background:var(--crimson-deep);}
   .pk-slot.pk-dragging{opacity:.55;}
-  /* 数字 */
   .pk-num.pk-hide{visibility:hidden;}
   .pk-bus{pointer-events:none;}
   .pk-slot.pk-arrive{animation:pkArrive .6s ease-out 1;}
   @keyframes pkArrive{0%{filter:brightness(1.7)}100%{filter:none}}
-  /* 再生バー：画面の下に固定。指でつまんで前後に動かせる。
-     z-index はモーダル(50)より下。上にすると号車入力などのボタンを塞ぐ */
+  /* 再生バー */
   .pk-animbar{position:fixed; left:0; right:0; bottom:0; z-index:45; overflow:hidden;
-              background:rgba(255,255,255,.97); border-top:1px solid var(--line);
-              padding:7px 7px calc(9px + env(safe-area-inset-bottom)); box-shadow:0 -3px 14px rgba(0,0,0,.14);}
-  .pk-animbtns{display:flex; align-items:stretch; gap:3px; margin-top:2px; flex-wrap:nowrap;
-               justify-content:flex-start;}
-  /* 指で押す的が小さくならないよう、送り戻しのボタンは最低幅をそろえる */
-  .pk-animbtns button{background:#eef1f4; border:1px solid #d4dae0; color:#1a1f26;
-              border-radius:8px; padding:6px 5px; font-size:11.5px; font-weight:700;
-              white-space:nowrap; flex:0 0 auto; min-width:33px; line-height:1.5;}
-  /* 右の2つは幅が足りなければ文字だけ詰める。画面外へは絶対に出さない */
-  .pk-animbtns button#pkAnimApply, .pk-animbtns button#pkAnimQuit{flex:0 1 auto; min-width:0; overflow:hidden;}
-  .pk-animbtns button.on{background:#d98324; border-color:#d98324; color:#fff;}
-  .pk-animbtns button.ok{background:#1a1f26; border-color:#1a1f26; color:#fff;}
-  /* 幅が足りないときは、まず台数表示から縮める（ボタンは押せる大きさを保つ） */
-  .pk-animtime{font-family:var(--mono); font-size:10.5px; color:#5b6470; margin:0 1px;
+              background:rgba(255,252,247,.97); border-top:1px solid var(--sand);
+              padding:7px 8px calc(9px + env(safe-area-inset-bottom)); box-shadow:0 -4px 16px rgba(46,28,22,.14);}
+  .pk-animbtns{display:flex; align-items:stretch; gap:4px; margin-top:3px; flex-wrap:nowrap; justify-content:flex-start;}
+  .pk-animbtns button{background:var(--card); border:1px solid var(--sand); color:var(--ink);
+              border-radius:10px; padding:5px 6px; font-size:12px; font-weight:700;
+              white-space:nowrap; flex:0 0 auto; min-width:38px; min-height:36px; line-height:1.3; display:flex; align-items:center; justify-content:center; box-shadow:var(--lip);}
+  .pk-animbtns button .ic{width:18px; height:18px;}
+  .pk-animbtns button#pkAnimApply, .pk-animbtns button#pkAnimQuit{flex:0 1 auto; min-width:0; overflow:hidden; padding:5px 10px;}
+  .pk-animbtns button.on{background:var(--crimson); border-color:var(--crimson-deep); color:var(--ivory);}
+  .pk-animbtns button.on .ic{color:var(--ivory); --wash:rgba(255,248,239,.22);}
+  .pk-animbtns button.ok{background:var(--ink); border-color:var(--ink); color:#fff; box-shadow:0 2px 0 #000;}
+  .pk-animtime{font-family:var(--mono); font-size:11px; color:var(--ink-soft); margin:0 2px; align-self:center;
                white-space:nowrap; flex:0 1 auto; overflow:hidden; min-width:0;}
-  /* スライダーはボタンより上。下端に置くとスキップの丸ボタンに隠れる */
-  #pkAnimSeek{width:100%; height:24px; margin:0; accent-color:#d98324; touch-action:none; display:block;}
+  #pkAnimSeek{width:100%; height:26px; margin:0; accent-color:var(--crimson); touch-action:none; display:block;}
   body.pk-land .pk-animbar{padding-bottom:6px;}
-  .pk-skip{position:fixed; right:12px; bottom:16px; z-index:60; background:#1a1f26; color:#fff;
-           border:none; border-radius:18px; padding:7px 14px; font-size:12px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.3);}
+  .pk-skip{position:fixed; right:12px; bottom:16px; z-index:60; background:rgba(43,36,33,.9); color:#fff;
+           border:none; border-radius:18px; padding:8px 14px; font-size:12.5px; font-weight:700; box-shadow:0 3px 10px rgba(46,28,22,.3);}
   .pk-num{font-family:var(--mono); font-weight:800; font-variant-numeric:tabular-nums;
           fill:#1a1f26; pointer-events:none; user-select:none;}
-  .pk-num.t-s1{fill:var(--forest);}
-  .pk-num.t-s2{fill:var(--wine);}
+  .pk-num.t-s1{fill:var(--moss-deep);}
+  .pk-num.t-s2{fill:var(--crimson-deep);}
   .pk-num.t-soon{fill:#1f2d5c;}
-  /* 状態カード */
   /* 未配置トレイ */
   .pk-tray{display:grid; grid-template-columns:repeat(auto-fill, minmax(92px,1fr)); gap:6px; align-content:start;
-           overflow-y:auto; overflow-x:hidden; padding:8px 10px; background:#fff; border-top:1px solid var(--line);
+           overflow-y:auto; overflow-x:hidden; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--paper-2);
            flex:0 0 auto; min-height:64px; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
   .pk-tray::-webkit-scrollbar{display:none;}
-  /* touch-action:pan-y … 号車の枠そのものを上下にフリックしてもトレイがスクロールする。
-     none にすると枠の上ではスクロールできず、狭い隙間を狙う必要があって使いにくい */
-  .pk-chip{position:relative; background:#1c2128; color:#f2f5f7; border-radius:8px; padding:6px 8px;
+  .pk-chip{position:relative; background:#1c2128; color:#f2f5f7; border-radius:10px; padding:6px 8px;
            font-family:var(--mono); font-size:15px; text-align:center; user-select:none; touch-action:pan-y;}
   .pk-chip small{display:block; font-size:9.5px; color:#aeb6c2; text-align:center; letter-spacing:-.2px;}
-  .pk-chip.sel{outline:3px solid var(--now-orange);}
-  .pk-chip.grp{border-left:4px solid var(--now-orange);}     /* 車種のかたまりの先頭 */
-  .pk-chip.hold{background:#5a3a1c;}                          /* 帰庫が時刻でない車＝先に手で置く車 */
+  .pk-chip.sel{outline:3px solid var(--crimson);}
+  .pk-chip.grp{border-left:4px solid var(--crimson);}
+  .pk-chip.hold{background:#5b3a26;}
   .pk-chip .x{position:absolute; top:-6px; right:-4px; width:22px; height:22px; line-height:20px;
-              border-radius:50%; background:#6b7280; color:#fff; font-size:13px; text-align:center;
-              border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.35);}
-  .pk-traylabel{font-size:10.5px; color:var(--text-dim); padding:4px 12px 2px; background:#fff;
+              border-radius:50%; background:#8a7d70; color:#fff; font-size:13px; text-align:center;
+              border:2px solid var(--card); box-shadow:0 1px 3px rgba(0,0,0,.25);}
+  .pk-traylabel{font-size:11px; color:var(--text-dim); padding:6px 12px 2px; background:var(--card); border-top:1px solid var(--sand);
                 display:flex; align-items:center; gap:8px;}
-  .pk-traylabel button{background:#eef0f3; border:1px solid var(--line); border-radius:12px;
-                       font-size:10.5px; padding:2px 9px; color:#1a1f26; flex:0 0 auto;}
-  /* ドラッグゴースト */
-  /* iOSで長押しすると文字が範囲選択されてコピーメニューが出るのを止める */
+  .pk-traylabel button{background:var(--card-2); border:1px solid var(--sand); border-radius:12px;
+                       font-size:11px; padding:3px 10px; color:var(--ink); flex:0 0 auto; font-weight:700;}
   body{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
   input,textarea,[contenteditable]{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default;}
   .pk-map, .pk-map *, .pk-chip, .pk-chip *{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
-  .pk-ghost{position:fixed; z-index:999; pointer-events:none; background:#1c2128; color:#fff; font-family:var(--mono); font-size:15px; padding:6px 10px; border-radius:8px; opacity:.9; transform:translate(-50%,-120%);}
-  /* 画面3・4の横向き案内 */
-  .pk-rotate-hint{font-size:10.5px; color:var(--text-dim); text-align:center; padding:2px 0;}
-  /* 運行ボード側のスワイプ発見用タブ */
-  .pk-edge-tab{position:fixed; right:0; top:45%; z-index:40; background:var(--now-orange); color:#fff; writing-mode:vertical-rl; padding:10px 4px; border-radius:8px 0 0 8px; font-size:12px; opacity:.85; border:none;}
-  /* ===== 横画面（スマホ横向き）: 図を最大限使うため、表示切替だけ残す ===== */
+  .pk-ghost{position:fixed; z-index:999; pointer-events:none; background:#1c2128; color:#fff; font-family:var(--mono); font-size:15px; padding:6px 10px; border-radius:9px; opacity:.92; transform:translate(-50%,-120%); box-shadow:0 6px 14px rgba(0,0,0,.25);}
+  .pk-rotate-hint{font-size:11px; color:var(--text-dim); text-align:center; padding:2px 0; display:flex; align-items:center; justify-content:center; gap:5px;}
+  /* 運行ボード側の「構内図」タブ */
+  .pk-edge-tab{position:fixed; right:0; top:45%; z-index:40; background:var(--crimson); color:var(--ivory); padding:10px 5px 12px 7px; border-radius:14px 0 0 14px; font-size:12.5px; font-weight:700; border:1px solid var(--crimson-deep); border-right:none;
+               display:flex; flex-direction:column; align-items:center; gap:4px; box-shadow:-2px 4px 12px rgba(92,13,25,.25); font-family:var(--sans);}
+  .pk-edge-tab .ic{color:var(--ivory); --wash:rgba(255,248,239,.22);}
+  .pk-edge-tab span{writing-mode:vertical-rl; letter-spacing:.12em;}
+  /* 横向き */
   .pk-fab{position:fixed; right:10px; bottom:10px; z-index:60; display:none;
-          background:rgba(28,33,40,.86); color:#fff; border:none; border-radius:20px;
-          padding:9px 14px; font-size:13px; font-weight:700; font-family:var(--mono);
-          box-shadow:0 2px 8px rgba(0,0,0,.3);}
+          background:rgba(43,36,33,.86); color:#fff; border:none; border-radius:20px;
+          padding:9px 14px; font-size:13px; font-weight:700; font-family:var(--sans);
+          box-shadow:0 3px 10px rgba(0,0,0,.28);}
   .pk-back-mini{position:fixed; left:10px; bottom:10px; z-index:60; display:none;
-          background:rgba(28,33,40,.7); color:#fff; border:none; border-radius:20px;
-          padding:9px 12px; font-size:13px;}
+          background:rgba(43,36,33,.72); color:#fff; border:none; border-radius:20px;
+          padding:9px 12px; font-size:13px; font-family:var(--sans);}
   body.pk-land .pk-toolbar{display:none;}
   body.pk-land .pk-dots{position:fixed; left:50%; transform:translateX(-50%); bottom:8px; z-index:60; padding:0;}
   body.pk-land .pk-rotate-hint{display:none !important;}
   body.pk-land .pk-traylabel, body.pk-land .pk-tray{display:none !important;}
-  body.pk-land .pk-msg{position:fixed; top:0; left:0; right:0; z-index:55; background:rgba(255,255,255,.9);
+  body.pk-land .pk-msg{position:fixed; top:0; left:0; right:0; z-index:55; background:rgba(255,252,247,.92);
                        padding:2px 10px; font-size:10.5px; line-height:1.35; max-height:2.9em; overflow:hidden;}
   body.pk-land .pk-msg:empty{display:none;}
   body.pk-land .pk-fab{display:block;}
   body.pk-land .pk-back-mini{display:block;}
   body.pk-land #parkingRoot{height:100vh;}
   body.pk-land .pk-svgwrap{flex:1;}
-  /* テンプレモーダル */
-  .ptpl-row{border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:8px; background:#fff;}
-  .ptpl-row h4{margin:0 0 4px; font-size:14px;}
-  .ptpl-row .cnt{font-size:11px; color:var(--text-dim);}
-  .ptpl-btns{display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;}
-  .ptpl-btns .btn{font-size:11.5px; padding:6px 9px;}
-
+  /* 配置テンプレート（8枠） */
+  .ptpl-grid{display:grid; grid-template-columns:1fr; gap:8px;}
+  @media (min-width:560px){ .ptpl-grid{grid-template-columns:1fr 1fr;} }
+  .ptpl-row{border:1px solid var(--sand); border-radius:14px; padding:10px 11px; margin-bottom:8px; background:var(--card-2);}
+  .ptpl-grid .ptpl-row{margin-bottom:0;}
+  .ptpl-row.base{background:var(--blush); border-color:var(--blush-2);}
+  .ptpl-row.empty{background:transparent; border-style:dashed;}
+  .ptpl-row h4{margin:0 0 3px; font-size:14px; display:flex; align-items:baseline; gap:6px;}
+  .ptpl-row h4 .n{font-family:var(--mono); font-size:12px; color:var(--crimson-deep); background:var(--card); border:1px solid var(--sand); border-radius:6px; padding:0 6px;}
+  .ptpl-row .cnt{font-size:11.5px; color:var(--text-dim);}
+  .ptpl-btns{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
+  .ptpl-btns .btn{font-size:12px; padding:5px 10px; min-height:34px; gap:5px;}
+  .ptpl-btns .btn .ic{width:16px; height:16px;}
+  details.snap{background:transparent; border-style:dashed; margin-top:14px;}
+  details.snap > summary{list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; font-size:13.5px; font-weight:700; color:var(--ink-soft); padding:2px 0;}
+  details.snap > summary::-webkit-details-marker{display:none;}
+  details.snap > summary .ic{transition:transform .2s;}
+  details.snap[open] > summary .ic{transform:rotate(180deg);}
+  details.snap[open]{background:var(--card-2); border-style:solid;}
+  @media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><symbol id="i-info" viewBox="0 0 24 24"><path d="M6.4 6.0Q10.3 5.3 11.7 5.8Q13.1 6.2 14.5 6.2Q15.8 6.3 17.3 6.1Q18.8 5.9 19.0 7.4Q19.2 8.9 19.2 10.2Q19.1 11.5 18.8 13.6Q18.4 15.6 18.5 16.9Q18.7 18.2 18.7 19.5Q18.7 20.8 17.5 21.0Q16.3 21.3 14.8 21.5Q13.2 21.8 11.5 21.5Q9.9 21.1 8.1 21.1Q6.4 21.1 6.4 19.7Q6.5 18.4 6.8 16.6Q7.1 14.9 6.8 13.7Q6.5 12.4 6.8 10.8Q7.2 9.2 6.8 7.6Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.9 4.9Q10.2 4.8 12.1 4.8Q14.0 4.7 16.0 4.9Q18.1 5.0 18.1 6.9Q18.2 8.9 18.0 10.9Q17.7 12.8 17.9 14.6Q18.1 16.4 18.0 18.3Q17.9 20.3 16.0 20.5Q14.2 20.7 12.0 20.7Q9.9 20.6 7.9 20.6Q5.8 20.6 6.0 18.6Q6.2 16.6 6.1 14.7Q6.0 12.7 5.9 10.7Q5.8 8.7 5.8 6.8Q5.9 4.9 7.0 5.0L8.1 5.0"/><path d="M9.4 3.5Q14.7 3.6 14.6 4.9Q14.4 6.3 12.0 6.3Q9.5 6.3 9.5 4.9Q9.4 3.5 10.8 3.5L12.2 3.6"/><path d="M9.3 17.1Q9.1 15.2 9.2 13.6"/><path d="M12.0 17.1Q11.9 13.8 12.0 12.2L12.0 10.6"/><path d="M14.6 17.3Q14.7 14.7 14.7 12.4"/></g></symbol><symbol id="i-note" viewBox="0 0 24 24"><path d="M8.0 4.6Q10.9 4.6 12.0 4.7Q13.0 4.7 14.9 4.8Q16.7 5.0 18.0 4.8Q19.3 4.5 19.6 6.3Q19.8 8.0 19.7 9.8Q19.6 11.5 19.6 13.2Q19.6 14.9 19.5 16.4Q19.4 17.8 19.5 19.4Q19.6 21.0 18.0 21.1Q16.4 21.2 14.8 21.4Q13.1 21.7 11.8 21.4Q10.5 21.2 8.9 21.1Q7.4 20.9 7.4 19.3Q7.4 17.7 7.6 16.1Q7.8 14.4 7.5 12.7Q7.2 11.0 7.1 9.4Q7.0 7.8 7.5 6.2Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M6.7 3.7Q10.7 3.7 12.7 4.0Q14.8 4.3 16.7 4.2Q18.6 4.2 18.7 5.7Q18.7 7.3 18.7 9.0Q18.7 10.7 18.6 12.3Q18.6 13.9 18.5 15.7Q18.4 17.4 18.4 19.1Q18.3 20.8 16.5 20.6Q14.6 20.5 12.7 20.4Q10.9 20.4 8.6 20.3Q6.4 20.3 6.4 18.8Q6.5 17.4 6.4 15.6Q6.3 13.7 6.5 12.2Q6.7 10.7 6.8 8.9Q6.9 7.1 6.8 5.4Q6.7 3.7 7.8 3.7L8.8 3.8"/><path d="M4.2 8.3Q5.8 8.2 8.0 7.8"/><path d="M4.3 12.1Q5.9 12.0 7.9 12.5"/><path d="M4.2 16.3Q6.1 16.1 8.0 16.3"/><path d="M10.6 8.8Q13.7 8.7 16.2 8.5"/><path d="M10.8 11.9Q13.1 12.3 15.4 12.2"/><path d="M10.6 15.5Q12.2 15.6 13.9 15.3"/></g></symbol><symbol id="i-gear" viewBox="0 0 24 24"><path d="M19.4 13.1Q18.4 15.9 17.7 17.2Q17.0 18.4 15.7 18.7Q14.5 19.0 13.2 19.0Q11.8 18.9 10.1 18.5Q8.5 18.0 7.5 17.0Q6.6 15.9 6.6 14.6Q6.7 13.2 6.8 11.7Q7.0 10.2 8.1 8.7Q9.3 7.3 10.5 7.0Q11.8 6.8 13.2 6.7Q14.5 6.6 15.9 7.2Q17.3 7.7 18.1 8.8Q19.0 9.8 19.2 11.5Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 10.3Q20.4 10.6 20.3 12.0Q20.2 13.4 19.0 13.5Q17.8 13.6 17.5 14.4Q17.3 15.1 17.9 16.1Q18.5 17.1 17.7 17.8Q16.9 18.6 15.9 18.0Q14.9 17.4 14.2 17.7Q13.4 18.0 13.3 19.0Q13.1 20.1 11.9 20.1Q10.6 20.1 10.5 19.0Q10.4 17.8 9.7 17.6Q9.0 17.4 8.1 18.1Q7.1 18.8 6.1 17.9Q5.2 16.9 6.0 16.0Q6.8 15.0 6.4 14.4Q5.9 13.7 4.9 13.5Q3.9 13.2 3.9 11.9Q3.9 10.6 4.9 10.5Q6.0 10.4 6.4 9.7Q6.9 9.0 6.1 8.0Q5.2 6.9 6.2 6.1Q7.2 5.2 8.1 5.9Q9.0 6.7 9.7 6.5Q10.4 6.3 10.5 5.0Q10.6 3.8 11.9 3.7Q13.2 3.7 13.3 4.9Q13.5 6.0 14.3 6.4Q15.1 6.8 16.1 6.1Q17.0 5.4 17.9 6.2Q18.8 6.9 18.1 7.9Q17.4 8.9 17.6 9.6Q17.8 10.3 18.5 10.4L19.3 10.5"/><path d="M14.4 12.0Q13.9 13.8 13.0 14.2Q12.0 14.6 11.1 14.2Q10.2 13.9 9.9 12.9Q9.6 11.9 9.9 11.1Q10.1 10.3 11.1 9.9Q12.0 9.6 12.8 9.9Q13.7 10.3 14.0 11.2Q14.4 12.0 14.3 12.6L14.2 13.1"/></g></symbol><symbol id="i-pencil" viewBox="0 0 24 24"><path d="M6.7 16.5Q9.3 13.7 10.9 12.3Q12.5 10.9 13.4 9.8Q14.2 8.8 15.7 7.2Q17.2 5.5 18.8 7.0Q20.4 8.4 19.0 10.0Q17.5 11.5 16.4 12.6Q15.3 13.8 13.9 15.1Q12.4 16.3 11.1 17.4Q9.8 18.5 8.3 17.5Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 19.4Q6.1 15.4 7.4 14.1Q8.7 12.8 10.0 11.6Q11.3 10.3 12.5 9.0Q13.7 7.7 15.1 6.5Q16.4 5.2 17.7 6.6Q19.0 8.0 17.7 9.2Q16.3 10.4 15.1 11.7Q13.9 13.0 12.6 14.3Q11.2 15.7 10.0 16.8L8.9 17.9"/><path d="M8.8 18.2Q7.0 19.1 4.7 19.5"/><path d="M6.2 15.3Q7.7 16.8 8.9 18.2"/><path d="M14.3 7.0Q15.8 8.1 17.2 9.7"/></g></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M6.9 7.8Q10.7 8.2 12.9 8.2Q15.1 8.1 16.9 8.3Q18.8 8.5 18.4 10.0Q18.0 11.5 18.2 12.8Q18.3 14.0 18.1 15.7Q17.8 17.4 17.8 19.3Q17.8 21.3 15.9 21.1Q14.0 20.9 12.5 21.1Q11.0 21.3 9.7 21.2Q8.5 21.0 8.2 19.4Q8.0 17.8 8.1 16.0Q8.1 14.3 8.1 13.0Q8.0 11.7 7.5 9.7Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7.0Q8.3 6.9 10.1 7.0Q11.8 7.0 13.7 6.9Q15.7 6.8 17.4 6.8L19.1 6.9"/><path d="M9.8 6.6Q10.0 4.3 11.9 4.3Q13.9 4.3 14.2 5.5L14.4 6.6"/><path d="M6.3 7.1Q6.4 10.6 6.8 12.2Q7.1 13.8 7.1 15.3Q7.1 16.8 7.3 18.6Q7.6 20.3 9.9 20.3Q12.1 20.2 14.4 20.2Q16.6 20.3 16.8 18.7Q17.0 17.1 17.0 15.4Q17.0 13.6 17.2 12.1Q17.5 10.5 17.4 8.9L17.4 7.3"/><path d="M10.0 10.2Q10.1 13.6 10.3 15.3L10.4 17.0"/><path d="M13.9 10.2Q13.9 13.5 13.8 15.2L13.7 16.9"/></g></symbol><symbol id="i-park" viewBox="0 0 24 24"><path d="M5.4 4.3Q9.1 4.5 10.9 4.2Q12.7 3.9 14.7 4.1Q16.8 4.3 18.2 4.0Q19.7 3.8 19.8 6.1Q19.8 8.4 19.9 10.3Q20.0 12.3 20.2 14.3Q20.4 16.4 18.4 16.1Q16.3 15.8 14.9 16.1Q13.4 16.3 11.5 15.9Q9.5 15.5 7.6 15.8Q5.6 16.1 5.8 14.3Q5.9 12.6 6.2 10.5Q6.4 8.5 5.9 6.4Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 3.4Q8.8 3.2 10.3 3.4Q11.8 3.7 13.8 3.6Q15.8 3.6 17.5 3.5Q19.2 3.4 19.2 5.4Q19.2 7.4 19.3 9.2Q19.3 11.1 19.0 13.2Q18.8 15.3 17.3 15.1Q15.7 14.9 14.0 14.9Q12.3 14.9 10.3 15.0Q8.2 15.1 6.7 15.1Q5.2 15.2 5.1 13.3Q5.0 11.5 4.9 9.5Q4.8 7.5 5.0 5.4Q5.2 3.4 6.2 3.4L7.2 3.5"/><path d="M12.1 15.2Q12.1 18.2 12.1 20.9"/><path d="M8.4 20.7Q11.9 21.1 13.7 20.8L15.4 20.5"/><path d="M10.1 12.9Q10.1 9.4 10.1 7.8Q10.2 6.3 11.7 6.3Q13.2 6.2 13.8 6.4Q14.4 6.7 14.7 7.2Q15.0 7.7 15.1 8.3Q15.2 8.9 14.8 9.3Q14.5 9.8 13.8 10.0Q13.2 10.3 11.7 10.3L10.3 10.4"/></g></symbol><symbol id="i-clock" viewBox="0 0 24 24"><path d="M21.1 13.9Q19.9 17.8 18.4 19.2Q17.0 20.6 14.7 20.9Q12.5 21.2 10.5 20.8Q8.6 20.4 7.0 18.9Q5.4 17.4 5.1 15.7Q4.8 13.9 5.3 11.6Q5.8 9.2 7.1 7.8Q8.4 6.4 10.8 5.6Q13.3 4.8 15.3 5.3Q17.3 5.8 18.5 7.4Q19.8 9.1 20.4 11.5Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 12.4Q19.2 16.2 18.1 17.6Q16.9 18.9 15.3 19.8Q13.7 20.7 12.0 20.6Q10.3 20.4 8.5 19.6Q6.8 18.8 5.8 17.5Q4.8 16.1 4.3 14.4Q3.7 12.7 4.2 10.8Q4.8 8.9 5.9 7.5Q7.1 6.2 8.6 5.4Q10.1 4.5 12.1 4.5Q14.0 4.6 15.5 5.4Q16.9 6.3 18.2 7.8Q19.6 9.2 20.0 10.8Q20.4 12.4 20.2 13.4L19.9 14.3"/><path d="M12.0 12.5Q12.2 10.3 11.9 7.9"/><path d="M11.9 12.5Q13.4 13.4 15.4 14.4"/><path d="M8.1 3.7Q6.4 4.9 5.3 5.8"/><path d="M16.0 3.5Q17.4 4.9 18.7 5.9"/></g></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M6.3 14.3Q9.6 13.7 11.2 13.7Q12.7 13.8 14.7 13.6Q16.7 13.3 18.1 13.3Q19.6 13.3 19.9 15.2Q20.2 17.0 19.9 18.8Q19.6 20.5 18.2 20.7Q16.8 20.9 14.9 20.6Q13.1 20.3 11.1 20.4Q9.2 20.6 7.4 20.5Q5.6 20.4 5.6 18.5Q5.6 16.7 6.0 15.5Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.0 12.2Q4.8 16.0 4.9 18.0Q5.0 20.0 6.7 19.8Q8.5 19.6 10.2 19.6Q11.9 19.5 13.7 19.5Q15.5 19.6 17.2 19.5Q18.9 19.4 18.9 17.6Q18.9 15.7 19.0 13.9L19.0 12.0"/><path d="M12.1 3.8Q11.9 7.4 12.0 9.2Q12.0 10.9 12.0 12.6L11.9 14.3"/><path d="M8.4 10.8Q12.0 14.7 13.8 12.8L15.6 11.0"/></g></symbol><symbol id="i-export" viewBox="0 0 24 24"><path d="M7.0 4.3Q10.3 4.5 12.1 4.5Q13.9 4.5 15.2 4.8Q16.4 5.0 18.0 5.2Q19.6 5.3 19.5 6.7Q19.5 8.1 19.9 9.9Q20.4 11.6 20.4 13.2Q20.4 14.8 20.2 16.2Q20.0 17.6 20.1 19.3Q20.2 20.9 18.4 21.0Q16.5 21.2 14.7 21.1Q13.0 21.1 11.4 20.9Q9.8 20.8 8.4 21.0Q7.0 21.3 6.9 19.5Q6.8 17.7 6.6 16.4Q6.4 15.1 6.8 13.3Q7.1 11.4 6.9 10.0Q6.8 8.6 6.9 6.4Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 4.1Q10.7 4.0 13.1 4.1Q15.4 4.2 17.2 5.8Q19.0 7.3 19.1 9.0Q19.2 10.7 19.2 12.3Q19.1 13.8 19.1 15.6Q19.0 17.3 18.9 19.0Q18.9 20.7 17.3 20.5Q15.7 20.3 14.1 20.5Q12.6 20.6 10.9 20.5Q9.3 20.4 7.6 20.5Q5.8 20.5 5.9 19.0Q6.0 17.4 6.0 15.5Q6.1 13.7 6.1 12.2Q6.2 10.7 6.1 9.1Q6.1 7.5 5.9 5.8Q5.8 4.1 7.2 4.2L8.6 4.2"/><path d="M15.6 4.3Q15.6 7.5 17.2 7.4L18.8 7.4"/><path d="M12.4 17.5Q12.5 13.3 12.4 11.4L12.4 9.5"/><path d="M9.3 12.2Q12.3 8.9 13.8 10.5L15.4 12.1"/></g></symbol><symbol id="i-copy" viewBox="0 0 24 24"><path d="M5.3 8.5Q8.8 8.8 10.6 9.0Q12.5 9.2 14.0 9.1Q15.5 9.0 15.8 10.6Q16.0 12.3 16.1 13.6Q16.2 14.9 16.3 16.4Q16.4 17.8 16.2 19.3Q15.9 20.8 14.2 21.1Q12.4 21.3 10.7 21.5Q9.0 21.7 7.2 21.3Q5.4 20.9 5.8 19.4Q6.2 17.9 5.9 16.6Q5.6 15.4 5.9 13.5Q6.2 11.5 5.7 10.0Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 3.9Q12.3 3.8 14.1 3.9Q16.0 3.9 17.7 3.8Q19.3 3.7 19.2 5.8Q19.0 8.0 19.1 9.9Q19.2 11.9 19.1 13.8Q19.1 15.6 17.5 15.6Q15.9 15.6 14.0 15.8Q12.2 16.0 10.7 16.0Q9.2 15.9 9.1 13.8Q9.1 11.7 9.0 9.7Q8.9 7.8 9.0 5.8Q9.1 3.9 9.9 3.8L10.8 3.8"/><path d="M4.9 8.0Q8.2 8.2 9.8 8.2Q11.5 8.1 13.3 8.1Q15.0 8.0 15.1 10.1Q15.2 12.1 15.1 14.2Q15.0 16.2 15.0 18.3Q15.1 20.5 13.4 20.5Q11.6 20.5 9.9 20.5Q8.2 20.4 6.4 20.3Q4.7 20.3 4.7 18.3Q4.7 16.2 4.7 14.3Q4.8 12.4 4.8 10.2Q4.9 8.0 5.8 8.2L6.7 8.3"/></g></symbol><symbol id="i-lock" viewBox="0 0 24 24"><path d="M6.5 11.9Q10.0 11.7 11.7 11.8Q13.4 11.9 14.7 11.8Q16.0 11.8 17.7 11.4Q19.5 11.1 19.3 13.1Q19.2 15.1 19.1 16.6Q19.0 18.1 19.2 19.7Q19.4 21.4 17.6 21.4Q15.9 21.4 14.6 21.4Q13.3 21.4 11.5 21.6Q9.7 21.7 8.1 21.7Q6.6 21.6 6.8 19.8Q6.9 17.9 6.7 16.5Q6.6 15.1 6.6 13.5Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.9 10.8Q10.0 10.6 12.1 10.7Q14.2 10.7 16.1 10.7Q18.0 10.7 18.1 13.2Q18.2 15.6 18.2 18.0Q18.3 20.5 16.2 20.3Q14.1 20.2 12.0 20.4Q9.8 20.5 7.8 20.4Q5.8 20.3 5.8 17.9Q5.7 15.5 5.8 13.2Q5.9 10.8 7.0 10.7L8.1 10.6"/><path d="M8.2 10.7Q8.4 9.0 8.8 8.4Q9.2 7.8 9.9 7.4Q10.5 7.0 11.3 6.9Q12.1 6.8 12.7 7.0Q13.4 7.1 14.1 7.5Q14.7 7.8 15.2 8.5Q15.6 9.1 15.8 9.9L16.0 10.6"/><path d="M11.9 14.9Q11.7 16.0 12.0 17.3"/></g><circle fill="currentColor" cx="12.0" cy="14.7" r="1.1"/></symbol><symbol id="i-unlock" viewBox="0 0 24 24"><path d="M7.0 11.6Q10.3 11.1 11.8 11.1Q13.2 11.2 14.9 11.4Q16.5 11.7 17.9 11.4Q19.3 11.2 19.2 13.3Q19.1 15.3 19.1 16.5Q19.2 17.6 19.4 19.3Q19.5 21.1 17.7 20.9Q15.8 20.8 14.2 21.2Q12.5 21.7 11.3 21.5Q10.1 21.2 8.6 21.1Q7.0 21.0 6.9 19.5Q6.7 18.0 6.9 16.3Q7.1 14.7 7.0 13.2Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M6.0 10.9Q9.8 10.7 11.9 10.8Q14.0 11.0 16.1 10.9Q18.1 10.7 18.2 13.1Q18.3 15.4 18.3 17.9Q18.2 20.5 16.0 20.4Q13.9 20.4 12.0 20.3Q10.1 20.3 7.9 20.3Q5.6 20.3 5.8 18.0Q5.9 15.7 5.9 13.3Q6.0 10.9 7.0 11.0L8.1 11.0"/><path d="M8.2 8.3Q8.3 6.8 8.8 6.2Q9.2 5.7 9.7 5.2Q10.3 4.7 10.9 4.6Q11.4 4.5 12.2 4.4Q13.0 4.4 13.5 4.7Q14.0 5.1 14.6 5.6Q15.1 6.0 15.4 6.6Q15.8 7.1 15.6 6.9L15.5 6.7"/><path d="M8.1 8.1Q7.8 9.3 8.0 10.9"/></g><circle fill="currentColor" cx="12.0" cy="15.4" r="1.1"/></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M18.1 11.4Q17.9 13.7 16.6 14.8Q15.3 16.0 13.5 15.9Q11.7 15.8 10.3 15.6Q8.9 15.4 8.5 13.8Q8.1 12.2 7.6 11.0Q7.2 9.9 8.5 8.4Q9.9 6.9 10.8 6.4Q11.8 5.9 13.6 5.9Q15.4 5.8 16.4 7.0Q17.5 8.2 17.8 9.8Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M7.6 12.8Q6.6 10.9 6.5 9.9Q6.5 8.9 6.8 7.9Q7.1 7.0 7.8 6.3Q8.5 5.6 9.2 5.1Q9.9 4.6 11.0 4.3Q12.1 4.1 13.0 4.3Q13.9 4.6 14.9 5.1Q15.8 5.7 16.2 6.5Q16.7 7.3 17.0 8.2Q17.4 9.0 17.3 10.0Q17.3 11.0 16.8 11.8Q16.4 12.6 15.3 14.8Q14.3 16.9 13.1 18.8Q11.9 20.8 10.9 18.8Q9.9 16.9 8.7 14.8Q7.6 12.8 7.2 12.2L6.9 11.6"/><path d="M13.8 9.6Q13.3 11.0 12.7 11.2Q12.0 11.4 11.4 11.2Q10.7 10.9 10.5 10.3Q10.2 9.6 10.4 8.9Q10.6 8.2 11.3 8.0Q11.9 7.7 12.7 8.0Q13.4 8.3 13.6 8.9Q13.8 9.6 13.7 9.9L13.6 10.3"/></g></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M5.0 9.1Q7.6 8.9 9.3 8.9Q10.9 8.9 12.7 9.0Q14.5 9.1 15.8 9.0Q17.2 8.9 18.8 9.2Q20.5 9.4 20.6 11.0Q20.6 12.7 20.6 14.3Q20.6 16.0 20.7 17.9Q20.9 19.8 19.5 19.8Q18.0 19.8 16.1 20.1Q14.2 20.4 13.0 20.1Q11.8 19.8 9.8 20.2Q7.9 20.6 6.3 20.5Q4.7 20.5 4.6 18.3Q4.6 16.2 4.6 14.2Q4.7 12.3 4.9 10.7Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 8.1Q8.9 8.3 9.5 7.0Q10.1 5.7 11.8 5.6Q13.5 5.4 14.3 6.9Q15.0 8.4 17.6 8.4Q20.2 8.4 20.2 10.2Q20.1 12.1 20.1 13.9Q20.0 15.7 20.0 17.5Q19.9 19.2 18.3 19.4Q16.6 19.5 15.0 19.4Q13.4 19.4 11.8 19.5Q10.3 19.5 8.7 19.5Q7.2 19.5 5.6 19.4Q4.0 19.3 4.1 17.5Q4.2 15.6 4.2 13.8Q4.2 12.0 4.0 10.1Q3.8 8.1 5.2 8.2L6.5 8.4"/><path d="M15.5 13.7Q14.9 15.9 14.0 16.5Q13.2 17.2 12.1 17.1Q11.0 17.0 10.1 16.4Q9.3 15.8 8.9 14.8Q8.5 13.8 8.8 12.7Q9.1 11.5 10.0 10.9Q10.8 10.3 11.9 10.4Q13.0 10.4 13.9 11.0Q14.8 11.6 15.1 12.7Q15.5 13.7 15.3 14.3L15.1 14.8"/></g></symbol><symbol id="i-rotate" viewBox="0 0 24 24"><path d="M4.2 9.8Q7.5 10.2 9.6 10.2Q11.6 10.2 13.0 10.0Q14.3 9.8 16.1 9.8Q17.8 9.8 19.7 9.8Q21.5 9.9 21.6 12.0Q21.6 14.1 21.4 16.0Q21.1 17.9 19.5 17.5Q18.0 17.1 16.2 17.5Q14.5 17.9 13.0 17.9Q11.4 17.9 9.6 17.8Q7.9 17.7 6.3 17.3Q4.7 16.9 4.7 15.3Q4.6 13.7 4.4 11.8Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M3.7 9.0Q7.1 8.9 8.6 9.0Q10.2 9.1 11.8 9.1Q13.5 9.1 15.3 9.1Q17.1 9.1 18.8 9.1Q20.5 9.0 20.4 11.0Q20.4 12.9 20.3 14.7Q20.3 16.5 18.6 16.6Q16.9 16.7 15.2 16.6Q13.6 16.6 11.8 16.6Q10.1 16.6 8.5 16.6Q7.0 16.5 5.3 16.6Q3.6 16.6 3.6 14.7Q3.6 12.9 3.7 10.9Q3.7 9.0 4.6 8.9L5.4 8.8"/><path d="M17.3 11.0Q17.3 12.6 17.2 14.6"/><path d="M6.3 6.8Q7.3 4.9 8.1 4.3Q8.9 3.6 9.9 3.3Q10.9 2.9 11.9 2.9Q12.9 2.9 14.0 3.3Q15.0 3.7 15.9 4.2Q16.7 4.8 17.2 5.7L17.8 6.6"/><path d="M15.6 2.6Q17.6 3.3 17.2 4.3L16.8 5.2"/></g></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M8.4 6.1Q11.0 8.2 12.7 9.0Q14.5 9.9 16.0 10.3Q17.4 10.7 18.5 11.8Q19.6 12.9 18.3 13.7Q17.1 14.6 15.4 15.5Q13.7 16.4 12.7 17.1Q11.7 17.7 10.4 18.7Q9.1 19.8 8.6 17.9Q8.2 15.9 8.5 14.4Q8.8 12.9 9.0 11.2Q9.2 9.5 8.8 7.8Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M7.7 5.1Q10.6 7.1 11.9 7.8Q13.3 8.4 14.6 9.3Q15.9 10.1 17.3 11.1Q18.8 12.0 17.5 12.8Q16.2 13.6 14.7 14.5Q13.2 15.5 12.0 16.4Q10.7 17.2 9.3 18.0Q8.0 18.8 7.8 17.2Q7.7 15.5 7.7 13.7Q7.6 11.9 7.6 10.3Q7.6 8.6 7.7 6.9Q7.7 5.1 8.6 5.6L9.5 6.0"/></g></symbol><symbol id="i-pause" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 5.7Q8.7 8.8 8.7 10.4Q8.7 12.0 8.8 13.6Q8.9 15.2 8.9 16.8L8.9 18.4"/><path d="M15.1 5.7Q15.2 8.8 15.3 10.4Q15.4 12.0 15.4 13.5Q15.5 15.1 15.5 16.7L15.4 18.4"/></g></symbol><symbol id="i-rew" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 6.0Q7.8 9.2 6.1 10.5Q4.4 11.9 6.2 13.4Q7.9 14.9 9.6 16.4Q11.3 17.8 11.4 15.9Q11.5 14.0 11.5 12.1Q11.5 10.2 11.5 8.1Q11.5 6.0 10.5 6.8L9.5 7.5"/><path d="M19.4 6.2Q16.2 9.1 14.4 10.5Q12.5 11.9 14.3 13.4Q16.0 14.9 17.7 16.4Q19.5 18.0 19.6 16.0Q19.7 14.0 19.6 12.0Q19.5 10.1 19.5 8.1Q19.4 6.2 18.6 7.0L17.8 7.8"/></g></symbol><symbol id="i-ffw" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.1Q7.9 9.1 9.7 10.6Q11.4 12.0 9.7 13.5Q8.0 15.0 6.2 16.4Q4.5 17.8 4.5 15.9Q4.5 14.0 4.4 12.0Q4.3 10.0 4.4 8.0Q4.5 6.1 5.3 7.0L6.2 7.8"/><path d="M12.8 6.3Q16.2 9.1 17.9 10.6Q19.5 12.2 17.7 13.5Q16.0 14.9 14.3 16.3Q12.6 17.7 12.5 15.8Q12.5 13.9 12.5 12.0Q12.5 10.1 12.6 8.2Q12.8 6.3 13.6 7.1L14.5 8.0"/></g></symbol><symbol id="i-end" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 6.0Q8.7 7.9 10.2 8.9Q11.8 10.0 13.2 10.9Q14.6 11.9 13.2 12.9Q11.7 14.0 10.1 15.0Q8.5 16.0 7.1 16.9Q5.7 17.9 5.6 16.0Q5.6 14.1 5.6 12.0Q5.5 9.9 5.5 8.0Q5.5 6.0 6.5 6.4L7.4 6.8"/><path d="M18.4 5.8Q18.4 10.0 18.4 12.0Q18.4 14.1 18.5 16.1L18.5 18.1"/></g></symbol><symbol id="i-close" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5Q9.4 9.4 10.8 10.8Q12.2 12.1 13.6 13.4Q15.0 14.8 16.3 16.3L17.7 17.9"/><path d="M17.8 6.3Q14.6 9.1 13.2 10.5Q11.8 11.8 10.6 13.2Q9.5 14.6 7.9 16.1L6.3 17.6"/></g></symbol><symbol id="i-plus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M12.0 4.6Q12.2 8.3 12.0 10.0Q11.8 11.7 12.0 13.7Q12.2 15.7 12.0 17.4L11.8 19.0"/><path d="M4.9 11.9Q8.1 11.8 10.2 12.0Q12.2 12.1 13.7 12.1Q15.3 12.0 17.4 12.0L19.4 12.0"/></g></symbol><symbol id="i-search" viewBox="0 0 24 24"><path d="M17.6 10.9Q15.7 14.7 14.6 15.8Q13.4 17.0 11.5 16.8Q9.6 16.6 8.1 15.8Q6.6 15.1 6.3 13.1Q6.0 11.1 6.2 9.4Q6.3 7.7 7.8 6.8Q9.3 5.8 11.1 5.5Q13.0 5.2 14.7 6.7Q16.3 8.2 17.0 9.6Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M16.1 10.3Q15.3 13.1 14.4 14.2Q13.5 15.4 11.8 15.8Q10.2 16.3 8.9 15.8Q7.6 15.3 6.6 14.3Q5.5 13.4 5.1 11.9Q4.8 10.3 5.0 8.9Q5.3 7.5 6.5 6.5Q7.6 5.4 9.0 5.0Q10.4 4.7 11.8 5.1Q13.1 5.5 14.2 6.5Q15.3 7.5 15.7 8.9Q16.1 10.3 15.9 11.0L15.7 11.7"/><path d="M14.7 14.7Q17.3 17.5 18.5 18.8L19.8 20.2"/></g></symbol><symbol id="i-cal" viewBox="0 0 24 24"><path d="M5.4 6.9Q8.8 6.4 10.3 6.5Q11.9 6.7 13.1 6.8Q14.4 7.0 16.0 6.8Q17.6 6.6 18.9 6.9Q20.3 7.1 20.6 8.7Q20.9 10.3 20.8 12.2Q20.7 14.1 20.6 16.0Q20.6 17.9 20.5 19.6Q20.4 21.2 18.8 21.1Q17.1 20.9 15.6 21.0Q14.0 21.0 12.5 21.2Q11.0 21.5 9.8 21.5Q8.6 21.5 7.2 21.4Q5.7 21.4 5.6 19.2Q5.6 17.0 5.7 15.3Q5.8 13.5 5.3 12.0Q4.9 10.5 5.1 8.7Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 5.9Q8.0 6.1 10.0 6.0Q12.1 6.0 14.0 5.9Q15.9 5.8 17.7 5.8Q19.6 5.9 19.5 7.7Q19.5 9.6 19.5 11.3Q19.6 13.0 19.6 14.8Q19.5 16.6 19.6 18.4Q19.7 20.1 17.7 20.2Q15.6 20.2 13.8 20.3Q12.0 20.4 10.1 20.2Q8.1 20.1 6.2 20.1Q4.2 20.1 4.4 18.5Q4.5 16.8 4.4 14.9Q4.3 13.1 4.3 11.3Q4.3 9.4 4.3 7.7Q4.4 5.9 5.2 6.0L6.1 6.1"/><path d="M4.5 10.1Q8.4 10.0 10.3 10.1Q12.1 10.1 14.0 10.1Q15.8 10.1 17.6 10.1L19.3 10.2"/><path d="M8.6 3.9Q8.6 6.0 8.6 7.6"/><path d="M15.5 3.7Q15.2 5.5 15.4 7.7"/></g><circle fill="currentColor" cx="9.1" cy="14.2" r="1.05"/><circle fill="currentColor" cx="12.6" cy="14.1" r="1.05"/><circle fill="currentColor" cx="9.0" cy="17.1" r="1.05"/></symbol><symbol id="i-swap" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 8.2Q8.3 8.2 10.0 8.3Q11.7 8.3 13.5 8.2Q15.4 8.2 16.8 8.2L18.3 8.2"/><path d="M15.4 5.3Q19.0 8.4 17.1 10.0L15.3 11.7"/><path d="M19.3 15.5Q15.7 15.5 13.8 15.5Q11.9 15.5 10.3 15.4Q8.7 15.4 7.0 15.4L5.4 15.3"/><path d="M8.7 12.5Q5.2 15.5 6.9 17.2L8.5 18.8"/></g></symbol><symbol id="i-back" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M19.3 12.1Q15.6 11.9 13.9 11.9Q12.2 11.9 10.6 11.8Q9.0 11.8 7.1 11.9L5.2 12.0"/><path d="M10.5 6.8Q7.9 9.4 6.5 10.6Q5.1 11.9 6.5 13.2Q7.8 14.6 9.3 15.9L10.7 17.2"/></g></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M18.2 12.8Q16.9 16.2 16.1 16.8Q15.3 17.4 13.6 17.5Q11.9 17.6 11.0 17.1Q10.1 16.6 9.2 15.5Q8.3 14.5 8.2 13.1Q8.1 11.6 8.8 10.3Q9.5 8.9 10.8 8.6Q12.1 8.2 13.7 8.4Q15.2 8.6 16.0 9.6Q16.7 10.6 17.5 11.7Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M3.3 12.3Q2.6 13.1 3.5 12.1Q4.5 11.1 5.6 10.2Q6.7 9.4 8.0 8.9Q9.3 8.4 10.6 8.3Q12.0 8.2 13.4 8.4Q14.7 8.5 16.0 9.0Q17.3 9.4 18.5 10.2Q19.7 11.1 20.5 12.1Q21.3 13.2 21.1 12.7Q20.8 12.2 21.1 11.8Q21.3 11.3 20.4 12.3Q19.5 13.3 18.4 14.1Q17.3 15.0 16.1 15.5Q14.9 16.1 13.4 16.3Q11.9 16.4 10.5 16.2Q9.2 16.0 7.9 15.5Q6.6 15.0 5.6 14.2Q4.5 13.4 3.5 12.4Q2.5 11.4 2.9 11.8L3.3 12.2"/><path d="M14.9 12.1Q14.3 14.0 13.4 14.5Q12.5 15.0 11.5 14.9Q10.5 14.8 9.9 14.0Q9.3 13.2 9.2 12.2Q9.2 11.1 9.8 10.4Q10.5 9.6 11.5 9.4Q12.5 9.2 13.4 9.8Q14.3 10.4 14.6 11.2Q14.9 12.1 14.6 12.6L14.4 13.2"/></g></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M10.7 6.1Q13.3 11.6 15.6 12.2Q18.0 12.9 15.6 14.0Q13.3 15.0 11.9 18.0Q10.4 21.0 9.7 18.2Q8.9 15.4 6.3 14.5Q3.6 13.5 6.2 12.6Q8.8 11.7 9.7 8.9Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M10.1 4.8Q10.9 7.8 11.2 9.3Q11.6 10.9 13.0 11.3Q14.5 11.7 16.1 12.1Q17.6 12.5 16.2 12.9Q14.7 13.3 13.1 13.6Q11.4 13.9 11.0 15.5Q10.7 17.0 10.3 18.5Q9.9 19.9 9.6 18.4Q9.4 16.9 8.9 15.4Q8.4 13.8 6.9 13.5Q5.3 13.2 3.9 12.8Q2.5 12.5 3.9 12.0Q5.4 11.6 6.9 11.2Q8.3 10.8 8.7 9.3Q9.2 7.7 9.6 6.2Q10.1 4.8 10.2 5.5L10.3 6.2"/><path d="M18.4 2.5Q19.1 4.8 20.2 5.1Q21.3 5.4 20.1 5.7Q19.0 6.1 18.7 7.1Q18.4 8.2 18.1 7.1Q17.8 6.0 16.6 5.7Q15.4 5.4 16.6 5.1Q17.8 4.7 18.1 3.6Q18.4 2.5 18.6 3.1L18.7 3.8"/></g><circle fill="currentColor" cx="18.1" cy="17.7" r="1.0"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.0 12.3Q7.3 15.1 8.6 16.4Q9.9 17.7 11.2 16.3Q12.5 14.8 13.5 13.5Q14.6 12.2 15.8 10.7Q17.1 9.3 18.2 8.0L19.3 6.7"/></g></symbol><symbol id="i-warn" viewBox="0 0 24 24"><path d="M12.4 4.6Q14.2 6.8 15.1 8.2Q16.0 9.7 16.6 11.4Q17.2 13.0 18.3 14.3Q19.4 15.5 19.8 16.9Q20.3 18.3 21.3 19.5Q22.3 20.8 20.6 20.9Q19.0 20.9 17.4 20.5Q15.8 20.0 14.3 19.9Q12.8 19.9 11.2 20.0Q9.5 20.2 8.3 20.0Q7.1 19.9 5.7 20.3Q4.4 20.6 4.9 19.0Q5.4 17.5 6.1 16.1Q6.8 14.8 7.6 13.5Q8.4 12.2 9.3 11.1Q10.2 10.0 10.7 8.6Q11.1 7.2 11.8 5.9Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M12.2 4.0Q13.6 7.0 14.5 8.6Q15.4 10.2 16.4 11.7Q17.4 13.3 18.3 14.8Q19.3 16.3 20.1 18.0Q20.9 19.7 19.2 19.6Q17.4 19.5 15.5 19.6Q13.7 19.7 11.9 19.7Q10.1 19.7 8.4 19.5Q6.7 19.4 4.9 19.4Q3.1 19.5 4.1 17.9Q5.0 16.3 5.8 14.9Q6.6 13.5 7.4 11.7Q8.3 10.0 9.3 8.4Q10.3 6.8 11.3 5.4Q12.2 4.0 12.6 4.9L13.1 5.8"/><path d="M11.9 9.3Q12.2 11.5 12.1 14.2"/></g><circle fill="currentColor" cx="11.9" cy="16.8" r="1.1"/></symbol><symbol id="i-eraser" viewBox="0 0 24 24"><path d="M5.6 15.5Q9.3 11.6 10.3 12.8Q11.4 14.1 12.6 15.6Q13.7 17.2 15.2 18.3Q16.7 19.4 15.4 20.3Q14.1 21.3 12.4 21.1Q10.6 21.0 9.2 19.9Q7.7 18.9 6.6 17.2Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 15.1Q7.3 12.3 8.7 11.0Q10.0 9.8 11.3 8.4Q12.7 7.1 13.8 8.2Q14.9 9.3 16.1 10.4Q17.4 11.5 18.5 12.8Q19.6 14.0 18.0 15.5Q16.5 16.9 14.9 18.6Q13.4 20.3 11.3 20.3Q9.2 20.3 8.2 19.1Q7.1 17.9 5.8 16.5Q4.5 15.1 5.3 14.2L6.1 13.4"/><path d="M8.6 11.2Q10.9 13.4 12.1 14.6Q13.3 15.8 14.4 17.0L15.6 18.2"/><path d="M13.6 20.1Q16.9 20.4 18.5 20.3L20.2 20.3"/></g></symbol><symbol id="i-write" viewBox="0 0 24 24"><path d="M5.1 5.5Q8.3 4.6 10.1 4.8Q12.0 5.0 13.8 5.2Q15.7 5.5 15.6 6.7Q15.5 7.9 15.6 9.4Q15.7 10.9 15.4 12.9Q15.0 15.0 15.3 16.6Q15.6 18.2 15.4 19.7Q15.2 21.2 13.5 21.4Q11.9 21.5 9.8 21.3Q7.8 21.2 6.4 21.0Q4.9 20.9 5.0 19.3Q5.2 17.6 4.9 16.0Q4.6 14.3 4.5 12.7Q4.5 11.1 4.8 9.4Q5.1 7.8 5.1 6.6Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 4.3Q7.3 4.2 9.0 4.2Q10.8 4.2 12.7 4.1Q14.6 4.0 14.7 5.7Q14.7 7.3 14.6 9.0Q14.5 10.7 14.6 12.2Q14.8 13.7 14.6 15.4Q14.4 17.2 14.4 18.6Q14.4 20.1 12.7 20.2Q10.9 20.3 9.2 20.2Q7.4 20.2 5.5 20.2Q3.6 20.2 3.8 18.6Q4.0 16.9 3.9 15.3Q3.9 13.6 3.9 12.2Q4.0 10.7 3.8 9.1Q3.6 7.5 3.7 5.9Q3.8 4.3 4.6 4.4L5.5 4.4"/><path d="M6.5 8.4Q9.0 8.4 12.1 8.5"/><path d="M6.5 11.7Q9.1 11.7 10.9 11.7"/><path d="M6.5 14.7Q7.7 14.9 9.5 14.8"/><path d="M12.3 19.5Q13.3 16.3 14.7 14.8Q16.2 13.3 17.8 11.7Q19.4 10.2 20.4 11.2Q21.5 12.3 19.8 13.8Q18.2 15.3 16.7 16.8Q15.2 18.3 13.7 18.8L12.2 19.3"/></g></symbol><symbol id="i-photo" viewBox="0 0 24 24"><path d="M3.8 7.8Q7.3 7.3 9.3 7.1Q11.4 6.9 12.9 7.4Q14.3 7.9 16.4 7.5Q18.5 7.1 18.2 8.7Q18.0 10.2 18.2 12.2Q18.4 14.1 18.2 15.9Q18.1 17.7 17.9 19.2Q17.6 20.6 16.0 20.4Q14.5 20.1 13.0 20.4Q11.4 20.7 9.6 20.4Q7.8 20.0 6.0 20.3Q4.3 20.6 4.2 18.9Q4.1 17.3 4.4 15.5Q4.7 13.7 4.7 12.4Q4.8 11.0 4.3 9.4Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.7Q6.7 6.5 8.4 6.6Q10.1 6.7 11.8 6.6Q13.6 6.5 15.3 6.5Q17.0 6.5 17.1 8.3Q17.2 10.0 17.1 11.7Q17.0 13.3 17.1 14.8Q17.1 16.4 17.1 18.0Q17.2 19.6 15.5 19.6Q13.8 19.7 12.2 19.6Q10.5 19.5 8.7 19.5Q7.0 19.4 5.1 19.5Q3.3 19.6 3.3 17.9Q3.2 16.3 3.3 14.6Q3.3 12.9 3.4 11.4Q3.5 9.9 3.5 8.3Q3.5 6.7 4.3 6.6L5.1 6.5"/><path d="M3.5 11.1Q7.0 11.0 8.7 11.0Q10.3 11.0 12.0 11.0Q13.6 11.0 15.3 11.0L17.1 11.0"/><path d="M3.5 15.2Q6.9 15.1 8.5 15.2Q10.2 15.3 12.0 15.2Q13.8 15.2 15.4 15.2L17.0 15.3"/><path d="M8.3 6.9Q8.3 11.1 8.2 13.2Q8.1 15.3 8.1 17.4L8.1 19.5"/><path d="M12.6 6.7Q12.6 11.0 12.6 13.1Q12.6 15.2 12.6 17.3L12.5 19.3"/><path d="M19.2 1.9Q19.9 4.8 21.3 5.1Q22.8 5.4 21.3 5.7Q19.8 6.1 19.5 7.5Q19.2 9.0 18.9 7.5Q18.6 6.1 17.1 5.7Q15.6 5.4 17.0 5.1Q18.4 4.7 18.8 3.3Q19.2 1.9 19.4 2.7L19.5 3.4"/></g></symbol><symbol id="i-door" viewBox="0 0 24 24"><path d="M6.4 5.2Q9.2 4.6 11.2 4.9Q13.1 5.3 13.4 6.5Q13.6 7.7 13.2 9.5Q12.8 11.2 13.1 12.7Q13.5 14.2 13.6 15.7Q13.8 17.3 13.7 19.0Q13.6 20.8 11.7 20.6Q9.7 20.5 8.1 20.4Q6.5 20.4 6.5 19.3Q6.5 18.1 6.2 16.5Q6.0 14.9 6.3 13.1Q6.6 11.4 6.2 9.7Q5.8 8.1 6.1 6.7Z" style="fill:var(--wash,rgba(165,27,47,.14))"/><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M13.1 4.3Q9.0 4.3 7.2 4.2Q5.4 4.2 5.3 6.1Q5.2 8.1 5.3 10.1Q5.3 12.2 5.4 14.1Q5.4 16.1 5.3 18.0Q5.2 20.0 7.2 20.0Q9.1 20.1 11.1 19.9L13.0 19.8"/><path d="M9.5 11.9Q12.9 12.2 14.8 12.1Q16.6 11.9 18.3 12.0L20.0 12.0"/><path d="M16.7 8.7Q20.2 12.0 18.4 13.7L16.5 15.4"/></g></symbol><symbol id="i-bksp" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 5.9Q12.7 5.7 14.7 5.7Q16.6 5.8 18.4 5.9Q20.3 5.9 20.2 8.0Q20.2 10.0 20.2 12.2Q20.2 14.3 20.2 16.3Q20.1 18.3 18.2 18.3Q16.3 18.3 14.5 18.3Q12.7 18.4 10.9 18.2Q9.2 18.0 7.7 16.6Q6.3 15.1 4.8 13.5Q3.4 11.9 4.7 10.5Q6.0 9.0 7.6 7.5Q9.1 5.9 10.0 5.9L10.9 5.8"/><path d="M12.1 9.4Q14.5 11.9 15.7 13.2L16.9 14.5"/><path d="M17.0 9.2Q14.5 12.0 13.2 13.4L11.9 14.7"/></g></symbol><symbol id="i-chev" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" style="stroke-width:var(--icw,1.75)" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 9.4Q9.1 12.2 10.6 13.7Q12.1 15.2 13.6 13.7Q15.1 12.2 16.6 10.8L18.2 9.5"/></g></symbol><symbol id="i-busbody" viewBox="0 0 120 56" overflow="visible"><path d="M6.4 14.5Q9.7 9.8 11.0 9.9Q12.3 9.9 14.0 9.8Q15.6 9.6 17.3 10.0Q18.9 10.3 20.6 10.3Q22.3 10.2 23.6 10.0Q25.0 9.9 26.4 9.7Q27.8 9.6 29.4 9.7Q31.1 9.9 32.5 9.8Q34.0 9.7 35.7 10.0Q37.3 10.2 38.6 10.1Q39.9 9.9 41.7 9.8Q43.5 9.6 45.1 9.8Q46.7 10.0 48.1 10.2Q49.5 10.4 50.9 10.1Q52.3 9.7 53.8 10.1Q55.2 10.4 56.8 10.1Q58.4 9.9 59.9 9.7Q61.4 9.6 62.9 9.8Q64.4 10.0 66.2 9.9Q68.0 9.9 69.6 9.7Q71.2 9.6 72.7 10.0Q74.2 10.4 75.8 10.2Q77.3 9.9 78.6 10.1Q79.9 10.2 81.5 10.0Q83.1 9.8 84.7 9.8Q86.3 9.7 87.8 10.1Q89.3 10.4 90.7 10.4Q92.2 10.4 93.7 10.2Q95.3 9.9 97.0 10.1Q98.7 10.3 100.8 10.6Q102.9 10.9 104.7 11.3Q106.5 11.7 107.8 13.0Q109.1 14.2 110.2 15.8Q111.2 17.3 111.7 18.9Q112.1 20.5 112.2 22.4Q112.4 24.3 112.6 25.8Q112.9 27.3 113.0 29.2Q113.0 31.0 113.2 32.4Q113.3 33.8 113.5 35.7Q113.6 37.6 113.5 38.9Q113.4 40.2 112.6 42.3Q111.7 44.5 110.3 44.6Q108.9 44.8 107.4 44.6Q106.0 44.4 104.2 44.6Q102.4 44.8 100.8 44.5Q99.1 44.2 97.7 44.2Q96.4 44.3 95.1 44.3Q93.8 44.3 92.0 44.4Q90.2 44.5 88.9 44.4Q87.6 44.3 85.9 44.3Q84.2 44.3 82.6 44.3Q81.0 44.4 79.6 44.3Q78.3 44.2 76.8 44.6Q75.3 44.9 73.6 44.8Q71.9 44.7 70.6 44.4Q69.4 44.2 67.8 44.4Q66.2 44.7 64.7 44.5Q63.1 44.3 61.4 44.3Q59.7 44.4 58.2 44.3Q56.7 44.1 55.3 44.1Q53.8 44.1 52.5 44.1Q51.2 44.1 49.8 44.2Q48.4 44.3 46.5 44.3Q44.6 44.3 43.1 44.5Q41.5 44.8 40.1 44.5Q38.7 44.3 37.4 44.3Q36.1 44.4 34.4 44.4Q32.8 44.4 31.2 44.6Q29.7 44.9 28.2 44.9Q26.8 44.8 25.4 44.7Q24.0 44.5 22.5 44.3Q20.9 44.1 19.1 44.4Q17.3 44.7 15.8 44.7Q14.2 44.8 13.1 44.4Q11.9 44.1 10.4 44.4Q8.8 44.8 7.7 43.0Q6.5 41.3 6.4 40.1Q6.3 38.9 6.3 37.3Q6.4 35.7 6.2 34.3Q6.1 32.9 6.1 31.0Q6.1 29.2 6.2 27.7Q6.3 26.1 6.4 24.7Q6.5 23.2 6.4 22.1Q6.4 20.9 6.3 19.3Q6.2 17.7 6.3 16.1Z" fill="#FFF6E8"/><path d="M6.9 31.3Q9.5 31.5 11.0 31.4Q12.6 31.3 14.1 31.4Q15.6 31.5 16.9 31.4Q18.3 31.4 20.1 31.4Q21.8 31.4 23.4 31.2Q25.1 31.0 26.3 31.0Q27.4 31.1 28.9 31.3Q30.5 31.6 32.1 31.5Q33.7 31.4 35.3 31.5Q36.9 31.6 38.3 31.4Q39.7 31.2 41.5 31.2Q43.3 31.2 44.7 31.2Q46.0 31.2 47.6 31.4Q49.2 31.5 50.6 31.4Q51.9 31.4 53.6 31.5Q55.3 31.6 56.7 31.6Q58.1 31.6 59.7 31.7Q61.2 31.7 62.6 31.5Q64.0 31.3 65.5 31.2Q67.0 31.1 68.7 31.3Q70.4 31.5 72.0 31.4Q73.5 31.4 75.1 31.6Q76.7 31.7 77.9 31.6Q79.1 31.5 80.9 31.3Q82.8 31.1 84.1 31.4Q85.3 31.7 87.0 31.5Q88.7 31.2 90.3 31.5Q92.0 31.7 93.5 31.5Q95.0 31.3 96.3 31.3Q97.6 31.2 99.1 31.3Q100.5 31.4 102.1 31.4Q103.7 31.4 105.3 31.2Q107.0 31.0 108.5 31.2Q109.9 31.3 111.5 31.4Q113.0 31.5 113.1 33.1Q113.1 34.7 113.4 36.2Q113.6 37.7 111.9 37.8Q110.3 37.9 108.7 38.0Q107.1 38.1 105.5 37.9Q103.9 37.7 102.4 37.7Q101.0 37.6 99.6 37.9Q98.2 38.1 96.4 37.8Q94.6 37.5 93.3 37.6Q92.0 37.6 90.5 37.7Q89.0 37.9 87.3 37.8Q85.6 37.8 84.2 38.0Q82.7 38.2 81.3 38.0Q79.8 37.8 78.1 37.7Q76.3 37.5 74.8 37.5Q73.3 37.5 72.1 37.6Q70.8 37.6 69.3 37.6Q67.8 37.5 66.0 37.9Q64.1 38.3 63.0 37.9Q61.8 37.6 60.2 38.0Q58.5 38.3 57.1 38.2Q55.6 38.2 53.9 38.0Q52.1 37.8 50.8 37.7Q49.4 37.7 47.8 38.0Q46.2 38.3 44.5 38.2Q42.9 38.1 41.3 37.9Q39.7 37.7 38.2 37.8Q36.7 38.0 35.2 38.0Q33.6 38.1 32.1 38.2Q30.5 38.3 29.3 38.2Q28.0 38.2 26.5 38.1Q25.0 37.9 23.2 37.8Q21.4 37.6 20.2 37.7Q19.1 37.8 17.4 37.7Q15.7 37.5 14.2 37.7Q12.7 37.9 11.3 37.8Q9.9 37.6 8.3 37.7Q6.6 37.8 6.7 36.4Q6.7 35.0 6.8 33.2Z" fill="#A51B2F"/><path d="M6.4 27.8Q9.4 27.6 10.9 27.7Q12.4 27.8 13.9 27.6Q15.5 27.4 16.9 27.5Q18.3 27.5 19.9 27.6Q21.4 27.7 23.0 27.6Q24.5 27.4 25.9 27.5Q27.3 27.7 28.9 27.6Q30.5 27.5 32.0 27.5Q33.6 27.6 35.0 27.6Q36.4 27.5 38.0 27.6Q39.6 27.6 41.2 27.6Q42.8 27.7 44.3 27.6Q45.7 27.6 47.3 27.7Q48.8 27.7 50.2 27.6Q51.6 27.5 53.3 27.5Q54.9 27.4 56.3 27.4Q57.7 27.4 59.4 27.5Q61.0 27.6 62.3 27.5Q63.7 27.4 65.3 27.5Q67.0 27.6 68.4 27.6Q69.8 27.5 71.5 27.6Q73.1 27.6 74.6 27.7Q76.0 27.7 77.4 27.6Q78.9 27.5 80.4 27.6Q82.0 27.6 83.4 27.6Q84.9 27.6 86.5 27.7Q88.2 27.7 89.7 27.7Q91.3 27.6 92.7 27.6Q94.2 27.5 95.6 27.6Q97.0 27.7 98.7 27.7Q100.3 27.7 101.8 27.6Q103.3 27.4 104.7 27.6Q106.0 27.8 107.6 27.8Q109.2 27.8 110.8 27.8Q112.5 27.8 112.4 28.4Q112.3 29.0 110.8 28.9Q109.2 28.7 107.8 28.7Q106.4 28.7 104.9 28.8Q103.5 28.9 101.9 28.9Q100.3 28.8 98.9 28.8Q97.4 28.8 95.9 28.7Q94.4 28.7 92.7 28.9Q91.0 29.0 89.6 28.9Q88.1 28.8 86.6 28.8Q85.2 28.9 83.7 28.9Q82.3 29.0 80.7 28.9Q79.2 28.9 77.5 28.9Q75.8 28.8 74.5 28.9Q73.1 29.1 71.6 28.9Q70.1 28.7 68.5 28.8Q66.9 28.8 65.5 28.8Q64.0 28.8 62.4 28.9Q60.7 29.0 59.2 29.0Q57.7 29.0 56.3 28.9Q55.0 28.8 53.3 29.0Q51.7 29.1 50.2 29.0Q48.7 28.8 47.1 28.8Q45.6 28.7 44.2 28.8Q42.8 28.8 41.2 28.9Q39.6 29.0 38.1 28.9Q36.7 28.7 35.1 28.9Q33.5 29.0 32.0 28.9Q30.5 28.9 28.9 28.8Q27.4 28.7 25.9 28.8Q24.3 28.8 23.0 28.9Q21.6 28.9 20.1 28.8Q18.6 28.7 16.9 28.8Q15.3 29.0 13.9 28.9Q12.5 28.9 11.0 28.8Q9.4 28.8 7.9 28.8Q6.5 28.8 6.4 28.3Z" fill="#A51B2F" opacity="0.85"/><path d="M11.8 13.6Q14.7 13.3 16.1 13.4Q17.6 13.6 19.3 13.4Q21.1 13.3 22.5 13.6Q23.9 13.8 23.9 15.4Q24.0 16.9 23.9 18.9Q23.8 20.8 23.8 22.8Q23.9 24.8 22.5 24.6Q21.1 24.3 19.4 24.6Q17.7 24.8 16.3 24.8Q14.9 24.8 13.1 24.8Q11.4 24.8 11.6 22.7Q11.8 20.6 11.8 18.8Q11.7 17.0 11.8 15.3Z" fill="#2f3b41" opacity="0.92"/><path d="M13.0 15.2Q15.1 14.9 17.6 15.1" fill="none" stroke="#cfe3e6" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M26.8 13.8Q30.0 13.3 31.3 13.6Q32.6 13.9 34.4 13.6Q36.1 13.4 37.4 13.5Q38.7 13.6 38.9 15.6Q39.1 17.5 39.0 19.2Q38.8 20.8 39.0 22.6Q39.2 24.3 37.6 24.3Q36.0 24.3 34.5 24.6Q33.0 24.8 31.3 24.6Q29.5 24.4 27.9 24.5Q26.4 24.6 26.5 22.6Q26.7 20.6 26.5 19.0Q26.4 17.3 26.6 15.6Z" fill="#2f3b41" opacity="0.92"/><path d="M27.9 15.3Q30.5 15.2 32.6 14.9" fill="none" stroke="#cfe3e6" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M41.3 13.5Q44.9 13.5 46.4 13.4Q47.8 13.4 49.2 13.5Q50.6 13.7 52.3 13.6Q54.0 13.4 54.0 15.2Q53.9 17.1 54.0 19.0Q54.0 21.0 54.1 22.7Q54.2 24.4 52.4 24.5Q50.6 24.7 49.3 24.5Q48.0 24.3 46.5 24.5Q45.0 24.7 43.4 24.6Q41.8 24.5 41.6 22.8Q41.5 21.1 41.5 19.2Q41.5 17.4 41.4 15.4Z" fill="#2f3b41" opacity="0.92"/><path d="M43.0 15.2Q45.0 14.9 47.4 14.9" fill="none" stroke="#cfe3e6" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M56.8 13.4Q59.8 13.3 61.3 13.3Q62.8 13.3 64.2 13.6Q65.6 13.9 67.2 13.9Q68.8 13.8 68.8 15.6Q68.9 17.4 69.1 19.3Q69.2 21.1 69.0 23.0Q68.9 24.9 67.4 24.7Q65.8 24.6 64.4 24.5Q63.0 24.3 61.4 24.3Q59.7 24.3 58.2 24.3Q56.7 24.4 56.7 22.7Q56.8 21.0 56.5 19.2Q56.2 17.4 56.5 15.4Z" fill="#2f3b41" opacity="0.92"/><path d="M58.1 15.3Q60.6 15.2 62.6 14.9" fill="none" stroke="#cfe3e6" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M71.7 13.7Q74.5 13.5 76.3 13.4Q78.0 13.4 79.6 13.3Q81.2 13.3 82.5 13.4Q83.7 13.6 83.8 15.5Q83.9 17.5 83.8 19.4Q83.7 21.3 83.8 22.9Q83.9 24.6 82.4 24.7Q81.0 24.9 79.3 24.6Q77.7 24.3 76.1 24.5Q74.6 24.7 72.9 24.8Q71.2 24.8 71.4 22.9Q71.7 20.9 71.6 19.2Q71.5 17.4 71.6 15.5Z" fill="#2f3b41" opacity="0.92"/><path d="M73.1 15.3Q75.3 15.1 77.6 15.1" fill="none" stroke="#cfe3e6" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M98.4 12.8Q102.5 13.5 104.1 13.7Q105.8 13.9 107.3 15.3Q108.7 16.7 109.6 18.0Q110.4 19.2 110.7 21.0Q111.0 22.8 110.8 24.1Q110.7 25.4 109.3 25.4Q108.0 25.3 106.3 25.5Q104.6 25.6 103.2 25.5Q101.8 25.3 100.2 25.4Q98.6 25.4 98.7 23.8Q98.8 22.2 98.7 20.7Q98.7 19.2 98.5 17.8Q98.3 16.4 98.4 14.6Z" fill="#2f3b41" opacity="0.92"/><path d="M86.4 13.2Q89.5 13.6 90.9 13.5Q92.4 13.4 93.8 13.3Q95.2 13.2 95.4 15.0Q95.5 16.7 95.5 18.0Q95.5 19.3 95.5 21.0Q95.4 22.7 95.3 24.3Q95.1 25.8 95.4 27.3Q95.7 28.7 95.5 30.1Q95.3 31.4 95.4 33.0Q95.5 34.6 95.6 36.3Q95.7 37.9 95.5 39.4Q95.4 40.9 94.0 40.7Q92.6 40.5 91.0 40.7Q89.3 40.9 87.8 40.9Q86.4 40.9 86.3 39.2Q86.3 37.5 86.3 36.1Q86.2 34.6 86.4 33.2Q86.6 31.9 86.5 30.3Q86.4 28.7 86.4 27.3Q86.3 25.9 86.2 24.2Q86.1 22.5 86.1 21.0Q86.2 19.6 86.4 18.2Q86.7 16.8 86.5 15.0Z" fill="#2f3b41" opacity="0.9"/><path d="M99.6 10.9Q102.8 10.9 104.5 10.9Q106.1 10.9 106.1 11.8Q106.1 12.7 104.6 12.7Q103.1 12.7 101.4 12.6Q99.6 12.5 99.6 11.7Z" fill="#F4CF72"/><path d="M112.0 40.2Q111.5 41.3 111.0 41.6Q110.4 41.9 109.9 41.6Q109.4 41.4 109.1 40.7Q108.9 40.1 109.1 39.6Q109.3 39.2 109.9 38.8Q110.5 38.5 111.0 38.8Q111.6 39.1 111.8 39.6Z" fill="#F2C14E"/><path d="M6.1 14.2Q9.2 9.8 11.6 9.8Q14.1 9.7 16.7 9.7Q19.4 9.6 22.0 9.4Q24.6 9.2 27.2 9.2Q29.8 9.2 32.6 9.5Q35.4 9.7 37.8 9.7Q40.2 9.7 43.0 9.7Q45.8 9.7 48.4 9.7Q50.9 9.7 53.5 9.6Q56.2 9.4 58.7 9.5Q61.3 9.6 64.1 9.5Q66.9 9.4 69.2 9.6Q71.6 9.8 74.3 9.8Q76.9 9.7 79.8 9.5Q82.6 9.3 84.9 9.5Q87.2 9.6 90.0 9.5Q92.8 9.5 95.3 9.6Q97.9 9.6 102.1 10.4Q106.3 11.2 108.7 14.2Q111.2 17.1 111.5 19.8Q111.8 22.5 112.1 25.4Q112.3 28.4 112.3 31.2Q112.2 34.0 112.5 36.9Q112.8 39.7 111.8 41.7Q110.8 43.7 108.2 43.7Q105.7 43.8 103.2 43.9Q100.7 44.0 98.1 44.1Q95.4 44.1 92.8 44.0Q90.1 43.8 87.6 44.0Q85.1 44.2 82.6 44.1Q80.0 44.0 77.3 44.1Q74.7 44.2 72.1 44.0Q69.6 43.7 67.3 44.0Q64.9 44.2 62.1 44.0Q59.4 43.7 56.8 43.9Q54.3 44.0 51.8 44.1Q49.2 44.2 46.6 44.0Q44.0 43.8 41.4 44.0Q38.7 44.1 36.1 44.1Q33.4 44.1 30.9 44.0Q28.4 44.0 25.9 44.1Q23.5 44.3 20.7 44.0Q18.0 43.7 15.6 44.0Q13.2 44.3 10.6 44.1Q8.1 43.9 6.8 42.3Q5.4 40.7 5.6 38.3Q5.8 35.9 5.6 33.2Q5.4 30.5 5.7 27.5Q5.9 24.6 5.8 22.0Q5.7 19.4 5.9 16.8Q6.1 14.2 6.9 13.0L7.7 11.8" fill="none" stroke="#3a2622" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.1 13.3Q15.3 13.3 17.4 13.2Q19.5 13.1 21.4 13.1Q23.3 13.2 23.4 16.0Q23.5 18.8 23.5 21.5Q23.6 24.3 21.4 24.2Q19.2 24.1 17.2 24.1Q15.1 24.0 13.0 24.2Q10.9 24.4 11.0 21.6Q11.0 18.9 11.0 16.1Q11.1 13.3 12.3 13.2L13.5 13.1" fill="none" stroke="#3a2622" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M26.1 13.2Q30.3 13.3 32.3 13.2Q34.2 13.1 36.3 13.2Q38.3 13.3 38.5 15.9Q38.6 18.5 38.6 21.3Q38.6 24.2 36.4 24.2Q34.2 24.3 32.2 24.2Q30.2 24.0 28.2 24.0Q26.2 24.0 26.0 21.4Q25.8 18.7 25.9 15.9Q26.1 13.2 27.1 13.2L28.2 13.2" fill="none" stroke="#3a2622" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M40.9 13.3Q45.2 13.0 47.3 13.1Q49.4 13.2 51.4 13.3Q53.4 13.4 53.4 16.1Q53.4 18.9 53.5 21.6Q53.5 24.3 51.5 24.2Q49.5 24.2 47.3 24.2Q45.2 24.2 43.1 24.3Q41.0 24.4 41.0 21.4Q40.9 18.5 40.9 15.9Q40.9 13.3 42.0 13.2L43.1 13.0" fill="none" stroke="#3a2622" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M56.2 13.2Q60.1 13.1 62.2 13.1Q64.3 13.1 66.4 13.1Q68.5 13.2 68.4 15.9Q68.3 18.6 68.4 21.4Q68.6 24.2 66.4 24.1Q64.2 24.1 62.1 24.1Q60.0 24.2 58.0 24.1Q55.9 24.0 56.0 21.3Q56.0 18.6 56.1 15.9Q56.2 13.2 57.3 13.1L58.4 13.0" fill="none" stroke="#3a2622" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M71.0 13.3Q75.3 13.0 77.3 13.1Q79.3 13.2 81.4 13.3Q83.5 13.3 83.5 16.1Q83.5 18.8 83.6 21.4Q83.6 24.0 81.4 24.2Q79.2 24.3 77.2 24.3Q75.2 24.3 73.1 24.3Q71.1 24.3 71.1 21.6Q71.1 18.8 71.1 16.1Q71.0 13.3 72.1 13.3L73.2 13.2" fill="none" stroke="#3a2622" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M97.9 12.6Q105.7 13.2 108.0 16.0Q110.2 18.9 110.2 22.1Q110.3 25.4 108.2 25.3Q106.1 25.3 104.1 25.2Q102.0 25.1 100.0 25.1Q98.0 25.1 98.0 23.0Q97.9 21.0 97.9 19.0Q98.0 17.0 98.0 14.8Q97.9 12.6 100.0 12.7L102.0 12.8" fill="none" stroke="#3a2622" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M86.1 13.2Q90.6 13.1 92.9 13.1Q95.2 13.1 95.1 15.4Q95.1 17.7 95.1 19.9Q95.1 22.1 95.0 24.5Q94.9 26.9 94.9 29.1Q94.9 31.2 95.0 33.7Q95.1 36.1 95.0 38.2Q95.0 40.3 92.7 40.5Q90.5 40.6 88.3 40.6Q86.1 40.6 86.1 38.2Q86.2 35.8 86.1 33.5Q86.0 31.3 86.1 29.1Q86.2 27.0 86.2 24.6Q86.1 22.1 86.0 20.0Q85.9 17.8 86.0 15.5Q86.1 13.2 87.3 13.2L88.6 13.3" fill="none" stroke="#3a2622" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M90.5 13.6Q90.5 17.0 90.5 18.6Q90.4 20.2 90.4 21.9Q90.4 23.6 90.5 25.3Q90.5 26.9 90.5 28.6Q90.5 30.4 90.5 32.0Q90.5 33.6 90.5 35.3Q90.6 37.0 90.6 38.5L90.6 40.1" fill="none" stroke="#3a2622" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.6 30.8Q14.5 30.9 18.6 31.0Q22.7 31.2 26.7 31.2Q30.7 31.2 34.8 31.0Q38.9 30.9 43.1 30.9Q47.3 30.9 51.2 31.0Q55.1 31.0 59.2 31.0Q63.3 31.0 67.5 30.9Q71.7 30.9 75.8 30.9Q80.0 30.8 83.8 31.0Q87.7 31.1 91.9 31.2Q96.1 31.3 100.0 31.2Q103.9 31.1 108.2 31.2L112.4 31.3" fill="none" stroke="#6d1220" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M35.6 44.1Q34.5 48.4 32.9 49.9Q31.3 51.5 29.2 52.1Q27.2 52.7 25.0 52.2Q22.8 51.6 21.2 50.1Q19.6 48.5 19.1 46.3Q18.5 44.1 19.1 41.9Q19.7 39.8 21.3 38.2Q22.8 36.6 24.9 36.0Q27.0 35.4 29.2 36.0Q31.3 36.6 33.0 38.2Q34.6 39.8 35.1 41.9Z" fill="#2a1c18" opacity="0.55"/><path d="M17.6 41.5Q19.3 38.5 20.6 37.2Q22.0 35.9 23.5 35.2Q25.0 34.4 26.9 34.4Q28.7 34.4 30.4 35.1Q32.0 35.8 33.5 37.1Q34.9 38.4 35.7 40.1L36.5 41.7" fill="none" stroke="#3a2622" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M98.8 44.1Q97.5 48.3 96.0 49.9Q94.4 51.6 92.3 52.1Q90.1 52.6 87.9 52.1Q85.8 51.6 84.2 50.0Q82.6 48.4 82.1 46.3Q81.6 44.1 82.1 41.9Q82.7 39.7 84.3 38.2Q85.8 36.6 88.0 36.1Q90.2 35.6 92.3 36.1Q94.4 36.6 96.0 38.2Q97.6 39.7 98.2 41.9Z" fill="#2a1c18" opacity="0.55"/><path d="M80.6 41.5Q82.1 38.3 83.6 37.0Q85.0 35.7 86.5 35.0Q88.1 34.4 89.9 34.5Q91.8 34.7 93.4 35.3Q95.1 35.9 96.5 37.1Q97.8 38.4 98.5 40.1L99.2 41.8" fill="none" stroke="#3a2622" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-wheel" viewBox="-8.5 -8.5 17 17" overflow="visible"><path d="M7.5 0.3Q6.5 3.9 5.1 5.2Q3.8 6.6 2.0 7.1Q0.3 7.6 -1.5 7.1Q-3.4 6.6 -4.8 5.3Q-6.2 3.9 -6.7 2.1Q-7.3 0.3 -6.8 -1.6Q-6.3 -3.5 -4.8 -4.8Q-3.4 -6.2 -1.6 -6.7Q0.1 -7.1 2.0 -6.7Q3.9 -6.3 5.2 -4.9Q6.5 -3.6 7.0 -1.6Z" fill="#2a2320"/><path d="M3.2 0.1Q2.3 2.4 1.2 2.8Q0.0 3.3 -1.1 2.8Q-2.2 2.3 -2.6 1.2Q-3.0 0.0 -2.6 -1.1Q-2.1 -2.1 -1.0 -2.6Q0.0 -3.2 1.2 -2.7Q2.3 -2.2 2.8 -1.1Z" fill="#E9DCC8"/><path d="M7.3 -0.1Q6.5 3.8 5.1 5.0Q3.8 6.3 1.9 6.9Q0.0 7.5 -1.8 6.9Q-3.7 6.4 -5.1 5.0Q-6.5 3.6 -7.0 1.8Q-7.5 -0.0 -6.9 -1.9Q-6.4 -3.7 -5.0 -5.0Q-3.5 -6.3 -1.7 -6.9Q0.1 -7.5 1.9 -6.9Q3.6 -6.2 5.0 -5.0Q6.4 -3.8 6.9 -1.9Q7.3 -0.1 7.0 0.9L6.7 1.9" fill="none" stroke="#3a2622" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.0 0.0L3.0 0.0" fill="none" stroke="#6b5a4c" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.5 0.9L-1.5 2.6" fill="none" stroke="#6b5a4c" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.5 -0.9L-1.5 -2.6" fill="none" stroke="#6b5a4c" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.3 0.1Q2.3 2.2 1.1 2.7Q-0.1 3.3 -1.2 2.7Q-2.2 2.2 -2.7 1.1Q-3.1 0.0 -2.7 -1.1Q-2.3 -2.3 -1.1 -2.8Q0.1 -3.3 1.2 -2.8Q2.3 -2.2 2.8 -1.1Q3.3 0.1 3.0 0.6L2.7 1.2" fill="none" stroke="#3a2622" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-tree1" viewBox="0 -24 12 24" overflow="visible"><path d="M5.4 -0.1Q5.6 -4.2 5.6 -6.3L5.5 -8.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.7 -14.9Q10.8 -11.0 9.0 -9.6Q7.3 -8.2 5.3 -8.3Q3.2 -8.3 1.7 -9.7Q0.1 -11.1 -0.4 -13.0Q-1.0 -14.8 -0.2 -16.6Q0.6 -18.3 2.0 -19.6Q3.3 -20.9 5.5 -20.9Q7.7 -21.0 9.0 -19.8Q10.4 -18.6 11.0 -16.8Q11.7 -14.9 11.5 -13.8L11.3 -12.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-tree2" viewBox="0 -28 10 28" overflow="visible"><path d="M5.1 -0.0Q5.0 -3.0 5.0 -6.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 -25.8Q6.2 -22.8 6.9 -21.4Q7.5 -20.1 8.0 -18.6Q8.4 -17.2 8.4 -15.2Q8.4 -13.2 8.1 -11.2Q7.8 -9.3 6.4 -7.7Q5.1 -6.2 3.4 -7.8Q1.7 -9.5 1.6 -11.4Q1.4 -13.4 1.4 -15.2Q1.4 -17.1 1.9 -18.4Q2.4 -19.8 3.0 -21.5Q3.6 -23.2 4.4 -24.5Q5.2 -25.8 5.5 -24.9L5.8 -24.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-house" viewBox="-2 -22 24 22" overflow="visible"><path d="M1.7 -12.6Q6.0 -12.3 7.9 -12.5Q9.8 -12.7 12.1 -12.6Q14.4 -12.4 16.5 -12.5Q18.6 -12.6 18.7 -10.5Q18.7 -8.3 18.6 -6.2Q18.4 -4.0 18.4 -2.1Q18.4 -0.2 16.4 -0.1Q14.3 0.1 12.1 0.1Q9.8 0.1 7.7 -0.0Q5.6 -0.1 3.6 -0.1Q1.5 -0.0 1.6 -2.1Q1.6 -4.3 1.5 -6.2Q1.4 -8.1 1.5 -10.3Q1.7 -12.6 2.9 -12.4L4.0 -12.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.6 -11.9Q2.2 -14.2 3.5 -15.0Q4.7 -15.8 6.0 -16.9Q7.3 -18.0 8.8 -19.1Q10.2 -20.2 11.4 -19.2Q12.6 -18.2 13.8 -17.0Q15.1 -15.9 16.6 -14.9Q18.1 -13.9 19.3 -13.0L20.4 -12.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.6 0.0Q8.6 -3.2 8.6 -4.9Q8.6 -6.6 10.3 -6.5Q11.9 -6.5 11.8 -4.8Q11.8 -3.2 11.8 -1.5L11.7 0.1" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-bldg" viewBox="0 -31 15 31" overflow="visible"><path d="M0.1 -30.2Q5.2 -29.9 7.5 -29.8Q9.8 -29.8 12.5 -29.8Q15.1 -29.9 15.0 -27.5Q14.8 -25.0 15.0 -22.6Q15.1 -20.2 15.1 -17.6Q15.1 -15.0 15.0 -12.6Q15.0 -10.2 15.0 -7.7Q14.9 -5.1 14.9 -2.7Q15.0 -0.2 12.5 -0.2Q10.0 -0.1 7.6 -0.1Q5.2 -0.2 2.6 -0.2Q-0.0 -0.2 -0.0 -2.6Q-0.1 -5.1 0.1 -7.4Q0.2 -9.8 0.2 -12.4Q0.2 -15.1 -0.0 -17.6Q-0.2 -20.1 -0.0 -22.5Q0.2 -24.8 0.2 -27.5Q0.1 -30.2 1.4 -30.0L2.7 -29.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.0 -25.1Q7.5 -25.0 9.8 -25.0L12.1 -25.1" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/><path d="M3.0 -18.9Q7.5 -19.1 9.8 -19.1L12.0 -19.1" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/><path d="M3.1 -13.0Q7.5 -13.1 9.7 -13.0L12.0 -12.9" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/><path d="M3.0 -6.9Q7.4 -7.0 9.7 -7.1L11.9 -7.1" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/></symbol><symbol id="i-shop" viewBox="-2 -17 24 17" overflow="visible"><path d="M0.2 -13.4Q4.0 -13.7 6.0 -13.6Q8.0 -13.5 9.9 -13.5Q11.8 -13.5 14.0 -13.4Q16.2 -13.3 18.0 -13.4Q19.8 -13.6 19.9 -11.3Q19.9 -9.0 19.8 -6.8Q19.8 -4.5 19.9 -2.4Q20.1 -0.2 18.0 -0.1Q15.9 0.1 13.9 0.2Q11.9 0.2 9.9 0.2Q7.9 0.1 6.0 0.1Q4.1 0.1 2.1 0.1Q0.0 0.1 0.1 -2.2Q0.2 -4.5 0.1 -6.8Q0.0 -9.1 0.1 -11.3Q0.2 -13.4 1.2 -13.4L2.3 -13.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-1.1 -13.4Q1.0 -13.6 1.9 -12.4Q2.9 -11.2 4.0 -12.4Q5.0 -13.6 6.0 -12.4Q7.0 -11.2 7.9 -12.4Q8.9 -13.5 10.0 -12.4Q11.1 -11.4 12.1 -12.4Q13.1 -13.5 14.1 -12.4Q15.1 -11.3 16.1 -12.4Q17.0 -13.5 18.0 -12.4Q19.0 -11.4 20.0 -12.5L20.9 -13.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.1 -0.1Q4.0 -3.8 4.0 -5.7Q3.9 -7.5 6.0 -7.5Q8.1 -7.5 10.0 -7.5Q11.9 -7.4 13.9 -7.5Q15.9 -7.5 16.0 -5.6Q16.1 -3.6 16.0 -1.9L16.0 -0.1" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-hill" viewBox="0 -12 70 12" overflow="visible"><path d="M-0.0 0.0Q5.2 -1.5 7.6 -2.4Q10.1 -3.3 12.7 -4.0Q15.3 -4.8 17.6 -5.7Q20.0 -6.5 22.6 -7.2Q25.1 -7.8 27.6 -8.2Q30.1 -8.6 32.5 -8.8Q34.9 -9.0 37.6 -8.9Q40.3 -8.8 42.6 -8.2Q44.9 -7.6 47.6 -7.2Q50.2 -6.8 52.5 -5.8Q54.8 -4.8 57.2 -3.8Q59.7 -2.8 62.3 -1.9Q64.8 -1.1 67.3 -0.5L69.8 0.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-cloud" viewBox="0 -13 24 13" overflow="visible"><path d="M2.0 -3.8Q2.3 -6.1 3.2 -6.9Q4.1 -7.6 5.2 -8.0Q6.3 -8.4 7.3 -7.9Q8.3 -7.5 9.0 -6.6Q9.6 -5.7 8.6 -7.6Q7.5 -9.5 8.1 -10.3Q8.7 -11.1 9.8 -11.7Q10.9 -12.2 12.1 -12.2Q13.3 -12.2 14.1 -11.5Q14.9 -10.9 15.7 -10.2Q16.5 -9.4 15.3 -7.8Q14.2 -6.2 14.9 -7.1Q15.7 -8.1 16.9 -8.4Q18.1 -8.8 19.0 -8.6Q19.9 -8.3 20.9 -7.6Q21.9 -6.9 22.1 -5.6Q22.3 -4.4 22.3 -2.9Q22.3 -1.4 20.5 -1.4Q18.7 -1.4 17.1 -1.4Q15.5 -1.4 13.8 -1.2Q12.1 -1.1 10.3 -1.1Q8.6 -1.2 6.8 -1.3Q4.9 -1.4 3.2 -1.4Q1.5 -1.4 1.7 -2.6Q2.0 -3.8 2.2 -4.5L2.3 -5.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-stop" viewBox="-6 -33 12 33" overflow="visible"><path d="M-2.8 0.1Q-0.2 -0.1 2.7 0.0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.1 -0.1Q0.1 -3.4 0.1 -5.0Q0.1 -6.6 0.1 -8.3Q0.1 -9.9 0.0 -11.5Q-0.0 -13.1 0.0 -14.7Q0.0 -16.4 -0.0 -18.1Q-0.0 -19.8 -0.1 -21.4L-0.1 -23.0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.9 -27.0Q4.0 -24.0 2.8 -23.3Q1.6 -22.6 0.0 -22.5Q-1.5 -22.3 -2.6 -23.2Q-3.7 -24.1 -4.3 -25.5Q-4.8 -26.9 -4.4 -28.4Q-4.0 -29.9 -2.8 -30.8Q-1.6 -31.7 -0.1 -31.7Q1.4 -31.7 2.6 -30.8Q3.8 -29.8 4.3 -28.4Q4.9 -27.0 4.6 -26.2L4.4 -25.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-2.1 -17.4Q2.3 -17.4 2.2 -15.7Q2.2 -13.9 2.2 -12.2Q2.2 -10.5 -0.0 -10.6Q-2.3 -10.6 -2.3 -12.3Q-2.3 -14.1 -2.2 -15.7Q-2.1 -17.4 -0.9 -17.4L0.3 -17.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-p1" viewBox="-5 -21 12 21" overflow="visible"><path d="M-0.1 -6.8Q-0.9 -3.5 -1.4 -1.7L-1.9 0.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.1 -6.8Q0.8 -3.3 1.3 -1.6L1.8 0.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.0 -6.7Q0.2 -9.6 0.1 -12.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.1 -11.8Q-1.7 -9.8 -2.8 -8.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.0 -11.9Q1.1 -10.5 2.8 -8.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.7 -15.8Q2.1 -14.0 1.2 -13.6Q0.4 -13.2 -0.5 -13.3Q-1.4 -13.5 -1.9 -14.1Q-2.4 -14.8 -2.5 -15.8Q-2.5 -16.8 -1.9 -17.5Q-1.3 -18.2 -0.4 -18.3Q0.5 -18.5 1.3 -18.0Q2.1 -17.6 2.4 -16.7Q2.7 -15.8 2.6 -15.3L2.5 -14.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-p2" viewBox="-5 -21 12 21" overflow="visible"><path d="M-0.1 -6.8Q-0.8 -3.4 -1.3 -1.7L-1.8 0.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.0 -6.8Q0.9 -3.4 1.4 -1.7L1.8 -0.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.1 -6.8Q0.3 -10.0 -0.1 -13.0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.1 -11.8Q-1.3 -10.3 -2.8 -8.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.1 -11.8Q1.7 -9.9 2.9 -8.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.8 -15.8Q2.0 -14.2 1.3 -13.7Q0.6 -13.2 -0.4 -13.3Q-1.4 -13.5 -1.9 -14.1Q-2.5 -14.8 -2.5 -15.7Q-2.5 -16.7 -1.9 -17.4Q-1.3 -18.1 -0.4 -18.3Q0.4 -18.4 1.3 -18.0Q2.1 -17.6 2.5 -16.7Q2.8 -15.8 2.6 -15.4L2.3 -15.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-3.4 -17.5Q0.1 -17.4 1.7 -17.5L3.4 -17.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-p3" viewBox="-5 -21 12 21" overflow="visible"><path d="M0.1 -6.9Q-0.8 -3.5 -1.3 -1.7L-1.7 -0.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.1 -6.8Q0.8 -3.3 1.3 -1.6L1.9 0.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-3.0 -6.2Q-1.6 -9.6 -0.8 -11.3Q0.1 -13.0 0.8 -11.3Q1.5 -9.6 2.3 -7.9Q3.1 -6.1 1.5 -6.1Q0.0 -6.1 -1.5 -6.2Q-3.0 -6.2 -2.5 -7.2L-2.1 -8.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.0 -11.7Q-1.5 -10.3 -2.8 -8.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.0 -11.8Q1.4 -10.0 2.9 -8.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.6 -15.8Q2.0 -14.0 1.3 -13.6Q0.6 -13.1 -0.4 -13.3Q-1.3 -13.4 -1.9 -14.1Q-2.5 -14.8 -2.5 -15.7Q-2.5 -16.7 -2.0 -17.4Q-1.4 -18.1 -0.5 -18.3Q0.4 -18.5 1.2 -18.0Q2.0 -17.5 2.3 -16.7Q2.6 -15.8 2.5 -15.3L2.3 -14.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-p4" viewBox="-5 -21 12 21" overflow="visible"><path d="M0.0 -6.9Q-0.9 -3.4 -1.3 -1.7L-1.7 -0.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.1 -6.7Q0.8 -3.3 1.3 -1.7L1.8 -0.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.1 -6.8Q-0.4 -9.9 -0.0 -12.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.1 -11.8Q-1.0 -9.8 -2.7 -8.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.0 -11.7Q1.7 -9.9 2.8 -8.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.7 -15.8Q2.0 -14.0 1.2 -13.6Q0.5 -13.2 -0.4 -13.3Q-1.3 -13.4 -1.9 -14.1Q-2.4 -14.8 -2.5 -15.7Q-2.5 -16.7 -2.0 -17.4Q-1.4 -18.1 -0.5 -18.3Q0.5 -18.4 1.3 -18.0Q2.1 -17.6 2.4 -16.7Q2.7 -15.8 2.5 -15.4L2.2 -14.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.9 -9.2Q5.8 -9.1 5.8 -7.8Q5.9 -6.4 4.4 -6.4Q3.0 -6.4 3.0 -7.8Q2.9 -9.2 3.6 -9.2L4.3 -9.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></symbol></svg>
 
 <div class="gate" id="gate">
-  <h1>🚌 Bus Time Scheduler</h1>
+  <div class="gate-band"><svg class="bus-scene gate-scene" id="gateScene" viewBox="0 0 300 118" aria-hidden="true"></svg><h1>Bus Time Scheduler</h1><div class="gate-sub">運行ボード ＋ 構内図</div></div>
 
   <div class="role-select" id="roleSelect">
     <p style="margin-bottom:14px;">利用方法を選んでください</p>
-    <button class="role-btn" id="roleMainBtn">構内21c用<span class="sub-label">配車の指示・編集ができます</span></button>
-    <button class="role-btn" id="roleSubBtn">予備用<span class="sub-label">閲覧のみ（編集はできません）</span></button>
+    <button class="role-btn main" id="roleMainBtn"><span class="rb-ico"><svg class="ic lg" aria-hidden="true"><use href="#i-pencil"/></svg></span><span class="rb-txt">構内21c用<span class="sub-label">配車の指示・編集ができます</span></span></button>
+    <button class="role-btn" id="roleSubBtn"><span class="rb-ico"><svg class="ic lg" aria-hidden="true"><use href="#i-eye"/></svg></span><span class="rb-txt">予備用<span class="sub-label">閲覧のみ（編集はできません）</span></span></button>
   </div>
 
   <div id="passStep" style="display:none; width:100%; max-width:240px; flex-direction:column; align-items:center;">
@@ -410,11 +509,11 @@
   <h2>入力モードを選択</h2>
   <div class="sub">本日のデータをどの方法で入力しますか？</div>
   <div class="mode-card" id="modeManual">
-    <div class="ico">⌨️</div>
+    <div class="ico"><svg class="ic xl" aria-hidden="true"><use href="#i-write"/></svg></div>
     <div class="mc-body"><h3>手打ち入力モード</h3><p>号車順に「出庫→帰庫」を数字だけで連続入力。確定せずに打ち続け、最後にまとめて反映します。一番速くて確実です。</p></div>
   </div>
   <div class="mode-card" id="modeAI">
-    <div class="ico">🤖</div>
+    <div class="ico"><svg class="ic xl" aria-hidden="true"><use href="#i-photo"/></svg></div>
     <div class="mc-body"><h3>AI入力モード</h3><p>AIが解析した「号車,出庫,帰庫」形式のデータを貼り付けて一括反映します。</p></div>
   </div>
   <div class="skip"><button id="modeSkip">入力せずに今のデータで業務を始める →</button></div>
@@ -423,18 +522,17 @@
 <div class="app" id="appRoot" style="display:none;">
   <div class="board-header">
     <div class="htop">
-      <div class="htitle">
-        <span class="mascot"><canvas class="scenery" id="scenery" width="92" height="26"></canvas><canvas class="dotbus" id="dotbus" width="56" height="26"></canvas></span>
-        B.T.S
-      </div>
+      <div class="htitle"><svg class="bus-scene hdr-scene" id="hdrScene" viewBox="0 0 120 40" aria-hidden="true"></svg>B.T.S</div>
       <div class="hclock" id="clock">--:--:--</div>
     </div>
-    <div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncText">接続中…</span></div>
+    <!-- 同期・メインの表示は3行にまとめて左、「情報」「修正」は右。赤い帯を低くして号車を広く見せる -->
     <div class="main-session-row">
-      <div class="main-session-bar" id="mainSessionBar">現在のメイン：確認中…</div>
+      <div class="hstatus">
+        <div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncText">接続中…</span></div>
+        <div class="main-session-bar" id="mainSessionBar">現在のメイン：確認中…</div>
+      </div>
       <div class="day-tabs" id="dayTabs"></div>
-      <!-- 修正は「本日」の横。号車を下までスライドしたあとでも、すぐ押せる位置 -->
-      <button class="btn ghost" id="btnEdit" style="color:#f2f5f7; flex-shrink:0; padding:8px 12px; font-size:12px;">✎ 修正</button>
+      <button class="hdr-btn" id="btnEdit"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg>修正</button>
     </div>
   </div>
 
@@ -455,11 +553,11 @@
   </div>
 
   <div class="toolbar">
-    <button class="btn primary" id="btnInput">＋ 入力モード</button>
-    <button class="btn icon-only ghost" id="btnTemplate" title="号車テンプレート">📋</button>
-    <button class="btn icon-only ghost" id="btnSettings">⚙️</button>
+    <button class="btn primary" id="btnInput"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>入力モード</button>
+    <button class="btn ghost lbl-btn" id="btnTemplate" title="号車テンプレート"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg>号車テンプレ</button>
+    <button class="btn ghost lbl-btn" id="btnSettings" title="設定"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg>設定</button>
     <div class="spacer"></div>
-    <button class="btn ghost ico-only" id="btnEndMain" title="メインを終了" style="display:none; font-size:11px; color:#1a1f26;">メイン終了</button>
+    <button class="btn ghost lbl-btn" id="btnEndMain" title="メインを終了" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-door"/></svg>メイン終了</button>
   </div>
 
   <div class="legend">
@@ -474,36 +572,35 @@
   </div>
 
   <div style="padding:16px 14px;">
-    <button class="btn danger" id="btnReset" style="width:100%; justify-content:center;">🗑 本日の時刻を全てクリアして新しい日を開始</button>
+    <button class="btn danger" id="btnReset" style="width:100%; justify-content:center;"><svg class="ic sm" aria-hidden="true"><use href="#i-trash"/></svg>本日の時刻を全てクリアして新しい日を開始</button>
   </div>
 </div>
 
 
 <!-- ===== 駐車場ボード ===== -->
-<button class="pk-edge-tab" id="pkEdgeTab">🅿 構内図</button>
+<button class="pk-edge-tab" id="pkEdgeTab"><svg class="ic" aria-hidden="true"><use href="#i-park"/></svg><span>構内図</span></button>
 <div class="pkroot" id="parkingRoot">
   <div class="pk-toolbar">
-    <button class="btn ghost" id="pkBack" style="color:#1a1f26;">◀ 運行</button>
-    <button class="btn primary" id="pkDisp">号車</button>
-    <button class="btn ghost" id="pkTplBtn" style="color:#1a1f26;">テンプレ／保存</button>
-    <button class="btn ghost" id="pkBulk" style="color:#1a1f26;">一括配置</button>
-    <button class="btn ghost" id="pkDayKind" style="color:#1a1f26;" title="翌日が土休日（日祝・祝日前日・お盆・年末年始）なら押して切り替え">翌日：平日</button>
-    <button class="btn ghost" id="pkYanaseKind" style="color:#1a1f26; display:none;" title="翌日が土休日でも、ヤナセ1〜3だけ平日ルールで組む日があります">ヤナセ休日</button>
-    <button class="btn ghost" id="pkAnimBtn" style="color:#1a1f26;">再生</button>
-    <button class="btn ghost" id="pkFindBtn" style="color:#1a1f26;">車両検索</button>
-    <button class="btn ghost" id="pkClear" style="color:#a33;">配置クリア</button>
+    <button class="btn ghost" id="pkBack"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg>運行</button>
+    <button class="btn ghost" id="pkDisp" title="枠の中の表示を切り替え"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><span class="lbl">号車</span></button>
+    <button class="btn ghost" id="pkTplBtn"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg>テンプレ／保存</button>
+    <button class="btn primary" id="pkBulk"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>一括配置</button>
+    <button class="btn ghost" id="pkDayKind" data-kind="weekday" title="翌日が土休日（日祝・祝日前日・お盆・年末年始）なら押して切り替え"><svg class="ic" aria-hidden="true"><use href="#i-cal"/></svg><span class="lbl">翌日：平日</span></button>
+    <button class="btn ghost" id="pkAnimBtn"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>再生</button>
+    <button class="btn ghost" id="pkFindBtn"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>車両検索</button>
+    <button class="btn ghost warnish" id="pkClear"><svg class="ic" aria-hidden="true"><use href="#i-eraser"/></svg>配置クリア</button>
   </div>
-  <div class="pk-dots" id="pkDots"></div>
-  <div class="pk-rotate-hint" id="pkRotateHint" style="display:none;">📱 この画面はスマホ横向きがおすすめです</div>
+  <div class="pk-subrow"><button class="pk-yanase" id="pkYanaseKind" style="display:none;" title="翌日が土休日でも、ヤナセ1〜3だけ平日ルールで組む日があります"><span class="lbl">ヤナセ休日</span></button><div class="pk-dots" id="pkDots"></div></div>
+  <div class="pk-rotate-hint" id="pkRotateHint" style="display:none;"><svg class="ic sm" aria-hidden="true"><use href="#i-rotate"/></svg>この画面はスマホ横向きがおすすめです</div>
   <button class="pk-skip" id="pkSkip" style="display:none;">スキップ ▶▶</button>
   <!-- 再生バー：指でスライドして好きなところまで進めたり戻したりできる -->
   <div class="pk-animbar" id="pkAnimBar" style="display:none;">
     <input type="range" id="pkAnimSeek" min="0" max="1000" value="0">
     <div class="pk-animbtns">
-      <button id="pkAnimRev"  title="逆再生">◀◀</button>
-      <button id="pkAnimPause" title="停止">⏸</button>
-      <button id="pkAnimFwd"  title="再生">▶▶</button>
-      <button id="pkAnimEnd"  title="最後まで">▶|</button>
+      <button id="pkAnimRev" title="逆再生" aria-label="逆再生"><svg class="ic" aria-hidden="true"><use href="#i-rew"/></svg></button>
+      <button id="pkAnimPause" title="停止" aria-label="停止"><svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg></button>
+      <button id="pkAnimFwd" title="再生" aria-label="再生"><svg class="ic" aria-hidden="true"><use href="#i-ffw"/></svg></button>
+      <button id="pkAnimEnd" title="最後まで" aria-label="最後まで"><svg class="ic" aria-hidden="true"><use href="#i-end"/></svg></button>
       <span class="pk-animtime" id="pkAnimTime">0/0</span>
       <div class="spacer" style="flex:1;"></div>
       <button id="pkAnimApply" class="ok">ここで確定</button>
@@ -1694,6 +1791,7 @@
 </svg>
 </div>
   </div>
+  <button class="pk-find-mini" id="pkFindMini" aria-label="車両検索"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>検索</button>
   <button class="pk-fab" id="pkFab">表示:号車</button>
   <button class="pk-back-mini" id="pkBackMini">◀ 運行</button>
   <div class="pk-traylabel"><span id="pkTrayLabel">未配置の号車</span><button id="pkExBtn" style="display:none;">対象外 0台 ↩</button></div>
@@ -1705,7 +1803,7 @@
   <div class="modal" style="max-width:300px;">
     <div class="seq-head">
       <h3 style="margin:0;color:var(--amber);font-size:15px;" id="pkNoTitle">号車を入力</h3>
-      <button class="modal-close" data-close="pkNoOverlay">✕</button>
+      <button class="modal-close" data-close="pkNoOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <input id="pkNoInput" type="tel" inputmode="numeric" maxlength="4" placeholder="0000"
       style="width:100%; font-family:var(--mono); font-size:34px; font-weight:800; text-align:center;
@@ -1724,7 +1822,7 @@
   <div class="modal" style="max-width:300px;">
     <div class="seq-head">
       <h3 style="margin:0;color:var(--amber);font-size:15px;">日を選ぶ</h3>
-      <button class="modal-close" data-close="dayPickOverlay">✕</button>
+      <button class="modal-close" data-close="dayPickOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <p style="font-size:11.5px; color:var(--text-dim); margin:6px 0 10px;">
       営業日は朝8時で切り替わります。夜勤で日をまたいでも配置は続きます。</p>
@@ -1737,7 +1835,7 @@
   <div class="modal" style="max-width:320px;">
     <div class="seq-head">
       <h3 style="margin:0;color:var(--amber);font-size:15px;">すでに車が入っています</h3>
-      <button class="modal-close" data-close="pkSwapOverlay">✕</button>
+      <button class="modal-close" data-close="pkSwapOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <p id="pkSwapText" style="font-size:13px; margin:10px 0 12px; line-height:1.6;"></p>
     <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1752,7 +1850,7 @@
   <div class="modal" style="max-width:300px;">
     <div class="seq-head">
       <h3 style="margin:0;color:var(--amber);font-size:15px;">車両検索</h3>
-      <button class="modal-close" data-close="pkFindOverlay">✕</button>
+      <button class="modal-close" data-close="pkFindOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <input id="pkFindInput" type="tel" inputmode="numeric" maxlength="4" placeholder="0000"
       style="width:100%; font-family:var(--mono); font-size:34px; font-weight:800; text-align:center;
@@ -1767,7 +1865,7 @@
   <div class="modal">
     <div class="seq-head">
       <h3 style="margin:0;color:var(--amber);font-size:15px;">まとめて書き出し</h3>
-      <button class="modal-close" data-close="pkExportOverlay">✕</button>
+      <button class="modal-close" data-close="pkExportOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <p style="font-size:11.5px;color:var(--text-dim);margin:4px 0 8px;">
       下を全部コピーして、そのままチャットに貼ってください。</p>
@@ -1775,7 +1873,7 @@
       style="width:100%; height:44vh; font-family:var(--mono); font-size:11px; line-height:1.6;
              border:1px solid var(--line); border-radius:8px; padding:8px; background:#fff; color:#1a1f26;"></textarea>
     <div class="modal-actions">
-      <button class="btn primary" id="pkExportCopy" style="flex:1; justify-content:center;">📋 コピー</button>
+      <button class="btn primary" id="pkExportCopy" style="flex:1; justify-content:center;"><svg class="ic sm" aria-hidden="true"><use href="#i-copy"/></svg>コピー</button>
       <button class="btn ghost" id="pkExportCloseBtn" style="justify-content:center; color:#1a1f26;">閉じる</button>
     </div>
   </div>
@@ -1785,21 +1883,21 @@
 <div class="modal-overlay" id="pkTplOverlay">
   <div class="modal">
     <div class="seq-head">
-      <h3 style="margin:0;color:var(--amber);font-size:15px;">配置テンプレート（3枠）</h3>
-      <button class="modal-close" data-close="pkTplOverlay">✕</button>
+      <h3 style="margin:0;color:var(--amber);font-size:15px;">配置テンプレート（8枠）</h3>
+      <button class="modal-close" data-close="pkTplOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <p style="font-size:11px;color:var(--text-dim);margin:6px 0 10px;">登録・編集はメイン（構内21c）のみ。適用は空き枠にだけ入ります（配置済み・保護枠は上書きしません）。</p>
-    <div class="ptpl-row" style="border-color:var(--amber);">
+    <div class="ptpl-row base">
       <h4>基本／コミュニティ・洗車機・枠外・ヤナセ特車など</h4>
       <div class="cnt">本日の出庫・帰庫から21〜23枠を計算して配置します</div>
-      <div class="ptpl-btns"><button class="btn ghost" id="pkBase1" style="color:#1a1f26;">▶ 適用</button></div>
+      <div class="ptpl-btns"><button class="btn ghost" id="pkBase1"><svg class="ic sm" aria-hidden="true"><use href="#i-play"/></svg>適用</button></div>
     </div>
-    <div id="pkTplList"></div>
+    <div id="pkTplList" class="ptpl-grid"></div>
 
     <!-- ★検証用：今の画面の状態（会社指定・手入力・対象外・テンプレ有無）をまるごと保存する。
          のりちゃんはこのボタンを押すだけでよい。あとでまとめて書き出して私に渡す */ -->
-    <div class="ptpl-row" style="border-color:#5b6470; margin-top:14px;">
-      <h4>検証用に保存</h4>
+    <details class="ptpl-row snap">
+      <summary>検証用に保存（任意・普段は不要）<svg class="ic sm" aria-hidden="true"><use href="#i-chev"/></svg></summary>
       <div class="cnt" id="pkSnapNote">日付を入れて、そのときのボタンを押してください。<br>
         <b>一括配置前</b>＝会社指定・手置き・テンプレまで（一括配置が置いた車は入りません）<br>
         <b>完成</b>＝いまの画面のまま全部。一括配置が置いた車は［自動配置］として別に記録されます<br>
@@ -1808,16 +1906,26 @@
         style="width:100%; font-size:14px; padding:9px 10px; margin:8px 0 8px;
                border:1px solid var(--line); border-radius:8px; background:#fff; color:#1a1f26;">
       <div class="ptpl-btns" style="flex-wrap:wrap;">
-        <button class="btn ghost" id="pkSnapSaveBefore" style="color:#1a1f26;">💾 一括配置前として保存</button>
-        <button class="btn primary" id="pkSnapSaveDone">💾 完成として保存</button>
-        <button class="btn ghost" id="pkSnapExport" style="color:#1a1f26;">📤 まとめて書き出し</button>
+        <button class="btn ghost" id="pkSnapSaveBefore" style="color:#1a1f26;"><svg class="ic sm" aria-hidden="true"><use href="#i-save"/></svg>一括配置前として保存</button>
+        <button class="btn primary" id="pkSnapSaveDone"><svg class="ic sm" aria-hidden="true"><use href="#i-save"/></svg>完成として保存</button>
+        <button class="btn ghost" id="pkSnapExport" style="color:#1a1f26;"><svg class="ic sm" aria-hidden="true"><use href="#i-export"/></svg>まとめて書き出し</button>
       </div>
       <div id="pkSnapList" style="margin-top:8px; font-size:11.5px; color:var(--text-dim);"></div>
-    </div>
+    </details>
   </div>
 </div>
 
-<button class="nowbtn" id="nowBtn">⌖ 現在時刻へ</button>
+<!-- 情報：本日の出庫・帰庫の内訳（「本日」ボタンの代わり） -->
+<div class="modal-overlay" id="infoOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3>情報<span class="info-date" id="infoDate"></span></h3><button class="modal-close" data-close="infoOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <div class="info-sec"><div class="info-head"><span class="info-title">出庫</span><span class="info-total" id="infoDepTotal"></span></div><div id="infoDep"></div></div>
+    <div class="info-sec"><div class="info-head"><span class="info-title">帰庫</span><span class="info-total" id="infoRetTotal"></span></div><div id="infoRet"></div></div>
+    <p class="info-note">行をタップすると、その号車が出ます。</p>
+    <div class="info-days" id="infoDays"></div>
+  </div>
+</div>
+<button class="nowbtn" id="nowBtn"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>現在時刻へ</button>
 <input type="file" id="fileInput" accept="image/*" capture="environment">
 
 <!-- Sequential manual entry -->
@@ -1825,7 +1933,7 @@
   <div class="modal">
     <div class="seq-head">
       <h3 style="margin:0;color:var(--amber);font-size:15px;">手打ち入力</h3>
-      <button class="modal-close" data-close="seqOverlay">✕</button>
+      <button class="modal-close" data-close="seqOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <div class="seq-prog" id="seqProg"></div>
     <div class="seq-target">
@@ -1848,7 +1956,7 @@
 <!-- Single time pad (for 修正) -->
 <div class="modal-overlay" id="padOverlay">
   <div class="modal">
-    <div class="modal-header"><h3 id="padTitle">時刻を入力</h3><button class="modal-close" data-close="padOverlay">✕</button></div>
+    <div class="modal-header"><h3 id="padTitle">時刻を入力</h3><button class="modal-close" data-close="padOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="timepad-display" id="padDisplay"></div>
     <div class="keypad" id="keypad"></div>
     <div class="modal-actions">
@@ -1862,11 +1970,11 @@
 <!-- Edit (free text: number/JP/romaji) -->
 <div class="modal-overlay" id="editOverlay">
   <div class="modal">
-    <div class="modal-header"><h3 id="editTitle">修正</h3><button class="modal-close" data-close="editOverlay">✕</button></div>
+    <div class="modal-header"><h3 id="editTitle">修正</h3><button class="modal-close" data-close="editOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <!-- 急な車両交換のとき、2台の「翌日出庫」「帰庫予定」をまとめて入れ替える -->
     <div id="swapBox" style="margin-bottom:12px;">
       <button class="btn ghost" id="btnSwapOpen"
-        style="width:100%; justify-content:center; color:#1a1f26; border-style:dashed;">⇄ 車両入替</button>
+        style="width:100%; justify-content:center; color:#1a1f26; border-style:dashed;"><svg class="ic sm" aria-hidden="true"><use href="#i-swap"/></svg>車両入替</button>
       <div id="swapPanel" style="display:none; margin-top:8px; padding:10px 10px 12px;
            border:1px solid var(--line); border-radius:10px; background:var(--panel-2);">
         <div class="field" style="margin-bottom:8px;">
@@ -1895,14 +2003,14 @@
 <!-- Photo OCR -->
 <div class="modal-overlay" id="ocrOverlay">
   <div class="modal">
-    <div class="modal-header"><h3>写真撮影モード（4分割）</h3><button class="modal-close" data-close="ocrOverlay">✕</button></div>
+    <div class="modal-header"><h3>写真撮影モード（4分割）</h3><button class="modal-close" data-close="ocrOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="quadbar" id="quadbar">
       <button data-q="0" class="on">①基幹</button>
       <button data-q="1">②一般</button>
       <button data-q="2">③中型/他</button>
       <button data-q="3">④高針/貸切</button>
     </div>
-    <button class="btn primary" id="btnShoot" style="width:100%;justify-content:center;margin-bottom:10px;">📷 このブロックを撮影</button>
+    <button class="btn primary" id="btnShoot" style="width:100%;justify-content:center;margin-bottom:10px;"><svg class="ic sm" aria-hidden="true"><use href="#i-camera"/></svg>このブロックを撮影</button>
     <img id="ocrPreview" class="ocr-preview" style="display:none;">
     <div class="ocr-status" id="ocrStatus" style="display:none;"><span class="spin"></span><span id="ocrStatusText">解析中…</span></div>
     <div class="ocr-bar" id="ocrBar" style="display:none;"><div class="fill" id="ocrFill"></div></div>
@@ -1918,7 +2026,7 @@
 <!-- AI paste -->
 <div class="modal-overlay" id="aiOverlay">
   <div class="modal">
-    <div class="modal-header"><h3>AI入力モード</h3><button class="modal-close" data-close="aiOverlay">✕</button></div>
+    <div class="modal-header"><h3>AI入力モード</h3><button class="modal-close" data-close="aiOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="hint" style="margin-bottom:8px;">AIが解析した結果を下に貼り付けてください。1行1台、<b>号車,出庫,帰庫</b> の形式です（カンマ・スペース・タブ区切りに対応）。例：<br><span style="font-family:var(--mono);">6601,7:07,19:38</span></div>
     <div class="field"><textarea id="aiText" placeholder="6601,7:07,19:38&#10;8618,6:30,20:43&#10;..."></textarea></div>
     <div class="modal-actions"><button class="btn ghost" id="aiPreviewBtn">内容を確認</button><button class="btn primary" id="aiApplyBtn">一括反映</button></div>
@@ -1929,7 +2037,7 @@
 <!-- テンプレ自動メンテ: 新号車の追加 -->
 <div class="modal-overlay" id="tplAddOverlay">
   <div class="modal">
-    <div class="modal-header"><h3>新しい号車がデータにあります</h3><button class="modal-close" data-close="tplAddOverlay">✕</button></div>
+    <div class="modal-header"><h3>新しい号車がデータにあります</h3><button class="modal-close" data-close="tplAddOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="hint" id="tplAddProg" style="margin-bottom:10px;"></div>
     <div class="seq-target" style="padding:4px 0 10px;"><div class="sno" id="tplAddNo" style="font-size:34px;">----</div></div>
     <div class="field"><label>この号車をテンプレートに追加しますか? 「はい」で車種カテゴリを選んで追加・反映します。「いいえ」の場合この号車は今回反映されません。</label>
@@ -1945,7 +2053,7 @@
 <!-- テンプレ自動メンテ: 不在号車の削除 -->
 <div class="modal-overlay" id="tplDelOverlay">
   <div class="modal">
-    <div class="modal-header"><h3>データに無い号車がテンプレートにあります</h3><button class="modal-close" data-close="tplDelOverlay">✕</button></div>
+    <div class="modal-header"><h3>データに無い号車がテンプレートにあります</h3><button class="modal-close" data-close="tplDelOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="hint" style="margin-bottom:10px;">今回のデータに含まれていない号車です。テンプレートから削除しますか? チェックを入れた号車だけ削除します（移籍・廃車など）。残すものはチェックを外してください。</div>
     <div id="tplDelList" style="max-height:40vh; overflow-y:auto; margin-bottom:10px;"></div>
     <div class="modal-actions">
@@ -1958,7 +2066,7 @@
 <!-- Template editor -->
 <div class="modal-overlay" id="tplOverlay">
   <div class="modal">
-    <div class="modal-header"><h3>号車テンプレート編集</h3><button class="modal-close" data-close="tplOverlay">✕</button></div>
+    <div class="modal-header"><h3>号車テンプレート編集</h3><button class="modal-close" data-close="tplOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="hint" style="margin-bottom:10px;">号車の追加・削除と<b>並び順の変更</b>ができます（≡を上下にドラッグ、または▲▼）。移籍・廃車・新車のときだけ編集してください。変更はチーム全員に反映されます。</div>
     <div id="tplEditor"></div>
     <div class="modal-actions"><button class="btn primary" id="btnSaveTpl" style="width:100%; justify-content:center;">保存して反映</button></div>
@@ -1968,7 +2076,7 @@
 <!-- Settings -->
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal">
-    <div class="modal-header"><h3>設定</h3><button class="modal-close" data-close="settingsOverlay">✕</button></div>
+    <div class="modal-header"><h3>設定</h3><button class="modal-close" data-close="settingsOverlay" aria-label="閉じる"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="field"><label>帰庫予定の何分前から黄色く表示するか（分）</label><input type="number" id="fThreshold" min="1" max="180" value="5"></div>
     <div class="field"><label>フォントサイズ</label>
       <div class="seg2" id="fsAutoSeg">
@@ -1996,6 +2104,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<script>(function(){ const h=document.querySelector(".board-header"); if(!h||!window.ResizeObserver) return; const set=()=>{ if(h.offsetHeight) document.documentElement.style.setProperty("--hdr-h",h.offsetHeight+"px"); }; new ResizeObserver(set).observe(h); set(); })();</script>
 
 <script type="module">
 let FB=null, FB_OK=false;
@@ -2070,7 +2179,16 @@ window.__start = function(FB){
     return s; // leave as-is (文字など)
   }
   function nowMin(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
-  function showToast(m,ms=2400){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),ms); }
+  /* 手描きアイコン（index 冒頭の <symbol id="i-…">）を使う */
+  function icSvg(name,cls){ return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="#i-'+name+'"/></svg>'; }
+  function escH(v){ return String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  /* ボタンの文字だけ差し替える（アイコンは残す） */
+  function pkSetLbl(el,t){ if(!el) return; const l=el.querySelector('.lbl'); if(l) l.textContent=t; else el.textContent=t; }
+  /* トースト：先頭の記号（✓ ⚠ 🔒 など）は手描きアイコンに置き換える */
+  const TOAST_IC={'✓':'check','⚠':'warn','△':'warn','🔒':'lock','🔓':'unlock','📍':'pin','💾':'save','📋':'copy'};
+  function showToast(m,ms=2400){ const t=$('toast'); let s=String(m==null?'':m), ic='';
+    for(const k in TOAST_IC){ if(s.startsWith(k)){ ic=TOAST_IC[k]; s=s.slice(k.length).replace(/^\s+/,''); break; } }
+    t.innerHTML=(ic?icSvg(ic):'')+'<span>'+escH(s)+'</span>'; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),ms); }
   function openModal(id){ $(id).classList.add('show'); }
   function closeModal(id){ $(id).classList.remove('show'); }
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));
@@ -2166,17 +2284,65 @@ window.__start = function(FB){
   /* ===== render ===== */
   function renderClock(){ const d=new Date(); $('clock').textContent=pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
   /* タブは1つだけ出し、タップで日を選ぶ（横に並べる場所が無いため。2026-09-03 本人確認） */
+  /* 見出しの「本日」ボタンは「情報」ボタンに（2026-09 本人指示）。
+     ほかの日を見ているときだけ、そのボタンが日付（例 9/22）になり、色で分かるようにする */
   function renderDayTabs(){
-    const w=$('dayTabs'); w.innerHTML='';
-    const t=document.createElement('div');
-    t.className='day-tab active';
-    const cur=state.activeDate||state.todayKey;
-    t.textContent=fmtDateLabel(cur,state.todayKey)+(state.dates.length>1?' ▾':'');
-    t.addEventListener('click',()=>{
-      if(state.dates.length<2){ showToast('ほかの日はありません'); return; }
-      openDayPick();
+    const w=$('dayTabs'); if(!w) return; w.innerHTML='';
+    const cur=state.activeDate||state.todayKey, past=cur!==state.todayKey;
+    const b=document.createElement('button'); b.type='button'; b.id='btnInfo';
+    b.className='hdr-btn'+(past?' past':'');
+    b.innerHTML=icSvg('info')+(past?escH(fmtDateLabel(cur,state.todayKey))+' 表示中':'情報');
+    b.addEventListener('click',openInfo);
+    w.appendChild(b);
+  }
+  /* ===== 情報：出庫・帰庫の台数の内訳 ===== */
+  function openInfo(){ renderInfo(); openModal('infoOverlay'); }
+  function renderInfo(){
+    const cur=state.activeDate||state.todayKey, t=state.times[cur]||{};
+    const dd=new Date(cur+'T00:00:00');
+    $('infoDate').textContent=(cur===state.todayKey?'本日 ':'')+(dd.getMonth()+1)+'月'+dd.getDate()+'日';
+    const isYo=v=>/^[ヨよ]/.test(v);
+    const dep={yo:[],h5:[],h6:[],h7:[],h8:[],h9:[],etc:[],blank:[]}, ret={yo:[],r18:[],r19:[],r20:[],r21:[],r22:[],etc:[],blank:[]};
+    allBusesFlat().forEach(bb=>{ const no=bb.busNo, r=t[no]||{};
+      const dv=String(r.d==null?'':r.d).trim(), rv=String(r.r==null?'':r.r).trim();
+      if(!dv) dep.blank.push([no,'']); else if(isYo(dv)) dep.yo.push([no,'']);
+      else { const m=parseT(dv); if(m==null) dep.etc.push([no,dv]);
+        else { const h=Math.floor(m/60); (h<6?dep.h5:h===6?dep.h6:h===7?dep.h7:h===8?dep.h8:dep.h9).push([no,dv,m]); } }
+      if(!rv) ret.blank.push([no,'']); else if(isYo(rv)) ret.yo.push([no,'']);
+      else { const m2=parseT(rv); if(m2==null) ret.etc.push([no,rv]); else { const h2=Math.floor(m2/60); (h2<19?ret.r18:h2===19?ret.r19:h2===20?ret.r20:h2===21?ret.r21:ret.r22).push([no,rv,m2]); } }
     });
-    w.appendChild(t);
+    Object.values(dep).forEach(a=>a.sort((x,y)=>(x[2]||0)-(y[2]||0))); Object.values(ret).forEach(a=>a.sort((x,y)=>(x[2]||0)-(y[2]||0)));
+    const rows=(box,list,defs)=>{
+      const max=Math.max(1,...defs.map(d=>list[d[0]].length));
+      box.innerHTML='';
+      defs.forEach(([k,label,sub,cls])=>{
+        const arr=list[k]; if(d_hide(k,arr)) return;
+        const btn=document.createElement('button'); btn.type='button';
+        btn.className='info-row '+(cls||'')+(arr.length?'':' zero'); btn.setAttribute('aria-expanded','false');
+        btn.innerHTML='<span class="lbl">'+escH(label)+(sub?'<small>'+escH(sub)+'</small>':'')+'</span>'+
+          '<span class="bar"><i style="width:'+(arr.length?Math.max(3,Math.round(arr.length/max*100)):0)+'%"></i></span>'+
+          '<span class="num">'+arr.length+'<small>台</small></span>';
+        const nos=document.createElement('div'); nos.className='info-nos'; nos.hidden=true;
+        nos.innerHTML=arr.map(x=>'<span>'+escH(x[0])+(x[1]?'<em>'+escH(x[1])+'</em>':'')+'</span>').join('')||'<span style="background:none;color:var(--ink-faint)">なし</span>';
+        btn.addEventListener('click',()=>{ const o=nos.hidden; nos.hidden=!o; btn.setAttribute('aria-expanded',o?'true':'false'); });
+        box.appendChild(btn); box.appendChild(nos);
+      });
+    };
+    /* 5時台より前と未入力は、いるときだけ出す */
+    const d_hide=(k,arr)=>(k==='h5'||k==='blank')&&!arr.length;
+    rows($('infoDep'),dep,[['yo','予備車','ヨ','yo'],['h5','〜5時台','6時より前',''],['h6','6時台','',''],['h7','7時台','',''],['h8','8時台','',''],
+                           ['h9','9時以降','',''],['etc','その他','C検・貸出など','etc'],['blank','未入力','','etc']]);
+    rows($('infoRet'),ret,[['yo','予備車','ヨ＝構内にいる','yo'],['r18','18時まで','',''],['r19','19時台','',''],['r20','20時台','',''],['r21','21時台','',''],
+                           ['r22','22時以降','',''],['etc','その他','C検・貸出など','etc'],['blank','未入力','','etc']]);
+    const depN=Object.keys(dep).filter(k=>k!=='blank').reduce((n,k)=>n+dep[k].length,0);
+    const retT=ret.r18.length+ret.r19.length+ret.r20.length+ret.r21.length+ret.r22.length, retN=ret.yo.length+retT+ret.etc.length;
+    $('infoDepTotal').innerHTML='合計 <b>'+depN+'</b>台';
+    $('infoRetTotal').innerHTML='合計 <b>'+retN+'</b>台（時刻あり '+retT+'台）';
+    const days=$('infoDays'); days.innerHTML='';
+    if(cur!==state.todayKey){ const bt=document.createElement('button'); bt.className='btn primary'; bt.innerHTML=icSvg('back','sm')+'本日に戻る';
+      bt.addEventListener('click',()=>{ closeModal('infoOverlay'); switchDate(state.todayKey); }); days.appendChild(bt); }
+    if(state.dates.length>1){ const bt=document.createElement('button'); bt.className='btn ghost'; bt.innerHTML=icSvg('cal','sm')+'ほかの日を見る';
+      bt.addEventListener('click',()=>{ closeModal('infoOverlay'); openDayPick(); }); days.appendChild(bt); }
   }
   function openDayPick(){
     const box=$('dayPickList'); if(!box) return;
@@ -2257,7 +2423,7 @@ window.__start = function(FB){
   function renderList(){
     const ro=state.activeDate!==state.todayKey;
     const c=$('listContainer'); renderViewUI();
-    if(state.template.length===0){ c.innerHTML='<div class="list-empty">テンプレートが空です。📋から号車を登録してください。</div>'; return; }
+    if(state.template.length===0){ c.innerHTML='<div class="list-empty">テンプレートが空です。「号車テンプレ」から号車を登録してください。</div>'; return; }
     let html='';
     if(state.view==='genpon'){
       state.template.forEach(g=>{ if(!g.nos.length)return; html+=`<div class="cat-header">${g.cat}</div>`; g.nos.forEach(no=>html+=cardHtml(no,g.cat,false)); });
@@ -2338,7 +2504,7 @@ window.__start = function(FB){
   document.querySelectorAll('#carSortSeg button').forEach(b=>b.addEventListener('click',()=>{ state.carSort=b.dataset.sort; renderList(); }));
 
   /* ===== single time pad ===== */
-  function buildKeypad(elId,handler){ const kp=$(elId); kp.innerHTML=''; ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].forEach(l=>{ const k=document.createElement('button'); k.className='key'+(l==='⌫'||l==='OK'?' fn':''); k.textContent=l; k.addEventListener('click',()=>handler(l)); kp.appendChild(k); }); }
+  function buildKeypad(elId,handler){ const kp=$(elId); kp.innerHTML=''; ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].forEach(l=>{ const k=document.createElement('button'); k.className='key'+(l==='⌫'||l==='OK'?' fn':''); if(l==='⌫'){ k.innerHTML=icSvg('bksp','lg'); k.setAttribute('aria-label','1文字消す'); } else k.textContent=l; k.addEventListener('click',()=>handler(l)); kp.appendChild(k); }); }
   function openTimePad(title,initial,onOk){ state.pad.onOk=onOk; state.pad.digits=(initial&&parseT(initial))?initial.replace(':',''):''; $('padTitle').textContent=title; renderPad(); openModal('padOverlay'); }
   function renderPad(){ const d=state.pad.digits; const h=(d[0]||'_')+(d[1]||'_'); const m=(d[2]||'_')+(d[3]||'_'); $('padDisplay').innerHTML=`<span class="${d.length>=1?'':'ph'}">${h}</span><span class="colon">:</span><span class="${d.length>=3?'':'ph'}">${m}</span>`; }
   function padKey(l){ if(l==='⌫'){ state.pad.digits=state.pad.digits.slice(0,-1); renderPad(); return; } if(l==='OK'){ padCommit(); return; } if(state.pad.digits.length>=4)return; const pos=state.pad.digits.length; if(pos===0&&+l>2)return; if(pos===1&&state.pad.digits[0]==='2'&&+l>3)return; if(pos===2&&+l>5)return; state.pad.digits+=l; renderPad(); }
@@ -2734,9 +2900,9 @@ window.__start = function(FB){
   /* ===== メイン/サブ 権限管理 ===== */
   function updateMainBar(activeBool,sinceMs){
     const el=$('mainSessionBar'); if(!el) return;
-    let txt = activeBool ? ('現在のメイン：<span class="who">構内21c</span>（'+pad2(new Date(sinceMs).getHours())+':'+pad2(new Date(sinceMs).getMinutes())+'〜）') : '現在のメイン：なし';
-    if(userRole==='sub') txt += ' <span class="viewer-tag">・あなたは閲覧のみ（'+subName+'）</span>';
-    else if(userRole==='main') txt += ' <span class="viewer-tag">・あなたが構内21c（メイン）です</span>';
+    let txt = activeBool ? ('<span class="ln">現在のメイン：<span class="who">構内21c</span> '+pad2(new Date(sinceMs).getHours())+':'+pad2(new Date(sinceMs).getMinutes())+'〜</span>') : '<span class="ln">現在のメイン：なし</span>';
+    if(userRole==='sub') txt += '<span class="ln viewer-tag">あなたは閲覧のみ（'+subName+'）</span>';
+    else if(userRole==='main') txt += '<span class="ln viewer-tag">あなたが構内21c（メイン）です</span>';
     el.innerHTML=txt;
   }
   function subscribeMainSession(){
@@ -4742,7 +4908,7 @@ window.__start = function(FB){
       document.querySelectorAll('.pk-map').forEach(m=>m.classList.toggle('on', m.id==='pkMap-'+s.map));
       pk.scale=1; pk.tx=0; pk.ty=0; pkApplyZoom();
       $('pkRotateHint').style.display=s.rotate?'':'none';
-      $('pkFindBtn').style.display=(s.map==='full')?'':'none';   // 車両検索は全面図のみ
+      /* 車両検索は全体図・上・下のどの図でも使える（2026-09-24） */
       pkUpdateOrientation();
       pkFixYanaseLabels();
       pkRenderAll();
@@ -5328,12 +5494,14 @@ window.__start = function(FB){
     const slotId=Object.keys(pk.slots).find(id=>pk.slots[id]&&String(pk.slots[id].no)===no);
     if(slotId){
       if(pkFindShowSlot(slotId)) showToast('📍 '+no+' … '+jp(slotId),2600);
+      else showToast('📍 '+no+' … '+jp(slotId)+'（この図には無い場所です。左右にスワイプして別の図で見てください）',3600);
       return;
     }
     if(pk.excluded.has(no)){ showToast(no+' は本日の対象外です',2800); return; }
     if(pkFindShowChip(no)){ showToast('📍 '+no+' は未配置です',2600); return; }
     showToast(no+' は見つかりませんでした',2600);
   }
+  $('pkFindMini').addEventListener('click',()=>$('pkFindBtn').click());
   $('pkFindBtn').addEventListener('click',()=>{
     $('pkFindInput').value='';
     openModal('pkFindOverlay');
@@ -5354,13 +5522,13 @@ window.__start = function(FB){
     pk.disp=(pk.disp+1)%PK_MODES.length;
     /* ツールバーは幅が狭いので「表示:」は付けない。横向きのFABだけ付ける */
     const t=PK_MODE_LABEL[PK_MODES[pk.disp]];
-    $('pkDisp').textContent=t; $('pkFab').textContent='表示:'+t;
+    pkSetLbl($('pkDisp'),t); $('pkFab').textContent='表示:'+t;
     pkRenderAll();
   }
   $('pkDisp').addEventListener('click', pkCycleDisp);
   $('pkFab').addEventListener('click', pkCycleDisp);
   $('pkBackMini').addEventListener('click', ()=>pkGoScreen(0));
-  (function(){ const t=PK_MODE_LABEL[PK_MODES[0]]; $('pkDisp').textContent=t; $('pkFab').textContent='表示:'+t; })();
+  (function(){ const t=PK_MODE_LABEL[PK_MODES[0]]; pkSetLbl($('pkDisp'),t); $('pkFab').textContent='表示:'+t; })();
 
   /* 横向き判定: 横向きのときは図を最大化する（メニュー・トレイを隠す） */
   function pkUpdateOrientation(){
@@ -5459,16 +5627,14 @@ window.__start = function(FB){
     return {L:(L[Math.floor(L.length/2)]||110)*0.95, W:(S[Math.floor(S.length/2)]||34)*0.88};
   }
   function pkBusEl(sz){
-    const NS='http://www.w3.org/2000/svg', L=sz.L, W=sz.W;
+    /* ログイン画面と同じバスの絵（車体＋車輪）。長さを枠の長さに合わせる */
+    const NS='http://www.w3.org/2000/svg', XL='http://www.w3.org/1999/xlink', k=sz.L/120;
     const g=document.createElementNS(NS,'g'); g.setAttribute('class','pk-bus');
-    const mk=(x,y,w,h,fill,rx,st)=>{ const r=document.createElementNS(NS,'rect');
-      r.setAttribute('x',x); r.setAttribute('y',y); r.setAttribute('width',w); r.setAttribute('height',h);
-      r.setAttribute('rx',rx); r.setAttribute('fill',fill);
-      if(st){ r.setAttribute('stroke',st); r.setAttribute('stroke-width',Math.max(1.4,W*0.06)); }
-      return r; };
-    g.appendChild(mk(-L/2,-W/2,L,W,'#fdfdfb',W*0.22,'#4a4238'));
-    g.appendChild(mk(-L/2,W*0.04,L,W*0.26,'#d0021b',0));
-    g.appendChild(mk(L*0.22,-W*0.34,L*0.24,W*0.34,'#7ea6c8',W*0.08));
+    const inner=document.createElementNS(NS,'g'); inner.setAttribute('transform','scale('+k.toFixed(4)+') translate(-60 -30)');
+    const u=(id,x,y,w,h)=>{ const e=document.createElementNS(NS,'use'); e.setAttribute('href','#'+id); e.setAttributeNS(XL,'xlink:href','#'+id);
+      e.setAttribute('x',x); e.setAttribute('y',y); e.setAttribute('width',w); e.setAttribute('height',h); inner.appendChild(e); };
+    u('i-busbody',0,0,120,56); u('i-wheel',18.5,35.5,17,17); u('i-wheel',81.5,35.5,17,17);
+    g.appendChild(inner);
     return g;
   }
   /* time … いま何秒目か。speed … +1で再生 / -1で逆再生 / 0で停止。
@@ -5479,7 +5645,7 @@ window.__start = function(FB){
     pkAnim.running=false;
     if(pkAnim.raf) cancelAnimationFrame(pkAnim.raf);
     if(pkAnim.layer) pkAnim.layer.remove();
-    pkAnim.layer=null; pkAnim.buses=[];
+    pkAnim.layer=null; pkAnim.buses=[]; pkAnim.clock=null;
     pk.animHide.clear();
     const b=$('pkSkip'); if(b) b.style.display='none';
     const bar=$('pkAnimBar'); if(bar) bar.style.display='none';
@@ -5502,6 +5668,9 @@ window.__start = function(FB){
     pk.animHide=hide;
     const total=pkAnimTotal(), n=pkAnim.buses.length;
     $('pkAnimTime').textContent=(n-hide.size)+'/'+n;
+    if(pkAnim.clock){ let cur=null; for(const b of pkAnim.buses){ if(b.start<=pkAnim.time) cur=b; else break; }
+      if(!cur&&pkAnim.buses.length) cur=pkAnim.buses[0];
+      const r=cur&&cur.ret; pkAnim.clock.textContent=(r==null)?'--:--':(String(Math.floor(r/60)).padStart(2,'0')+':'+String(r%60).padStart(2,'0')); }
     $('pkAnimSeek').value=Math.round(1000*Math.max(0,Math.min(1, pkAnim.time/total)));
     if(before!==hide.size) pkRenderCards();      // 表示・非表示が変わったときだけ描き直す
   }
@@ -5519,7 +5688,7 @@ window.__start = function(FB){
     pkAnim.running=false;
     if(pkAnim.raf) cancelAnimationFrame(pkAnim.raf);
     if(pkAnim.layer) pkAnim.layer.remove();
-    pkAnim.layer=null; pkAnim.buses=[];
+    pkAnim.layer=null; pkAnim.buses=[]; pkAnim.clock=null;
     $('pkSkip').style.display='none';
     $('pkAnimBar').style.display='none';
     pkPush(); pkRenderAll();
@@ -5608,7 +5777,7 @@ window.__start = function(FB){
       if(!v||!v.no||v.st!=='auto') return false;
       return parseT((day[v.no]||{}).r)!=null && pkRouteFor(id,mapKey);
     }).sort((a,b)=>parseT(day[pk.slots[a].no].r)-parseT(day[pk.slots[b].no].r));
-    if(!list.length){ showToast('動かせる車がありません（先に⚡一括配置をしてください）',2800); return; }
+    if(!list.length){ showToast('動かせる車がありません（先に「一括配置」をしてください）',2800); return; }
     const m=mapEl(); if(!m){ showToast('図を表示できませんでした'); return; }
     pk.animHide=new Set(list);
     pkRenderCards();
@@ -5627,7 +5796,12 @@ window.__start = function(FB){
     pkAnim.buses=list.map((id,i)=>({
       id, route:routes[i], start:endWindow*Math.pow(i/Math.max(1,N),0.72),
       pause:pauseOf(i), dur:durOf(i), legLen:routes[i].legs.map(pkLegLen),
-      el:null, done:false, sz, seed:((i*2654435761)%1000)/1000 }));
+      el:null, done:false, sz, seed:((i*2654435761)%1000)/1000, ret:parseT((day[pk.slots[id].no]||{}).r), fl:1 }));
+    { const vb=m.viewBox&&m.viewBox.baseVal; const W=vb&&vb.width?vb.width:1100, H=vb&&vb.height?vb.height:1946;
+      const t=document.createElementNS(NS,'text'); t.setAttribute('class','pk-animclock'); t.setAttribute('x',(W/2).toFixed(0)); t.setAttribute('y',(H-52).toFixed(0));
+      t.setAttribute('text-anchor','middle'); t.setAttribute('font-size',(W*0.075).toFixed(0));
+      const l=document.createElementNS(NS,'tspan'); l.setAttribute('class','lb'); l.setAttribute('font-size',(W*0.034).toFixed(0)); l.textContent='帰庫 ';
+      const v=document.createElementNS(NS,'tspan'); v.textContent='--:--'; t.appendChild(l); t.appendChild(v); layer.appendChild(t); pkAnim.clock=v; }
     pkAnim.time=0; pkAnim.last=performance.now(); pkAnim.running=true;
     pkAnimSetSpeed(1);
     pkMovedAnimPlay();                               // 動かした手置きも同時に示す
@@ -5693,7 +5867,8 @@ window.__start = function(FB){
         a+=Math.sin(now*11+b.seed*7)*1.6*sp;
       }
       b.el.setAttribute('opacity',op);
-      b.el.setAttribute('transform','translate('+x.toFixed(1)+' '+y.toFixed(1)+') rotate('+a.toFixed(1)+') scale('+sx.toFixed(3)+' '+sy.toFixed(3)+')');
+      { const cs=Math.cos(a*Math.PI/180); if(cs<-.2) b.fl=-1; else if(cs>.2||!b.fl) b.fl=1; }   // 横向きの絵なので、左向きのときは上下を返す
+      b.el.setAttribute('transform','translate('+x.toFixed(1)+' '+y.toFixed(1)+') rotate('+a.toFixed(1)+') scale('+sx.toFixed(3)+' '+(sy*b.fl).toFixed(3)+')');
     }
     pkAnim.raf=requestAnimationFrame(pkAnimFrame);
   }
@@ -5826,13 +6001,14 @@ window.__start = function(FB){
   /* 翌日の区分（平日／土休日）。保存はしない＝アプリを開き直すと平日に戻る */
   function pkDayKindRender(){
     const b=$('pkDayKind'); if(!b) return;
-    b.textContent='翌日：'+pkDayKindLabel();
-    b.style.color=pkIsSpecial()?'#7a3ea3':(pkIsWeekend()?'#a33':'#1a1f26');
+    pkSetLbl(b,'翌日：'+pkDayKindLabel());
+    b.dataset.kind=pkIsSpecial()?'special':(pkIsWeekend()?'holiday':'weekday');
     b.style.fontWeight=pkIsWeekend()?'700':'';
     const y=$('pkYanaseKind'); if(!y) return;
     y.style.display=pkIsWeekend()?'':'none';
-    y.textContent=pkYanaseLabel();
-    y.style.color=PK_YANASE_WEEKEND?'#a33':'#1a1f26'; y.style.fontWeight=PK_YANASE_WEEKEND?'700':'';
+    pkSetLbl(y,pkYanaseLabel());
+    y.dataset.kind=PK_YANASE_WEEKEND?'holiday':'weekday'; y.style.fontWeight=PK_YANASE_WEEKEND?'700':'';
+
   }
   $('pkDayKind').addEventListener('click',()=>{
     if(userRole==='sub'){ showToast('閲覧のみです'); return; }
@@ -6010,7 +6186,7 @@ window.__start = function(FB){
   setInterval(()=>{
     if(pk.screen===0||userRole!=='main') return;
     const probs=pkValidateAll().filter(p=>!p.soft);
-    if(probs.length) $('pkMsg').textContent='⚠ 出庫順の詰まりが'+probs.length+'件。必要なら「⚡一括配置」で組み直してください';
+    if(probs.length) $('pkMsg').textContent='⚠ 出庫順の詰まりが'+probs.length+'件。必要なら「一括配置」で組み直してください';
   }, 60000);
 
   /* ---------------- 配置クリア ---------------- */
@@ -6024,21 +6200,27 @@ window.__start = function(FB){
     pkPush(); pkRenderAll();
   });
 
-  /* ---------------- テンプレート（3枠・登録制） ---------------- */
+  /* ---------------- テンプレート（8枠・登録制） ----------------
+     2026-09：3枠→8枠。1〜3枠目は今までの登録がそのまま残る。8つを並行して読む */
+  const PK_TPL_N=8;
   async function pkLoadTpls(){
-    const tpls=[];
-    for(let i=1;i<=3;i++){
+    const one=async(i)=>{
       let t=null;
       if(FB_OK&&db){ try{ const s=await FB.getDoc(pkTplRef(i)); t=s.exists()?s.data():null; }catch(e){} }
       if(!t){ try{ t=JSON.parse(localStorage.getItem('rb-ptpl-'+i)||'null'); }catch(e){} }
-      tpls.push(t||{name:'（未登録）', slots:{}});
-    }
-    return tpls;
+      return t||{name:'（未登録）', slots:{}};
+    };
+    const jobs=[]; for(let i=1;i<=PK_TPL_N;i++) jobs.push(one(i));
+    return Promise.all(jobs);
   }
   async function pkSaveTpl(i, data){
     if(FB_OK&&db){ try{ await FB.setDoc(pkTplRef(i), {...data, updatedAt:Date.now()}); }catch(e){ showToast('テンプレ保存に失敗',2600); } }
     try{ localStorage.setItem('rb-ptpl-'+i, JSON.stringify(data)); }catch(e){}
   }
+  /* テンプレのボタン：先頭の記号を手描きアイコンに */
+  function pkBtnLabel(label){ const M={'▶':'play','💾':'save','✎':'pencil','🗑':'trash'};
+    for(const k in M){ if(label.startsWith(k)){ const rest=label.slice(k.length).trim(); return icSvg(M[k],'sm')+escH(rest); } }
+    return escH(label); }
   async function pkRenderTplList(){
     const wrap=$('pkTplList'); wrap.innerHTML='<div style="color:var(--text-dim);font-size:12px;">読み込み中…</div>';
     const tpls=await pkLoadTpls();
@@ -6046,10 +6228,10 @@ window.__start = function(FB){
     tpls.forEach((t,idx)=>{
       const i=idx+1;
       const cnt=Object.keys(t.slots||{}).length;
-      const row=document.createElement('div'); row.className='ptpl-row';
-      row.innerHTML='<h4>'+i+'. '+(t.name||'（未登録）')+'</h4><div class="cnt">'+cnt+'台 登録</div>';
+      const row=document.createElement('div'); row.className='ptpl-row'+(cnt?'':' empty');
+      row.innerHTML='<h4><span class="n">'+i+'</span>'+escH(t.name||'（未登録）')+'</h4><div class="cnt">'+(cnt?cnt+'台 登録':'空き')+'</div>';
       const btns=document.createElement('div'); btns.className='ptpl-btns';
-      const mk=(label,fn,danger)=>{ const b=document.createElement('button'); b.className='btn '+(danger?'danger':'ghost'); b.style.color=danger?'':'#1a1f26'; b.textContent=label; b.addEventListener('click',fn); btns.appendChild(b); };
+      const mk=(label,fn,danger)=>{ const b=document.createElement('button'); b.className='btn '+(danger?'danger':'ghost'); b.innerHTML=pkBtnLabel(label); if(label==='🗑') b.setAttribute('aria-label','削除'); b.addEventListener('click',fn); btns.appendChild(b); };
       mk('▶ 適用',async()=>{
         if(userRole!=='main'){showToast('メインのみ操作できます');return;}
         if(!cnt){showToast('このテンプレは空です');return;}
@@ -6218,6 +6400,107 @@ window.__start = function(FB){
 
 
 };
+</script>
+<script>
+/* ===== 動く絵：バスが走り、景色が流れる（入口はバス停に停まって人が乗る） =====
+   アプリの処理とは独立。見えていないとき（別画面・裏）と「視差効果を減らす」設定では止まる */
+(function(){
+  const NS='http://www.w3.org/2000/svg';
+  const RM=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const mk=(tag,at,par)=>{ const e=document.createElementNS(NS,tag); for(const k in at) e.setAttribute(k,at[k]); if(par) par.appendChild(e); return e; };
+  const VB={'i-tree1':[0,-24,12,24],'i-tree2':[0,-28,10,28],'i-house':[-2,-22,24,22],'i-bldg':[0,-31,15,31],'i-shop':[-2,-17,24,17],
+            'i-hill':[0,-12,70,12],'i-cloud':[0,-13,24,13],'i-stop':[-6,-33,12,33],'i-p1':[-5,-21,12,21],'i-p2':[-5,-21,12,21],'i-p3':[-5,-21,12,21],'i-p4':[-5,-21,12,21]};
+  function sprite(id,par){ const g=mk('g',{},par); const v=VB[id]; const u=mk('use',{href:'#'+id,x:v[0],y:v[1],width:v[2],height:v[3]},g);
+    u.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href','#'+id); return g; }
+  const rnd=(a,b)=>a+Math.random()*(b-a), pick=a=>a[Math.floor(Math.random()*a.length)];
+  let uid=0;
+  function scene(svg,c){
+    if(!svg) return;
+    const id='bs'+(++uid), W=c.W, H=c.H, G=c.ground, k=c.k;
+    /* 枠なし。赤い帯の上に、生成り色の線だけで描く。左右の端はぼかして消す */
+    const IV='#FFF8EF';
+    const defs=mk('defs',{},svg);
+    const gr=mk('linearGradient',{id:id+'f',x1:0,y1:0,x2:1,y2:0},defs);
+    [[0,0],[.12,1],[.88,1],[1,0]].forEach(([o,a])=>mk('stop',{offset:o,'stop-color':'#fff','stop-opacity':a},gr));
+    const mask=mk('mask',{id:id+'m',maskUnits:'userSpaceOnUse',x:0,y:0,width:W,height:H},defs);
+    mk('rect',{x:0,y:0,width:W,height:H,fill:'url(#'+id+'f)'},mask);
+    const root=mk('g',{mask:'url(#'+id+'m)',style:'color:'+IV},svg);
+    const L=[
+      {g:mk('g',{opacity:.34},root),sp:.08,kinds:['i-cloud'],sc:c.cloud,y:()=>rnd(H*.16,H*.36),gap:[W*.35,W*.8],items:[]},
+      {g:mk('g',{opacity:.34},root),sp:.22,kinds:['i-hill'],sc:c.hill,y:()=>G,gap:[-10*c.hill,20*c.hill],items:[]},
+      {g:mk('g',{opacity:.6},root),sp:.62,kinds:['i-tree1','i-tree2','i-tree1','i-house','i-bldg','i-shop','i-tree2'],sc:c.item,y:()=>G-1,gap:[8*c.item,34*c.item],items:[]},
+    ];
+    // 道の線と、手前の歩道の線（歩道の目地が流れて、走っているのが分かる）
+    const CURB=G+(H-G)*.42, FOOT=G+(H-G)*.8;
+    mk('path',{d:'M0 '+G+'H'+W,stroke:IV,'stroke-width':1.3*k+.4,fill:'none','stroke-linecap':'round',opacity:.75},root);
+    mk('path',{d:'M0 '+CURB.toFixed(1)+'H'+W,stroke:IV,'stroke-width':1*k+.3,fill:'none','stroke-linecap':'round',opacity:.45},root);
+    const dash=mk('g',{opacity:.4},root); const DP=18*k+6;
+    for(let x=-DP;x<W+DP*2;x+=DP) mk('path',{d:'M'+x.toFixed(1)+' '+(G+(CURB-G)*.5).toFixed(1)+'h'+(DP*.4).toFixed(1),stroke:IV,'stroke-width':1*k+.3,'stroke-linecap':'round'},dash);
+    // バス（ここだけ色つきの絵）
+    mk('ellipse',{cx:c.bx+60*k,cy:G+.5,rx:52*k,ry:2.4*k+.5,fill:'#3a0c14',opacity:.28},svg);
+    const bus=mk('g',{transform:'translate('+c.bx+' '+(G-51.4*k)+') scale('+k+')'},svg);
+    const body=mk('g',{},bus); const bu=mk('use',{href:'#i-busbody',x:0,y:0,width:120,height:56},body);
+    bu.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href','#i-busbody');
+    const wheels=[27,90].map(x=>{ const o=mk('g',{transform:'translate('+x+' 44)'},bus); const r=mk('g',{},o);
+      const u=mk('use',{href:'#i-wheel',x:-8.5,y:-8.5,width:17,height:17},r); u.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href','#i-wheel'); return r; });
+    const stopL=mk('g',{style:'color:'+IV,mask:'url(#'+id+'m)'},svg);   // バス停と人はバスより手前（歩道の上）
+    function spawn(Ly,x){ const kind=pick(Ly.kinds); const g=sprite(kind,Ly.g); const v=VB[kind]; const w=v[2]*Ly.sc;
+      const it={g,x,w,y:Ly.y(),s:Ly.sc*(kind==='i-cloud'?rnd(.8,1.2):1)}; Ly.items.push(it); place(it); return it; }
+    function place(it){ it.g.setAttribute('transform','translate('+it.x.toFixed(1)+' '+it.y.toFixed(1)+') scale('+it.s.toFixed(3)+')'); }
+    // 最初から景色がある状態で始める
+    L.forEach(Ly=>{ let x=rnd(-20,10); while(x<W+20){ const it=spawn(Ly,x); x+=it.w+rnd(Ly.gap[0],Ly.gap[1]); } });
+
+    const VMAX=c.v, ACC=c.v*.55, DOOR=c.bx+90.5*k, POLE=DOOR+16*k;
+    let v=RM?0:VMAX, dist=0, t=0, ph=0, pitch=0, wa=0, state='cruise', nextStop=c.stop?rnd(1.2,2):1e9, wait=0, stop=null, last=0, acc=0;
+    function newStop(){ const g=mk('g',{},stopL); const pole=sprite('i-stop',g); pole.setAttribute('transform','scale('+k+')');
+      const n=Math.floor(rnd(1,3.99)), ppl=[]; const kinds=['i-p1','i-p2','i-p3','i-p4'].sort(()=>Math.random()-.5);
+      for(let i=0;i<n;i++){ const pg=sprite(kinds[i],g); ppl.push({g:pg,dx:(9+i*9.5)*k,x:0,op:1,wk:0,delay:i*.45,gone:false}); }
+      stop={g,x:W+20*k,ppl}; }
+    function frame(dt){
+      t+=dt;
+      if(c.stop){
+        if(state==='cruise'){ v+=Math.min(ACC*dt,VMAX-v); nextStop-=dt; if(nextStop<=0&&!stop){ newStop(); state='approach'; } }
+        else if(state==='approach'){ const d=stop.x-POLE; const want=Math.min(VMAX,Math.sqrt(2*ACC*.8*Math.max(d,0)));
+          v+=Math.max(-ACC*1.6*dt,Math.min(ACC*dt,want-v)); if(d<.4&&v<3){ v=0; state='board'; wait=0; stop.ppl.forEach(p=>p.x=stop.x+p.dx); } }
+        else if(state==='board'){ wait+=dt; let left=0;
+          stop.ppl.forEach(p=>{ if(p.gone) return; left++; if(wait<p.delay+.35) return;
+            if(p.x>DOOR+1.5*k){ p.x-=17*k*dt; p.wk+=dt*11; } else { p.op-=dt*3.2; if(p.op<=0){ p.gone=true; p.g.remove(); } } });
+          if(!left){ if(wait>0) { state='wait'; wait=0; } } }
+        else if(state==='wait'){ wait+=dt; if(wait>.6) state='depart'; }
+        else if(state==='depart'){ v+=Math.min(ACC*dt,VMAX-v); if(stop&&stop.x<-40*k){ stop.g.remove(); stop=null; state='cruise'; nextStop=rnd(3.5,6); } }
+      } else { v=VMAX*(.85+.15*Math.sin(t*.35)); }
+      const dx=v*dt; dist+=dx;
+      L.forEach(Ly=>{ Ly.items.forEach(it=>{ it.x-=dx*Ly.sp; place(it); });
+        while(Ly.items.length&&Ly.items[0].x+Ly.items[0].w*1.1<-6){ Ly.items.shift().g.remove(); }
+        const lastIt=Ly.items[Ly.items.length-1]; const edge=lastIt?lastIt.x+lastIt.w:0;
+        if(edge<W+10) spawn(Ly,Math.max(W+2,edge+rnd(Ly.gap[0],Ly.gap[1]))); });
+      dash.setAttribute('transform','translate('+(-(dist%DP)).toFixed(1)+' 0)');
+      if(stop){ if(state!=='board'&&state!=='wait') stop.x-=dx;
+        stop.g.setAttribute('transform','translate('+stop.x.toFixed(1)+' '+FOOT.toFixed(1)+')');
+        stop.ppl.forEach(p=>{ if(p.gone) return; const px=(state==='board'||state==='wait')?p.x-stop.x:p.dx;
+          const by=p.wk?-Math.abs(Math.sin(p.wk))*1.1*k:0;
+          p.g.setAttribute('transform','translate('+px.toFixed(1)+' '+by.toFixed(2)+') scale('+(k*.95).toFixed(3)+')'); p.g.setAttribute('opacity',Math.max(0,p.op).toFixed(2)); }); }
+      // 揺れ・前後の傾き・車輪
+      const r=v/VMAX; const a=(v-(frame.pv||0))/Math.max(dt,1e-3); frame.pv=v;
+      pitch+=((Math.max(-1.6,Math.min(1.6,-a*.035)))-pitch)*Math.min(1,dt*6);
+      ph+=dt*(3+9*r); const bob=Math.sin(ph)*(.25+.9*r);
+      body.setAttribute('transform','translate(0 '+bob.toFixed(2)+') rotate('+pitch.toFixed(2)+' 60 44)');
+      wa=(wa+dx/(7.4*k)*57.2958)%360; wheels.forEach(w=>w.setAttribute('transform','rotate('+wa.toFixed(1)+')'));
+    }
+    frame(0);
+    if(RM) return;
+    const step=1/(c.fps||30);
+    function loop(ts){ requestAnimationFrame(loop);
+      if(document.hidden||!svg.getClientRects().length){ last=ts; return; }
+      const dt=Math.min(.1,(ts-(last||ts))/1000); last=ts; acc+=dt; if(acc<step) return; frame(Math.min(acc,.1)); acc=0; }
+    requestAnimationFrame(loop);
+  }
+  function boot(){
+    scene(document.getElementById('gateScene'),{W:300,H:118,ground:96,k:1.05,bx:87,v:46,stop:true,item:1.5,hill:1.7,cloud:1.2,fps:40});
+    scene(document.getElementById('hdrScene'),{W:120,H:40,ground:31,k:.52,bx:28,v:22,stop:false,item:.66,hill:.8,cloud:.6,fps:24});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
 </script>
 </body>
 </html>
